@@ -1,0 +1,65 @@
+name: infoservice
+description: Social service
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+version: 1.0.59+59
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  shared_preferences: ^2.0.15
+  firebase_core: ^1.17.0
+  firebase_messaging: ^11.4.0
+  awesome_notifications: ^0.6.21
+  xmpp_plugin: ^2.2.1
+  http: ^0.13.4
+  flutter_svg: ^1.0.3
+  permission_handler: ^8.3.0
+  package_info_plus: ^1.4.2
+  sqflite: ^2.0.2+1
+  cached_network_image: ^3.2.1
+  dash_chat_2: ^0.0.6
+  file_picker: ^4.6.1
+  image_picker: ^0.8.5+3
+  open_file: ^3.2.1
+  device_info_plus: ^3.2.4
+  record: ^3.0.4
+  material_floating_search_bar: ^0.3.7
+  carousel_slider: ^4.1.1
+  dio: ^4.0.6
+  archive: ^3.3.0
+  sip_ua: ^0.5.1
+  flutter_callkit_incoming: ^1.0.2+1
+  uuid: ^3.0.6
+  all_sensors: ^0.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^2.0.0
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/app_icons/appstore.png
+    - assets/app_icons/playstore.png
+    - assets/avatars/
+    - assets/loading/
+    - assets/svg/
+    - assets/misc/
+    - assets/call/
+
+  fonts:
+    - family: Funtya
+      fonts:
+        - asset: assets/fonts/funtya.ttf
