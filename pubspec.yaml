@@ -18,7 +18,9 @@ dependencies:
   firebase_core: ^1.17.0
   firebase_messaging: ^11.4.0
   awesome_notifications: ^0.6.21
-  xmpp_plugin: ^2.2.1
+  #xmpp_plugin: ^2.2.1
+  xmpp_plugin:
+    path: xmpp_plugin-2.2.3
   http: ^0.13.4
   flutter_svg: ^1.0.3
   permission_handler: ^8.3.0
@@ -36,7 +38,9 @@ dependencies:
   dio: ^4.0.6
   archive: ^3.3.0
   sip_ua: ^0.5.1
-  flutter_callkit_incoming: ^1.0.2+1
+  #flutter_callkit_incoming: ^1.0.2+1
+  flutter_callkit_incoming:
+    path: flutter_callkit_incoming-1.0.2+2
   uuid: ^3.0.6
   all_sensors: ^0.4.2
 
