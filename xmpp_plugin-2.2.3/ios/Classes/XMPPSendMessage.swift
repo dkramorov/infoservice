@@ -133,6 +133,24 @@ extension XMPPController {
             callBack(arrJid)
         }
     }
+
+    func sendSlot(slot: XMPPSlot?, resultIq: XMPPIQ?, error: Error?) {
+        printLog("\(#function) | slot: \(slot)")
+        addLogger(.sentMessageToFlutter, [slot, resultIq, error])
+
+        if let callBack = APP_DELEGATE.singalCallBack {
+            callBack(slot?.putURL.absoluteString)
+        }
+    }
+
+    func sendSearchUsersResult(withJids arrJid : [String]) {
+        printLog("\(#function) | arrJid: \(arrJid)")
+        addLogger(.sentMessageToFlutter, arrJid)
+
+        if let callBack = APP_DELEGATE.singalCallBack {
+            callBack(arrJid)
+        }
+    }
     
     func sendLastActivity(withTime vTime: String) {
         printLog("\(#function) | time: \(vTime)")

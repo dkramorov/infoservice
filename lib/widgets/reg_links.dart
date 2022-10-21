@@ -36,7 +36,7 @@ class RegLinksWidget extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Not registered?',
+            'Не зарегистрированы?',
             style: sgnNoAccTextStyle,
           ),
           GestureDetector(
@@ -45,10 +45,10 @@ class RegLinksWidget extends StatelessWidget {
               regProcess(context, 'reg');
             },
             child: Text(
-              'Register',
+              'Регистрация',
               style: sgnNoAccTextStyle?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: PRIMARY_COLOR,
+                color: tealColor,
               ),
             ),
           ),
@@ -59,10 +59,10 @@ class RegLinksWidget extends StatelessWidget {
               regProcess(context, 'restore_passwd');
             },
             child: Text(
-              'Foget password?',
+              'Не помню пароль',
               style: sgnNoAccTextStyle?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: PRIMARY_COLOR,
+                color: tealColor,
               ),
             ),
           ),

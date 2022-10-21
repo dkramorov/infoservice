@@ -3,10 +3,6 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_xmpp_example/constants.dart';
-import 'package:flutter_xmpp_example/homepage.dart';
-import 'package:flutter_xmpp_example/native_log_helper.dart';
-import 'package:flutter_xmpp_example/utils.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share/share.dart';
 import 'package:xmpp_plugin/custom_element.dart';
@@ -19,7 +15,11 @@ import 'package:xmpp_plugin/models/present_mode.dart';
 import 'package:xmpp_plugin/success_response_event.dart';
 import 'package:xmpp_plugin/xmpp_plugin.dart';
 
+import 'constants.dart';
+import 'homepage.dart';
 import 'mamExamples.dart';
+import 'native_log_helper.dart';
+import 'utils.dart';
 
 const myTask = "syncWithTheBackEnd";
 
@@ -274,8 +274,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver implements Da
                   Share.shareFiles([NativeLogHelper.logFilePath]);
                 } else {
                   if (_scaffoldKey.currentState != null) {
-                    _scaffoldKey.currentState!
-                        .showSnackBar(new SnackBar(content: new Text('File not found!')));
+                    //_scaffoldKey.currentState!.showSnackBar(new SnackBar(content: new Text('File not found!')));
                   }
                 }
               },
@@ -287,8 +286,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver implements Da
                   NativeLogHelper().deleteLogFile();
                 } else {
                   if (_scaffoldKey.currentState != null) {
-                    _scaffoldKey.currentState!
-                        .showSnackBar(new SnackBar(content: new Text('File not found!')));
+                    //_scaffoldKey.currentState!
+                    //    .showSnackBar(new SnackBar(content: new Text('File not found!')));
                   }
                 }
               },
@@ -841,10 +840,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver implements Da
     try {
       XmppConnectionState connectionStatus = await flutterXmpp.getConnectionStatus();
       if (_scaffoldKey.currentState != null) {
-        _scaffoldKey.currentState!.showSnackBar(new SnackBar(
-          content: new Text('${connectionStatus.toString()}'),
-          duration: Duration(milliseconds: 700),
-        ));
+        //_scaffoldKey.currentState!.showSnackBar(new SnackBar(
+        //  content: new Text('${connectionStatus.toString()}'),
+        //  duration: Duration(milliseconds: 700),
+        //));
       }
     } catch (e) {
       print(e);

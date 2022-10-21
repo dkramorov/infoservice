@@ -14,8 +14,8 @@ class Avatar extends StatelessWidget {
 
   const Avatar({
     Key? key,
-    this.width = 60.0,
-    this.height = 60.0,
+    this.width = 50.0,
+    this.height = 50.0,
     this.imgPath = DEFAULT_AVATAR,
     this.isOnline = false,
     this.showIndicator = false,

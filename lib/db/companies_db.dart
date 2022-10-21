@@ -238,6 +238,7 @@ List<String> companiesSQLHelper() {
       ' name text,' +
       ' count integer,' +
       ' icon text,' +
+      ' img text,' +
       ' position int,' +
       ' searchTerms text' +
       ')';
@@ -319,7 +320,7 @@ List<String> companiesSQLHelper() {
 }
 
 Future<Database> openCompaniesDB() async {
-  const int dbVersion = 1; // Версия базы данных
+  const int dbVersion = 2; // Версия базы данных
   const dbName = 'companiesDB.db';
   if (DBCompaniesInstance.instance != null) {
     return DBCompaniesInstance.instance!;
@@ -348,6 +349,11 @@ Future<Database> openCompaniesDB() async {
     onUpgrade: (db, oldVersion, newVersion) {
       Log.i('--- DB UPGRADE ---', '$oldVersion=>$newVersion');
       createTables(db);
+      if (oldVersion == 1 && newVersion == 2) {
+        const String alterCatalogueAddImg = 'ALTER TABLE catalogue add img TEXT';
+        Log.d('ALTER TABLE', alterCatalogueAddImg);
+        db.execute(alterCatalogueAddImg);
+      }
     },
     // Set the version. This executes the onCreate function and provides a
     // path to perform database upgrades and downgrades.

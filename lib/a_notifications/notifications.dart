@@ -35,12 +35,18 @@ Future<void> createSimpleNotification() async {
 }
 
 Future<void> createChatNotification(Map<String, String> data) async {
+  String title = 'Новое сообщение';
+  String body = 'Сообщение от ${data['sender']}';
+  if (data['body'] != null && data['body'] != '') {
+    title = body;
+    body = data['body']!;
+  }
   await AwesomeNotifications().createNotification(
     content: NotificationContent(
       id: 5,
       channelKey: 'normal_channel',
-      title: 'Новое сообщение',
-      body: 'Сообщение от ${data['sender']}',
+      title: title,
+      body: body,
       payload: data,
       wakeUpScreen: true,
     ),

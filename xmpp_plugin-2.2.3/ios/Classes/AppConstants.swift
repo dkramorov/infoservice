@@ -29,6 +29,8 @@ struct pluginMethod {
     static let login : String                       = "login"
     static let logout : String                      = "logout"
     static let potestua: String                     = "potestua"
+    static let requestSlot: String                  = "request_slot"
+    static let searchUsers: String                  = "search_users"
     static let sendMessage : String                 = "send_message"
     static let sendMessageInGroup : String          = "send_group_message"
     static let sendCustomMessage : String           = "send_custom_message"

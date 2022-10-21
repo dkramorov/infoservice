@@ -1,17 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:infoservice/helpers/dialogs.dart';
 import 'package:infoservice/widgets/rounded_input_text.dart';
 import 'package:infoservice/widgets/submit_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/phone_mask.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
 
-
 class SignInFormWidget extends StatefulWidget {
   final SIPUAManager? _sipHelper;
   final JabberManager? _xmppHelper;
-  const SignInFormWidget(this._sipHelper, this._xmppHelper, {Key? key}) : super(key: key);
+  const SignInFormWidget(this._sipHelper, this._xmppHelper, {Key? key})
+      : super(key: key);
 
   @override
   _SignInFormWidgetState createState() => _SignInFormWidgetState();
@@ -55,6 +57,16 @@ class _SignInFormWidgetState extends State<SignInFormWidget> {
       'passwd': passwdController.text,
       'name': loginController.text,
     };
+
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    bool? isDropped = preferences.getBool(userData['phone']);
+    print('check account for drop ${userData['phone']} (isDropped $isDropped)');
+    if (isDropped != null && isDropped) {
+      openInfoDialog(context, () {}, 'Аккаунт удален',
+          'К сожалению, нельзя войти, воспользуйтесь регистрацией', 'Хорошо');
+      return;
+    }
+
     xmppHelper?.changeSettings(userData);
     sipHelper?.changeSettings(userData);
   }

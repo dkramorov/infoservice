@@ -4,10 +4,11 @@ description: Social service
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.59+59
+version: 1.0.69+69
 
 environment:
-  sdk: ">=2.17.0 <3.0.0"
+  sdk: '>=2.17.0 <3.0.0' # flutter 3.0.0
+  # sdk: '>=2.18.0 <3.0.0' # flutter 3.3.1
 
 dependencies:
   flutter:
@@ -15,39 +16,49 @@ dependencies:
 
   cupertino_icons: ^1.0.2
   shared_preferences: ^2.0.15
-  firebase_core: ^1.17.0
-  firebase_messaging: ^11.4.0
+  firebase_core: ^1.22.0
+  firebase_messaging: 13.0.1
   awesome_notifications: ^0.6.21
   #xmpp_plugin: ^2.2.1
   xmpp_plugin:
-    path: xmpp_plugin-2.2.3
+    path: xmpp_plugin-2.2.3 # custom version
   http: ^0.13.4
   flutter_svg: ^1.0.3
-  permission_handler: ^8.3.0
+  # https://github.com/Baseflow/flutter-permission-handler/issues/718
+  permission_handler: ^10.0.0
   package_info_plus: ^1.4.2
   sqflite: ^2.0.2+1
   cached_network_image: ^3.2.1
-  dash_chat_2: ^0.0.6
+  #dash_chat_2: ^0.0.14
+  dash_chat_2:
+    path: dash_chat_2-0.0.15 # custom version
   file_picker: ^4.6.1
   image_picker: ^0.8.5+3
   open_file: ^3.2.1
   device_info_plus: ^3.2.4
-  record: ^3.0.4
-  material_floating_search_bar: ^0.3.7
+  record: ^4.4.0
+  #material_floating_search_bar: ^0.3.7
+  material_floating_search_bar:
+    path: material_floating_search_bar-0.3.8 # custom version
   carousel_slider: ^4.1.1
   dio: ^4.0.6
   archive: ^3.3.0
   sip_ua: ^0.5.1
   #flutter_callkit_incoming: ^1.0.2+1
+  # https://stackoverflow.com/questions/69650283/open-ios-flutter-app-directly-after-answering-voip-call-from-locked-ios-device
   flutter_callkit_incoming:
-    path: flutter_callkit_incoming-1.0.2+2
+    path: flutter_callkit_incoming-1.0.2+2 # custom version
   uuid: ^3.0.6
   all_sensors: ^0.4.2
+  #flutter_apns: ^1.5.4
+  #chat_composer: ^1.0.3
+  chat_composer:
+    path: chat_composer-1.0.4 # custom version
+  just_audio: ^0.9.28
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^2.0.0
 
 flutter:
@@ -62,6 +73,7 @@ flutter:
     - assets/svg/
     - assets/misc/
     - assets/call/
+    - assets/images/
 
   fonts:
     - family: Funtya

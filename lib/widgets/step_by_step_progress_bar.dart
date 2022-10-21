@@ -31,7 +31,7 @@ class StepByStepProgressBar extends StatelessWidget {
           height: _progressHeight,
           width: _progressWidth * _currentStep / _totalStep,
           decoration: BoxDecoration(
-              color: PRIMARY_COLOR, borderRadius: BorderRadius.circular(4)),
+              color: tealColor, borderRadius: BorderRadius.circular(4)),
         )
       ],
     );

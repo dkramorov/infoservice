@@ -110,8 +110,8 @@ class _MyRegisterWidget extends State<RegisterWidget>
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          backgroundColor: PRIMARY_COLOR,
-          title: const Text("SIP Account"),
+          backgroundColor: tealColor,
+          title: const Text("SIP Аккаунт"),
         ),
         body: ListView(children: [
           Align(
@@ -127,7 +127,7 @@ class _MyRegisterWidget extends State<RegisterWidget>
                               const EdgeInsets.fromLTRB(48.0, 18.0, 48.0, 18.0),
                           child: Center(
                               child: Text(
-                            'Register Status: ${EnumHelper.getName(_registerState.state)}',
+                            'Статус регистрации: ${EnumHelper.getName(_registerState.state)}',
                             style: const TextStyle(
                                 fontSize: 18, color: Colors.black54),
                           )),
@@ -162,7 +162,7 @@ class _MyRegisterWidget extends State<RegisterWidget>
                           padding: EdgeInsets.fromLTRB(46.0, 18.0, 48.0, 0),
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: Text('Authorization User:'),
+                            child: Text('Пользователь:'),
                           ),
                         ),
                         Padding(
@@ -192,7 +192,7 @@ class _MyRegisterWidget extends State<RegisterWidget>
                           padding: EdgeInsets.fromLTRB(46.0, 18.0, 48.0, 0),
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: Text('Password:'),
+                            child: Text('Пароль:'),
                           ),
                         ),
                         Padding(
@@ -221,7 +221,7 @@ class _MyRegisterWidget extends State<RegisterWidget>
                           padding: EdgeInsets.fromLTRB(46.0, 18.0, 48.0, 0),
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: Text('Display Name:'),
+                            child: Text('Имя:'),
                           ),
                         ),
                         Padding(
@@ -246,11 +246,11 @@ class _MyRegisterWidget extends State<RegisterWidget>
                         height: 48.0,
                         width: 140.0,
                         child: MaterialButton(
-                          color: PRIMARY_COLOR,
+                          color: tealColor,
                           textColor: Colors.white,
                           onPressed: () => _handleSave(context),
                           child: const Text(
-                            'Register',
+                            'Регистрация',
                             style:
                                 TextStyle(fontSize: 16.0, color: Colors.white),
                           ),
@@ -261,11 +261,11 @@ class _MyRegisterWidget extends State<RegisterWidget>
                         height: 48.0,
                         width: 140.0,
                         child: MaterialButton(
-                          color: PRIMARY_COLOR,
+                          color: tealColor,
                           textColor: Colors.white,
                           onPressed: () => sipHelper!.stop(),
                           child: const Text(
-                            'Unregister',
+                            'Выход',
                             style:
                                 TextStyle(fontSize: 16.0, color: Colors.white),
                           ),

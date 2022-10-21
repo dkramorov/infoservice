@@ -13,6 +13,7 @@ class RegistrationModel {
   static const int CODE_PASSWD_CHANGED = 10090;
   static const int CODE_REGISTRATION_SUCCESS = 0;
   static const int CODE_ERROR = -1;
+  static const int TOO_MANY_ATTEMPTS = 429;
   final int? id;
   final String? created;
   final String? updated;
@@ -21,6 +22,7 @@ class RegistrationModel {
   final String? version;
   final String? platform;
   final String? result;
+  final bool? isSimpleReg;
 
   // Error
   String? status;
@@ -29,23 +31,25 @@ class RegistrationModel {
 
   RegistrationModel(
       {this.id,
-        this.created,
-        this.updated,
-        this.isActive,
-        this.phone,
-        this.version,
-        this.platform,
-        this.result,
-        // Error
-        this.status,
-        this.code,
-        this.message});
+      this.created,
+      this.updated,
+      this.isActive,
+      this.phone,
+      this.version,
+      this.platform,
+      this.result,
+      this.isSimpleReg,
+      // Error
+      this.status,
+      this.code,
+      this.message});
 
   @override
   String toString() {
     return 'id: $id, phone: $phone, result: $result, version: $version,'
         ' platform: $platform, created: $created, updated: $updated,'
-        ' isActive: $isActive, status: $status, code: $code, message: $message';
+        ' isActive: $isActive, status: $status, code: $code, message: $message'
+        ' isSimpleReg: $isSimpleReg';
   }
 
   String getMessage() {
@@ -54,18 +58,19 @@ class RegistrationModel {
 
   factory RegistrationModel.fromJson(Map<String, dynamic> json) {
     return RegistrationModel(
-      id: json['id'] as int,
-      created: json['created'] as String?,
-      updated: json['updated'] as String?,
-      isActive: json['is_active'] as bool?,
-      phone: json['phone'] as String?,
-      version: json['version'] as String?,
-      platform: json['platform'] as String?,
+      id: json['id'],
+      created: json['created'],
+      updated: json['updated'],
+      isActive: json['is_active'],
+      phone: json['phone'],
+      version: json['version'],
+      platform: json['platform'],
       result: json.keys.contains('result') ? json['result'] : '',
+      isSimpleReg: json['simple_reg'],
       // Error
-      status: json['status'] as String?,
-      code: json['code'] as int?,
-      message: json['message'] as String?,
+      status: json['status'],
+      code: json['code'],
+      message: json['message'],
     );
   }
 
@@ -78,6 +83,7 @@ class RegistrationModel {
 
   static Future<RegistrationModel?> requestRegistration(
       String login, String name, String passwd) async {
+    /* Регистрация - 200=регистрация, 201=упрощенная регистрация */
     final appInfo = await PackageInfo.fromPlatform();
     final appVersion = '${appInfo.version} : ${appInfo.buildNumber}';
     final queryParameters = {
@@ -87,27 +93,38 @@ class RegistrationModel {
       'passwd': passwd,
       'platform': Platform.operatingSystem,
       'version': appVersion,
+      // При отсутствии активных регистраций
+      // будет регистрация по последним цифрам входящего
+      'simple_reg': '1',
     };
     final uri = Uri.https(JABBER_SERVER, JABBER_REG_ENDPOINT, queryParameters);
     Log.d(TAG, 'query: ${uri.toString()}');
     var response = await http.get(uri);
-    if (response.statusCode == 200) {
+    // 201 - упрощенная регистрация (по последним цифрам входящего)
+    // 401 - слишком частые обращения
+    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 429) {
       return parseResponse(response.body);
     }
     return null;
   }
 
   static Future<RegistrationModel?> confirmRegistration(
-      String phone, String code) async {
+      String phone, String code, bool isSimpleReg) async {
+    /* Подтверждение регистрации - 200=регистрация, 201=смена пароля */
     final queryParameters = {
       'action': 'confirm',
       'phone': phone,
       'code': code,
     };
+    // Упрощенная регистрация
+    if (isSimpleReg) {
+      queryParameters['simple_reg'] = '1';
+    }
     final uri = Uri.https(JABBER_SERVER, JABBER_REG_ENDPOINT, queryParameters);
     Log.d(TAG, 'query: ${uri.toString()}');
     var response = await http.get(uri);
-    Log.d(TAG, 'status_code ${response.statusCode}, response: ${response.body}');
+    Log.d(
+        TAG, 'status_code ${response.statusCode}, response: ${response.body}');
 
     if (response.statusCode == 200) {
       RegistrationModel registrationModel = parseResponse(response.body);
@@ -131,7 +148,22 @@ class RegistrationModel {
         code: CODE_PASSWD_CHANGED,
         message: 'Пароль изменен',
       );
+    } else if (response.statusCode == 429) {
+      // Лимит попыток ввода кода
+      return RegistrationModel(
+        status: 'error',
+        code: TOO_MANY_ATTEMPTS,
+        message: 'Слишком много неуспешных попыток ввода кода подтверждения, повторите регистрацию через полчаса',
+      );
+    } else if (response.statusCode == 401) {
+      // Неправльный код
+      return RegistrationModel(
+        status: 'error',
+        code: CODE_ERROR,
+        message: 'Неправильно введен код подтверждения',
+      );
     }
+
     return null;
   }
 }

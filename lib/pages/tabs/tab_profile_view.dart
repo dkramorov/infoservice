@@ -3,14 +3,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:infoservice/helpers/dialogs.dart';
 import 'package:infoservice/models/user_chat_model.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/log.dart';
 import '../../helpers/network.dart';
 import '../../helpers/phone_mask.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../services/update_manager.dart';
 import '../../settings.dart';
@@ -68,16 +70,18 @@ class _TabProfileViewState extends State<TabProfileView> {
         getUser();
       });
     });
-    jabberSubscription =
-        xmppHelper?.jabberStream.registration.listen((success) {
-      setState(() {
-        isRegistered = success;
+    if (JabberManager.enabled) {
+      jabberSubscription =
+          xmppHelper?.jabberStream.registration.listen((success) {
+        setState(() {
+          isRegistered = success;
+        });
+        if (success) {
+          print('getRoster because isRegistered $success');
+          getUser();
+        }
       });
-      if (success) {
-        print('getRoster because isRegistered $success');
-        getUser();
-      }
-    });
+    }
   }
 
   @override
@@ -99,6 +103,34 @@ class _TabProfileViewState extends State<TabProfileView> {
   // Обновление состояния
   void setStateCallback(Map<String, dynamic> newState) {
     setState(() {});
+  }
+
+  void dropAccount() {
+    if (isRegistered) {
+      String? login = xmppHelper?.getLogin();
+      if (login != null) {
+        SharedPreferences.getInstance().then((SharedPreferences preferences) {
+          bool? isDropped = preferences.getBool(login);
+          Log.i(TAG, 'drop account $login (isDropped $isDropped)');
+          preferences.setBool(login, true);
+          logout();
+        });
+      }
+    }
+  }
+
+  void logout() {
+    // в async не пашет почему то await xmppHelper?.stop()
+    xmppHelper?.stop();
+    xmppHelper?.setStopFlag(true);
+    sipHelper?.stop();
+    sipHelper?.setStopFlag(true);
+    Future.delayed(Duration.zero, () {
+      Navigator.pushNamed(context, AuthScreenWidget.id, arguments: {
+        sipHelper,
+        xmppHelper,
+      });
+    });
   }
 
   void getUser() {
@@ -155,13 +187,9 @@ class _TabProfileViewState extends State<TabProfileView> {
   }
 
   Future<void> onPickImage(String fname) async {
-    final storagePerms = await Permission.storage.status;
-    if (!storagePerms.isGranted) {
-      Log.e(TAG, 'Permissions absents');
-      await [
-        Permission.storage,
-      ].request();
-    }
+    // Проверка и/или запрос прав на хранилище
+    await PermissionsManager().requestPermissions('storage');
+
     final File file = File(fname);
     final bytes = await file.readAsBytes();
     final imageName = 'my_photo_${file.path.split('/').last}';
@@ -267,7 +295,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                               children: <Widget>[
                                 GestureDetector(
                                   child: const CircleAvatar(
-                                    backgroundColor: Colors.green,
+                                    backgroundColor: tealColor,
                                     radius: 25.0,
                                     child: Icon(
                                       Icons.camera_alt,
@@ -511,48 +539,83 @@ class _TabProfileViewState extends State<TabProfileView> {
                   ),
                 ),
               ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(right: 30.0),
-                alignment: Alignment.centerRight,
-                child: FutureBuilder<String>(
-                  future: fetchAppVersion(),
-                  builder:
-                      (BuildContext context, AsyncSnapshot<String> snapshot) {
-                    if (snapshot.hasData) {
-                      return Text(
-                        snapshot.data ?? '',
-                        style: TextStyle(
-                          color: Colors.grey.shade300,
-                        ),
-                      );
-                    } else {
-                      return const Text('-');
-                    }
-                  },
-                ),
-              ),
               SIZED_BOX_H04,
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(right: 30.0),
-                alignment: Alignment.centerRight,
-                child: FutureBuilder<int>(
-                    future: fetchUpdateVersion(),
-                    builder:
-                        (BuildContext context, AsyncSnapshot<int> snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(
-                          'Версия бд: ${snapshot.data}',
-                          style: TextStyle(
-                            color: Colors.grey.shade300,
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.only(left: 15.0),
+                      child: TextButton(
+                        child: Row(
+                          children: const [
+                            Icon(
+                              Icons.delete_forever,
+                              color: Colors.red,
+                            ),
+                            Text(
+                              'Удалить аккаунт',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                        onPressed: () {
+                          openInfoDialog(
+                              context,
+                              dropAccount,
+                              'Удалить аккаунт?',
+                              'Вы действительно хотите удалить аккаунт?',
+                              'Да, удалить',
+                              cancelText: 'Отмена',
+                              okColor: Colors.red);
+                        },
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.only(right: 30.0),
+                          alignment: Alignment.centerRight,
+                          child: FutureBuilder<String>(
+                            future: fetchAppVersion(),
+                            builder: (BuildContext context,
+                                AsyncSnapshot<String> snapshot) {
+                              if (snapshot.hasData) {
+                                return Text(
+                                  snapshot.data ?? '',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                  ),
+                                );
+                              } else {
+                                return const Text('-');
+                              }
+                            },
                           ),
-                        );
-                      } else {
-                        return const Text('');
-                      }
-                    }),
-              ),
+                        ),
+                        SIZED_BOX_H04,
+                        Container(
+                          padding: const EdgeInsets.only(right: 30.0),
+                          alignment: Alignment.centerRight,
+                          child: FutureBuilder<int>(
+                              future: fetchUpdateVersion(),
+                              builder: (BuildContext context,
+                                  AsyncSnapshot<int> snapshot) {
+                                if (snapshot.hasData) {
+                                  return Text(
+                                    'Версия бд: ${snapshot.data}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  );
+                                } else {
+                                  return const Text('');
+                                }
+                              }),
+                        ),
+                      ],
+                    )
+                  ]),
             ],
           ),
         ],
@@ -621,10 +684,10 @@ class _TabProfileViewState extends State<TabProfileView> {
                     }
                   });
                 },
-                activeTrackColor: Colors.green,
+                activeTrackColor: tealColor,
                 activeColor: Colors.white,
                 inactiveThumbColor: Colors.white,
-                inactiveTrackColor: Colors.green,
+                inactiveTrackColor: tealColor,
               ),
               const Text('Муж'),
             ],
@@ -643,7 +706,7 @@ class _TabProfileViewState extends State<TabProfileView> {
             child: Padding(
               padding: const EdgeInsets.only(right: 10.0),
               child: MyElevatedButton(
-                color: Colors.green,
+                color: tealColor,
                 onPressed: () async {
                   await saveUserData(
                     name: name,
@@ -705,17 +768,7 @@ class _TabProfileViewState extends State<TabProfileView> {
             ),
             color: Colors.red,
             onPressed: () {
-              // в async не пашет почему то await xmppHelper?.stop()
-              xmppHelper?.stop();
-              xmppHelper?.setStopFlag(true);
-              sipHelper?.stop();
-              sipHelper?.setStopFlag(true);
-              Future.delayed(Duration.zero, () {
-                Navigator.pushNamed(context, AuthScreenWidget.id, arguments: {
-                  sipHelper,
-                  xmppHelper,
-                });
-              });
+              logout();
             },
           ),
         ],
@@ -726,7 +779,7 @@ class _TabProfileViewState extends State<TabProfileView> {
   Widget _getEditIcon() {
     return GestureDetector(
       child: const CircleAvatar(
-        backgroundColor: Colors.green,
+        backgroundColor: tealColor,
         radius: 14.0,
         child: Icon(
           Icons.edit,

@@ -21,6 +21,8 @@ class XMPPController : NSObject {
     
     /// Using get chat Archive Messages
     var xmppMAM: XMPPMessageArchiveManagement? // = XMPPMessageArchiveManagement.init()
+
+    var xmppFileUpload: XMPPHTTPFileUpload? // = XMPPHTTPFileUpload.init()
     
     internal var hostName: String = ""
     internal var hostPort: Int16 = 0
@@ -67,7 +69,6 @@ class XMPPController : NSObject {
             self.xmppReconnect.manualStart()
             self.xmppReconnect.activate(self.xmppStream)
             self.xmppReconnect.addDelegate(self, delegateQueue: DispatchQueue.main)
-            
         }
        
         /// xmppRoster Configuration
@@ -90,6 +91,11 @@ class XMPPController : NSObject {
         self.xmppMAM?.activate(self.xmppStream)
         self.xmppMAM?.addDelegate(self, delegateQueue: DispatchQueue.main)
         self.xmppMAM?.retrieveFormFields()
+
+       // xmppFileUpload Configuration
+       self.xmppFileUpload = XMPPHTTPFileUpload.init()
+       self.xmppFileUpload?.activate(self.xmppStream)
+       self.xmppFileUpload?.addDelegate(self, delegateQueue: DispatchQueue.main)
     }
         
     func connect() {
@@ -222,23 +228,19 @@ extension XMPPController {
             self.manageMAMMessage(message: objMessMAM)
             return
         }
-        
+        // Other Chat message received
         let body =  message.body;
         printLog("\(#function) | message body  \(body)")
-        //------------------------------------------------------------------------
-        //Other Chat message received
         let vMessType : String = (message.type ?? xmppChatType.NORMAL).trim()
         switch vMessType {
-        
-        case xmppChatType.NORMAL:
-            if(body?.isEmpty != true){
+            case xmppChatType.NORMAL:
+                if(body?.isEmpty != true){
+                    self.handel_ChatMessage(message, withType: vMessType, withStrem: sender)
+                }
+                self.handelNormalChatMessage(message, withStrem: sender)
+                break;
+            default:
                 self.handel_ChatMessage(message, withType: vMessType, withStrem: sender)
-            }
-            self.handelNormalChatMessage(message, withStrem: sender)
-            break;
-            
-        default:
-            self.handel_ChatMessage(message, withType: vMessType, withStrem: sender)
         }
     }
     

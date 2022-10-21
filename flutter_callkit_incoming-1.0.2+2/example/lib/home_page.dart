@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_callkit_incoming_example/app_router.dart';
-import 'package:flutter_callkit_incoming_example/navigation_service.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart';
+
+import 'app_router.dart';
+import 'navigation_service.dart';
 
 class HomePage extends StatefulWidget {
   @override

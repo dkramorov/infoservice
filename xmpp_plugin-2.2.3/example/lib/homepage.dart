@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_xmpp_example/main.dart';
+
+import 'main.dart';
 
 class HomePage extends StatefulWidget {
   final String groupName;

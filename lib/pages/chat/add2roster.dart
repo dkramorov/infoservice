@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
@@ -19,7 +20,7 @@ class Add2RosterScreen extends StatefulWidget {
 
 class _Add2RosterScreenState extends State<Add2RosterScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
+  static const TAG = 'Add2RosterScreen';
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
 
@@ -44,8 +45,30 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
     }
     _formKey.currentState?.save();
 
-    xmppHelper?.add2Roster(newUser);
-    Navigator.pop(context);
+    String phone = cleanPhone(newUser);
+    JabberManager.flutterXmpp?.searchUsers(phone).then((List<dynamic> users) {
+      List<String> result = [];
+      bool founded = false;
+      for (String user in users) {
+        String curUser = cleanPhone(user);
+        result.add(curUser);
+        if (curUser == phone) {
+          founded = true;
+        }
+      }
+      Log.d(TAG, 'founded by $phone: $result');
+      if (founded) {
+        xmppHelper?.add2Roster(newUser);
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red,
+            content: Text('Пользователь $newUser не найден'),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -53,7 +76,7 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Добавить контакт'),
-        backgroundColor: PRIMARY_COLOR,
+        backgroundColor: tealColor,
       ),
       body: Center(
           child: SingleChildScrollView(
@@ -120,7 +143,7 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
                             'Добавить',
                             style: TextStyle(color: Colors.white),
                           ),
-                          color: Colors.green[500],
+                          color: tealColor,
                           onPressed: () {
                             addUserFormSubmit();
                           },

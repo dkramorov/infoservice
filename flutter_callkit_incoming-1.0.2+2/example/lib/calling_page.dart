@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_callkit_incoming_example/navigation_service.dart';
 import 'package:http/http.dart';
+
+import 'navigation_service.dart';
 
 class CallingPage extends StatefulWidget {
   @override

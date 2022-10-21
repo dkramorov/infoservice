@@ -58,7 +58,7 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final containerMsgTextWidth = MediaQuery.of(context).size.width * 0.40;
+    final containerMsgTextWidth = MediaQuery.of(context).size.width * 0.45;
     final msgTime = (widget.user.time != null && widget.user.time != '-')
         ? formatter.format(DateTime.parse(widget.user.time!))
         : '-- --';
@@ -99,7 +99,7 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
                 overflow: TextOverflow.fade,
                 softWrap: false,
                 style: const TextStyle(
-                  fontSize: 20.0,
+                  fontSize: 18.0,
                   fontWeight: FontWeight.bold,
                 ),
               ),

@@ -145,7 +145,7 @@ class _CompaniesListingScreenState extends State<CompaniesListingScreen> {
         title: Text(
           title,
         ),
-        backgroundColor: PRIMARY_COLOR,
+        backgroundColor: tealColor,
       ),
       body: Stack(
         children: [

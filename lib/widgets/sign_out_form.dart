@@ -23,7 +23,10 @@ class SignOutFormWidget extends StatelessWidget {
             login != null && login != ''
                 ? 'Вы авторизованы:\n${phoneMaskHelper(login!)}'
                 : 'Вы не авторизованы',
-            style: GREEN_TEXT_STYLE,
+            style: const TextStyle(
+              fontSize: 20.0,
+              color: tealColor,
+            ),
           ),
         ),
         Center(

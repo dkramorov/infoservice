@@ -76,6 +76,27 @@ class XmppConnection {
     await _channel.invokeMethod('potestua');
   }
 
+  // https://xmpp.org/extensions/xep-0363.html urn:xmpp:http:upload
+  Future<String> requestSlot(String filename, int size) async {
+    final params = {
+      "filename": filename,
+      "size": size,
+    };
+    printLogForMethodCall('requestSlot', params);
+    final String slotUrl = await _channel.invokeMethod('request_slot', params);
+    return slotUrl;
+  }
+
+  // https://xmpp.org/extensions/xep-0055.html
+  Future<List<dynamic>> searchUsers(String username) async {
+    final params = {
+      "username": username,
+    };
+    printLogForMethodCall('searchUsers', params);
+    final List<dynamic> result = await _channel.invokeMethod('search_users', params);
+    return result;
+  }
+
   Future<String> sendMessage(String toJid, String body, String id, int time) async {
     final params = {
       "to_jid": toJid,

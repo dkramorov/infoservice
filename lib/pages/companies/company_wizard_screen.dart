@@ -125,7 +125,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
         title: Text(
           title,
         ),
-        backgroundColor: PRIMARY_COLOR,
+        backgroundColor: tealColor,
       ),
       body: SafeArea(
         child: PageView(
@@ -168,7 +168,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
             currentIndex: _pageIndex,
             selectedItemColor: Colors.white,
             unselectedItemColor: Colors.grey.shade300,
-            backgroundColor: Colors.green,
+            backgroundColor: tealColor,
             // Показывать подписи к вкладкам
             //showSelectedLabels: false,
             //showUnselectedLabels: false,

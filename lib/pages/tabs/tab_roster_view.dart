@@ -52,16 +52,18 @@ class _TabRosterViewState extends State<TabRosterView> {
       });
     });
 
-    jabberSubscription =
-        xmppHelper?.jabberStream.registration.listen((success) {
-      setState(() {
-        isRegistered = success;
-      });
-      if (success) {
-        print('getRoster because isRegistered $success');
-        getRoster();
-      }
-    });
+    if (JabberManager.enabled) {
+      jabberSubscription =
+          xmppHelper?.jabberStream.registration.listen((success) {
+            setState(() {
+              isRegistered = success;
+            });
+            if (success) {
+              print('getRoster because isRegistered $success');
+              getRoster();
+            }
+          });
+    }
   }
 
   @override

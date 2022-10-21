@@ -73,6 +73,4 @@ extension XMPPController : XMPPRosterDelegate {
         printLog("\(#function) | sender: \(sender)")
     }
     
-   
-    
 }

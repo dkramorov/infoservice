@@ -44,7 +44,7 @@ class _DialpadScreen extends State<DialpadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: PRIMARY_COLOR,
+        backgroundColor: tealColor,
         title: const Text('Dialpad'),
       ),
       body: DialPadWidget(sipHelper, xmppHelper, dialpadModel: dialpadModel),

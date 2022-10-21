@@ -14,6 +14,7 @@ class Catalogue extends AbstractModel {
   String? name;
   String? icon;
   int? position;
+  String? img;
 
   static const TAG = 'Catalogue';
 
@@ -34,6 +35,7 @@ class Catalogue extends AbstractModel {
       'name': name,
       'icon': icon,
       'position': position,
+      'img': img,
     };
   }
 
@@ -44,6 +46,7 @@ class Catalogue extends AbstractModel {
     this.name,
     this.icon,
     this.position,
+    this.img,
   });
 
   Color get color => Colors.primaries[Random().nextInt(Colors.primaries.length)];
@@ -51,7 +54,7 @@ class Catalogue extends AbstractModel {
   @override
   String toString() {
     return 'id: $id, count: $count, searchTerms: $searchTerms, ' +
-        'name: $name, icon: $icon, position: $position';
+        'name: $name, icon: $icon, position: $position, img: $img';
   }
 
   static List<Catalogue> jsonFromList(List<dynamic> arr) {
@@ -70,6 +73,7 @@ class Catalogue extends AbstractModel {
       name: json['name'] ?? '',
       icon: json['icon'] ?? '',
       position: (json['position'] ?? 0) as int,
+      img: json['img'] ?? '',
     );
   }
 
@@ -82,6 +86,7 @@ class Catalogue extends AbstractModel {
       name: dbItem['name'],
       icon: dbItem['icon'],
       position: dbItem['position'],
+      img: dbItem['img'],
     );
   }
 

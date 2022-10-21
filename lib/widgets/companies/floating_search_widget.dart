@@ -3,6 +3,7 @@ import 'package:material_floating_search_bar/material_floating_search_bar.dart';
 
 import '../../models/companies/search.dart';
 import '../../services/jabber_manager.dart';
+import '../../settings.dart';
 
 class CompaniesFloatingSearchWidget extends StatefulWidget {
   final JabberManager? _helper;
@@ -139,7 +140,7 @@ Widget buildPanelForSearch() {
     ),
     child: Container(
       height: 90.0,
-      color: Colors.green,
+      color: tealColor,
     ),
   );
 }

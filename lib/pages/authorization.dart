@@ -30,17 +30,19 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
   @override
   initState() {
     super.initState();
-    jabberSubscription =
-        xmppHelper?.jabberStream.registration.listen((isRegistered) {
-      setState(() {});
-      /*
+    if (JabberManager.enabled) {
+      jabberSubscription =
+          xmppHelper?.jabberStream.registration.listen((isRegistered) {
+            setState(() {});
+            /*
           if (helper?.connectionStatus == XmppConnectionState.failed.toString()) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text('Ошибка подключения, проверьте логин и пароль'),
             ));
           }
           */
-    });
+          });
+    }
   }
 
   @override
@@ -58,7 +60,7 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.headline4;
+    final titleStyle = Theme.of(context).textTheme.headline5;
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(

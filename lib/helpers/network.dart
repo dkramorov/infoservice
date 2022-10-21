@@ -10,10 +10,11 @@ import '../settings.dart';
 import 'log.dart';
 
 /* Отправка токена на сервер */
-Future<bool> sendToken(String login, String token) async {
+Future<bool> sendToken(String login, String token, {String? apnsToken}) async {
   if (login == '' || token == '') {
-    Log.i(
-        'sendToken', 'Not enough data for send token to server $login + $token');
+    String err = 'Not enough data for send token to server $login + $token';
+    Log.i('sendToken', err);
+    await TelegramBot().sendNotify(err);
     return false;
   }
   final queryParameters = {
@@ -21,6 +22,9 @@ Future<bool> sendToken(String login, String token) async {
     'phone': login,
     'token': token,
   };
+  if (apnsToken != null) {
+    queryParameters['apns_token'] = apnsToken;
+  }
   final uri = Uri.https(JABBER_SERVER, JABBER_REG_ENDPOINT, queryParameters);
   Log.i('sendToken query', uri.toString());
   var response = await http.get(uri);
@@ -28,6 +32,10 @@ Future<bool> sendToken(String login, String token) async {
   if (response.statusCode == 200) {
     return true;
   }
+
+  String err = 'Bad response ${response.statusCode} for send token to server $login + $token';
+  await TelegramBot().sendNotify(err);
+
   return false;
 }
 

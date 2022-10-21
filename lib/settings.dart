@@ -57,6 +57,7 @@ const PAD_SYM_V20 = EdgeInsets.symmetric(vertical: 20);
 // Color
 const disabledButtonColor = Color(0xFFD2D2D2);
 const backgroundLightColor = Color(0xFFFFFFFF);
+const Color tealColor = Color(0xFF1595A6);
 
 // Border radius
 const BORDER_RADIUS_48 = BorderRadius.all(
@@ -91,14 +92,14 @@ const INPUT_DECORATION = InputDecoration(
   enabledBorder: OutlineInputBorder(
     borderRadius: BORDER_RADIUS_16,
     borderSide: BorderSide(
-      color: Colors.green,
+      color: tealColor,
       width: 1.0,
     ),
   ),
   focusedBorder: OutlineInputBorder(
     borderRadius: BORDER_RADIUS_16,
     borderSide: BorderSide(
-      color: Colors.green,
+      color: tealColor,
       width: 2.0,
     ),
   ),

@@ -14,6 +14,7 @@ import 'package:sip_ua/sip_ua.dart';
 
 import '../helpers/phone_mask.dart';
 import '../services/jabber_manager.dart';
+import '../services/permissions_manager.dart';
 import '../services/sip_ua_manager.dart';
 import '../services/update_manager.dart';
 import '../settings.dart';
@@ -35,6 +36,7 @@ class _DefaultPageWidget extends State<DefaultPage>
   JabberManager? get xmppHelper => widget._xmppHelper;
 
   late StreamSubscription<bool>? jabberSubscription;
+  late bool awesomeNotificationsPerms = false;
 
   String title = NavigationData.nav[0]['title'];
   final Duration _durationPageView = const Duration(milliseconds: 500);
@@ -71,128 +73,30 @@ class _DefaultPageWidget extends State<DefaultPage>
     }
   }
 
-  void _checkNotificationPermissions() {
+  void checkPermissions() {
     AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
       print('AwesomeNotifications isAllowed: $isAllowed');
       if (!isAllowed) {
-        AwesomeNotifications().requestPermissionToSendNotifications().then((_) {
-          print('AwesomeNotifications notification permissions asked');
+        AwesomeNotifications()
+            .requestPermissionToSendNotifications()
+            .then((result) {
+          print(
+              'AwesomeNotifications notification permissions asked, result is $result');
+          if (result) {
+            awesomeNotificationsPerms = true;
+          }
         });
+      } else {
+        awesomeNotificationsPerms = true;
       }
     });
-  }
-
-  static Future<List<NotificationPermission>> requestUserPermissions(
-      BuildContext context,
-      {
-      // if you only intends to request the permissions until app level, set the channelKey value to null
-      required String? channelKey,
-      required List<NotificationPermission> permissionList}) async {
-    // Check which of the permissions you need are allowed at this time
-    List<NotificationPermission> permissionsAllowed =
-        await AwesomeNotifications().checkPermissionList(
-            channelKey: channelKey, permissions: permissionList);
-
-    // If all permissions are allowed, there is nothing to do
-    if (permissionsAllowed.length == permissionList.length) {
-      return permissionsAllowed;
-    }
-
-    // Refresh the permission list with only the disallowed permissions
-    List<NotificationPermission> permissionsNeeded =
-        permissionList.toSet().difference(permissionsAllowed.toSet()).toList();
-
-    // Check if some of the permissions needed request user's intervention to be enabled
-    List<NotificationPermission> lockedPermissions =
-        await AwesomeNotifications().shouldShowRationaleToRequest(
-            channelKey: channelKey, permissions: permissionsNeeded);
-
-    // If there is no permissions depending on user's intervention, so request it directly
-    if (lockedPermissions.isEmpty) {
-      // Request the permission through native resources.
-      await AwesomeNotifications().requestPermissionToSendNotifications(
-          channelKey: channelKey, permissions: permissionsNeeded);
-
-      // After the user come back, check if the permissions has successfully enabled
-      permissionsAllowed = await AwesomeNotifications().checkPermissionList(
-          channelKey: channelKey, permissions: permissionsNeeded);
-    } else {
-      // If you need to show a rationale to educate the user to conceived the permission, show it
-      await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-                backgroundColor: Colors.white,
-                title: const Text(
-                  'Нужны разрешения для push уведомлений',
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/loading/loading_green.gif',
-                      height: MediaQuery.of(context).size.height * 0.3,
-                      fit: BoxFit.fitWidth,
-                    ),
-                    Text(
-                      'Для продолжения, добавьте разрешения ${channelKey?.isEmpty ?? true ? '' : ' для $channelKey'}:',
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                    ),
-                    SIZED_BOX_H04,
-                    Text(
-                      lockedPermissions
-                          .join(', ')
-                          .replaceAll('NotificationPermission.', ''),
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        'Запретить',
-                        style: TextStyle(color: Colors.red, fontSize: 18),
-                      )),
-                  TextButton(
-                    onPressed: () async {
-                      // Request the permission through native resources. Only one page redirection is done at this point.
-                      await AwesomeNotifications()
-                          .requestPermissionToSendNotifications(
-                              channelKey: channelKey,
-                              permissions: lockedPermissions);
-
-                      // After the user come back, check if the permissions has successfully enabled
-                      permissionsAllowed = await AwesomeNotifications()
-                          .checkPermissionList(
-                              channelKey: channelKey,
-                              permissions: lockedPermissions);
-                      Future.delayed(Duration.zero, () {
-                        Navigator.pop(context);
-                      });
-                    },
-                    child: const Text(
-                      'Разрешить',
-                      style: TextStyle(
-                          color: Colors.green,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ));
-    }
-
-    // Return the updated list of allowed permissions
-    return permissionsAllowed;
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      print('check mic permissions ${timer.tick}');
+      if (awesomeNotificationsPerms || timer.tick > 60) {
+        timer.cancel();
+        PermissionsManager().requestPermissions('microphone');
+      }
+    });
   }
 
   @override
@@ -205,33 +109,29 @@ class _DefaultPageWidget extends State<DefaultPage>
   @override
   initState() {
     super.initState();
-    _checkNotificationPermissions();
+    checkPermissions();
     sipHelper!.addSipUaHelperListener(this);
-    jabberSubscription =
-        xmppHelper?.jabberStream.registration.listen((isRegistered) {
-      setState(() {});
-    });
-    //_listedNotificationCreatedStream();
+
+    if (JabberManager.enabled) {
+      jabberSubscription =
+          xmppHelper?.jabberStream.registration.listen((isRegistered) {
+        setState(() {});
+/* Тестирование запроса слота с сервера
+        if (isRegistered) {
+          Future.delayed(const Duration(seconds:2), () {
+            JabberManager.flutterXmpp
+                ?.requestSlot('test.txt', 10)
+                .then((String slotUrl) {
+              print("++++++++++++++++++++++++++$slotUrl");
+            });
+          });
+        }
+ */
+      });
+    }
+
     _listedNotificationActionStream();
     loadCatalogue();
-
-    List<NotificationPermission> perms = [
-      NotificationPermission.Alert,
-      NotificationPermission.Sound,
-      NotificationPermission.Badge,
-      NotificationPermission.Light,
-      NotificationPermission.Vibration,
-      NotificationPermission.PreciseAlarms,
-      NotificationPermission.FullScreenIntent,
-      NotificationPermission.CriticalAlert,
-      NotificationPermission.OverrideDnD,
-      NotificationPermission.Provisional,
-      NotificationPermission.Car,
-    ];
-    Future.delayed(Duration.zero, () {
-      //requestUserPermissions(context,
-      //    channelKey: 'normal_channel', permissionList: perms);
-    });
   }
 
   /* Слушаем поток от AwesomeNotifications,
@@ -280,7 +180,7 @@ class _DefaultPageWidget extends State<DefaultPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: PRIMARY_COLOR,
+        backgroundColor: tealColor,
         title: const Text("8800.help"),
         /*
         actions: [
@@ -397,9 +297,9 @@ class _DefaultPageWidget extends State<DefaultPage>
           child: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             currentIndex: _pageIndex,
-            selectedItemColor: Colors.white,
-            unselectedItemColor: Colors.grey.shade300,
-            backgroundColor: Colors.green,
+            selectedItemColor: tealColor,
+            unselectedItemColor: Colors.grey.shade500,
+            backgroundColor: backgroundLightColor,
             // Показывать подписи к вкладкам
             //showSelectedLabels: false,
             //showUnselectedLabels: false,

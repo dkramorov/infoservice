@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:infoservice/sip_ua/dialpad.dart';
 
 import '../../services/jabber_manager.dart';
+import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
 
 class TabCallScreenView extends StatefulWidget {

@@ -64,6 +64,12 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
         case pluginMethod.potestua:
             self.performPotestuaActivity(call, result)
 
+        case pluginMethod.requestSlot:
+            self.performRequestSlotActivity(call, result)
+
+        case pluginMethod.searchUsers:
+            self.performSearchUsersActivity(call, result)
+
         case pluginMethod.sendMessage,
              pluginMethod.sendMessageInGroup,
              pluginMethod.sendCustomMessage,
@@ -254,10 +260,46 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
         }
         let vMethod : String = call.method.trim()
         printLog("\(#function) | \(vMethod) | arguments: \(dicData)")
-        //self.objXMPP.disconnect(withStrem: self.objXMPP.xmppStream)
         NSLog("--------------------------------------------ios")
     }
-    
+
+    func performRequestSlotActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
+        guard let vData = call.arguments as? [String : Any] else {
+            result(xmppConstants.DataNil);
+            return
+        }
+        var filename : String = ""
+        var filesize : Int = 0
+
+        if let value = vData["filename"] as? String { filename = value }
+        if let value = vData["size"] as? Int {filesize = value}
+        printLog([filename, filesize])
+
+        APP_DELEGATE.singalCallBack = result
+        APP_DELEGATE.objXMPP.requestSlot(filename: filename,
+                                         filesize: filesize,
+                                         withStrem: self.objXMPP.xmppStream,
+                                         objXMPP: self.objXMPP)
+        NSLog("--------------------------------------------performRequestSlotActivity ios")
+    }
+
+    func performSearchUsersActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
+        guard let vData = call.arguments as? [String : Any] else {
+            result(xmppConstants.DataNil);
+            return
+        }
+        var username : String = ""
+
+        if let value = vData["username"] as? String { username = value }
+        printLog([username])
+
+        APP_DELEGATE.singalCallBack = result
+        APP_DELEGATE.objXMPP.searchUsers(username: username,
+                                         withStrem: self.objXMPP.xmppStream,
+                                         objXMPP: self.objXMPP)
+        NSLog("--------------------------------------------performSearchUsersActivity ios")
+    }
+
     func performSendMessageActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let vData = call.arguments as? [String : Any] else {
             result(xmppConstants.ERROR)

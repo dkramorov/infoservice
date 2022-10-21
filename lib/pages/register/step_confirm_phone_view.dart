@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/dialogs.dart';
 import '../../models/registration_model.dart';
@@ -7,14 +8,14 @@ import '../../settings.dart';
 import '../../widgets/progress_bar.dart';
 import '../../widgets/submit_button.dart';
 
-
 class StepConfirmPhoneView extends StatefulWidget {
   final Function? setStateCallback;
   final PageController? pageController;
   Map<String, dynamic>? userData;
 
   StepConfirmPhoneView(
-      {Key? key, this.pageController, this.setStateCallback, this.userData}) : super(key: key);
+      {Key? key, this.pageController, this.setStateCallback, this.userData})
+      : super(key: key);
 
   @override
   _StepConfirmPhoneViewState createState() => _StepConfirmPhoneViewState();
@@ -71,22 +72,33 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
       'loading': true,
     });
     final confirm = await RegistrationModel.confirmRegistration(
-        widget.userData!['phone'], confirmCode);
+        widget.userData!['phone'], confirmCode, widget.userData!['isSimpleReg']);
     if (confirm != null && confirm.message != null && mounted) {
       if (confirm.code == RegistrationModel.CODE_PASSWD_CHANGED) {
+        await cleanAccount();
         openInfoDialog(context, userConfirmed, 'Ответ от сервера',
             confirm.getMessage(), 'Понятно');
       } else if (confirm.code == RegistrationModel.CODE_REGISTRATION_SUCCESS) {
+        await cleanAccount();
         openInfoDialog(context, userConfirmed, 'Ответ от сервера',
             confirm.getMessage(), 'Понятно');
       } else if (confirm.code == RegistrationModel.CODE_ERROR) {
         openInfoDialog(context, nextPageView, 'Ответ от сервера',
+            confirm.getMessage(), 'Понятно');
+      } else if (confirm.code == RegistrationModel.TOO_MANY_ATTEMPTS) {
+        openInfoDialog(context, nextPageView, 'Слишком много попыток',
             confirm.getMessage(), 'Понятно');
       }
     }
     widget.setStateCallback!({
       'loading': false,
     });
+  }
+
+  Future<void> cleanAccount() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.remove(widget.userData!['phone']);
+    print('account cleaned ${widget.userData!['phone']}');
   }
 
   /* Регистрация пройдена или
@@ -127,13 +139,15 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
 
   // Back the previous PageView
   backPageview() {
-    widget.pageController?.animateToPage(0, curve: _curvePageView, duration: _durationPageView);
+    widget.pageController
+        ?.animateToPage(0, curve: _curvePageView, duration: _durationPageView);
     _scopeNode.unfocus();
   }
 
   // Forward the next PageView
   nextPageView() {
-    widget.pageController?.animateToPage(2, curve: _curvePageView, duration: _durationPageView);
+    widget.pageController
+        ?.animateToPage(2, curve: _curvePageView, duration: _durationPageView);
     _scopeNode.unfocus();
   }
 
@@ -169,7 +183,9 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
                 ),
                 SIZED_BOX_H30,
                 Text(
-                  'Введите проверочный код, который вы прослушали',
+                  widget.userData!['isSimpleReg'] == true
+                      ? 'Введите последние 4 цифры телефона, с которого вам только что поступил звонок, проверьте пропущенные звонки'
+                      : 'Введите проверочный код, который вы прослушали',
                   style: subtitleTextStyle?.copyWith(
                       color: const Color(0xFF95A0AF), height: 1.5),
                   textAlign: TextAlign.center,
@@ -217,7 +233,8 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
 }
 
 class OtpField extends StatefulWidget {
-  OtpField({Key? key,
+  OtpField({
+    Key? key,
     this.isEnd = false,
     this.isStart = false,
     this.scopeNode,

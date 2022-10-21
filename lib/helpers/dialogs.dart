@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-
 /* Предупреждение, что недостаточно прав */
 void permissionsErrorDialog(String permDesc, BuildContext context) {
   final isIOS = Platform.isIOS || Platform.isMacOS;
@@ -47,13 +46,21 @@ Future<bool> permsCheck(
 }
 
 Future<String?> openInfoDialog(BuildContext context, Function? callback,
-    String title, String text, String okText) {
+    String title, String text, String okText,
+    {String? cancelText, Color? okColor}) {
   return showDialog<String>(
     context: context,
     builder: (BuildContext context) => AlertDialog(
       title: Text(title),
       content: Text(text),
       actions: <Widget>[
+        if (cancelText != null)
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, 'Cancel');
+            },
+            child: Text(cancelText),
+          ),
         TextButton(
           onPressed: () {
             Navigator.pop(context, 'Cancel');
@@ -61,7 +68,7 @@ Future<String?> openInfoDialog(BuildContext context, Function? callback,
               callback();
             }
           },
-          child: Text(okText),
+          child: Text(okText, style: TextStyle(color: okColor)),
         ),
       ],
     ),

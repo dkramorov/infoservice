@@ -39,11 +39,13 @@ class JabberManager implements DataChangeEvents {
   static AppLifecycleState? appState;
   late SharedPreferences preferences;
   late Timer mainTimer;
+  static bool enabled = true; // на время отладки можно отключать
 
-  int checkRegisterTimer = 10;
+  int checkRegisterTimer = 5;
   int updateTokenTimer = 1;
   bool stopFlag = false;
   static String fcmToken = '';
+  static String apnsToken = '';
 
   List<MessageChat> events = [];
   List<PresentModel> presentMo = [];
@@ -55,6 +57,11 @@ class JabberManager implements DataChangeEvents {
   late JabberStream jabberStream;
 
   JabberManager() {
+    if (!enabled) {
+      print('--- JabberManager DISABLED ---');
+      loadSettings();
+      return;
+    }
     XmppConnection.addListener(this);
     jabberStream = JabberStream();
     loadSettings().then((prefs) {
@@ -66,6 +73,7 @@ class JabberManager implements DataChangeEvents {
   String getLogin() {
     return preferences.getString('auth_user') ?? '';
   }
+
   String getPasswd() {
     return preferences.getString('password') ?? '';
   }
@@ -162,7 +170,8 @@ class JabberManager implements DataChangeEvents {
             updateTokenTimer -= 1;
             if (updateTokenTimer < 0) {
               updateTokenTimer = 600;
-              sendToken(preferences.getString('auth_user') ?? '', fcmToken)
+              sendToken(preferences.getString('auth_user') ?? '', fcmToken,
+                      apnsToken: apnsToken)
                   .then((sent) {
                 if (sent) {
                   updateTokenTimer = 3600;
@@ -276,7 +285,6 @@ class JabberManager implements DataChangeEvents {
     doprintln('onConnectionEvents ~~>>${connectionEvent.toJson()}');
     jabberStream.registrationChanged(
         connectionEvent.type == XmppConnectionState.authenticated);
-    //
   }
 
   Future<String> joinMucGroups(List<String> allGroupsId) async {
@@ -360,12 +368,16 @@ class JabberManager implements DataChangeEvents {
     await flutterXmpp?.dropRoster(userJid);
   }
 
-  Future<dynamic> sendCustomMessage(String to, String body, String customText) async {
+  Future<String> sendCustomMessage(
+      String to, String body, String customText) async {
     String userJid = '${cleanPhone(to)}@$JABBER_SERVER';
     int now = DateTime.now().millisecondsSinceEpoch;
+    String pk = const Uuid().v4();
     await flutterXmpp?.sendCustomMessage(
-        userJid, body, const Uuid().v4(), customText, now);
+        userJid, body, pk, customText, now);
+    return pk;
   }
+
   Future<String> sendMessage(String to, String body) async {
     String toJid = '${cleanPhone(to)}@$JABBER_SERVER';
     int now = DateTime.now().millisecondsSinceEpoch;
@@ -375,7 +387,10 @@ class JabberManager implements DataChangeEvents {
   }
 
   Future<void> requestMamMessages(String phone,
-      {String since = '', String before = '', int limit = 10, bool lastFlag = false}) async {
+      {String since = '',
+      String before = '',
+      int limit = 10,
+      bool lastFlag = false}) async {
     /* Получение сообщений из МАМ,
        lastFlag: получить последние сообщения
     */
@@ -395,18 +410,16 @@ class JabberManager implements DataChangeEvents {
         farAway.toString(), limit.toString(), lastFlag);
 
     */
-    await flutterXmpp?.requestMamMessages(userJid, since,
-        before, limit.toString(), lastFlag);
-
+    await flutterXmpp?.requestMamMessages(
+        userJid, since, before, limit.toString(), lastFlag);
   }
 
   /* sha256 на логин + пароль
      для различных операций, требующих авторизации
   */
   String credentialsHash() {
-      String login = cleanPhone(getLogin());
-      List<int> credentials =
-      utf8.encode(login + getPasswd());
-      return sha256.convert(credentials).toString();
+    String login = cleanPhone(getLogin());
+    List<int> credentials = utf8.encode(login + getPasswd());
+    return sha256.convert(credentials).toString();
   }
 }

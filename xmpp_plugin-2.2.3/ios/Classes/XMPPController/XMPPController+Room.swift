@@ -252,7 +252,68 @@ extension XMPPController : XMPPRoomDelegate {
     
     func xmppStream(_ sender: XMPPStream, didReceive iq: XMPPIQ) -> Bool {
         printLog("\(#function) | XMPPRoom: \(sender) | iq: \(iq)")
-        
+
+        if let ele = iq.childElement {
+            /*
+        <iq xmlns="jabber:client" lang="en" to="89148959223@chat.masterme.ru/03ff2067-6ebc-473c-9b10-a95ca4e7de54" from="vjud.chat.masterme.ru" type="result" id="3D9E14F7-7897-477E-8E16-5C57D5E0FB5F">
+            <query xmlns="jabber:iq:search">
+                <x xmlns="jabber:x:data" type="result">
+                    <title>Search Results for vjud.chat.masterme.ru</title>
+                    <reported>
+                        <field var="jid" type="text-single" label="Jabber ID"></field>
+                        <field var="fn" type="text-single" label="Full Name"></field>
+                        <field var="first" type="text-single" label="Name"></field>
+                        <field var="middle" type="text-single" label="Middle Name"></field>
+                        <field var="last" type="text-single" label="Family Name"></field>
+                        <field var="nick" type="text-single" label="Nickname"></field>
+                        <field var="bday" type="text-single" label="Birthday"></field>
+                        <field var="ctry" type="text-single" label="Country"></field>
+                        <field var="locality" type="text-single" label="City"></field>
+                        <field var="email" type="text-single" label="Email"></field>
+                        <field var="orgname" type="text-single" label="Organization Name"></field>
+                        <field var="orgunit" type="text-single" label="Organization Unit"></field>
+                    </reported>
+                    <item>
+                        <field var="jid"><value>89148959223@chat.masterme.ru</value></field>
+                        <field var="fn"><value>Den</value></field><field var="last"><value></value></field>
+                        <field var="first"><value></value></field><field var="middle"><value></value></field>
+                        <field var="nick"><value>Денис Краморов</value></field>
+                        <field var="bday"><value></value></field><field var="ctry"><value></value></field>
+                        <field var="locality"><value></value></field><field var="email"><value></value></field>
+                        <field var="orgname"><value></value></field><field var="orgunit"><value></value></field>
+                    </item>
+                </x>
+            </query>
+        </iq>
+            */
+            var searchResult = [String]()
+
+            var eleName : String = ""
+            var eleXmlns : String = ""
+            if let checkEleName = ele.name { eleName = checkEleName.trim() }
+            if let checkEleXmlns = ele.xmlns { eleXmlns = checkEleXmlns.trim() }
+            if (eleName == CustomXmlStorageConstants.queryElement && eleXmlns == CustomXmlStorageConstants.xmlns) {
+                for xEle in ele.elements(forName: CustomXmlStorageConstants.xElement) {
+                    for itemEle in xEle.elements(forName: CustomXmlStorageConstants.itemElement) {
+                        for fieldEle in itemEle.elements(forName: CustomXmlStorageConstants.fieldElement) {
+                            if let valueVar = fieldEle.attributeStringValue(forName: CustomXmlStorageConstants.varAttribute) {
+                                if (valueVar == CustomXmlStorageConstants.jidValue) {
+                                    for valueEle in fieldEle.elements(forName: CustomXmlStorageConstants.valueElement) {
+                                        if let jidText = valueEle.stringValue {
+                                            let jid : String = jidText.trim()
+                                            searchResult.append(jid)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                printLog("+++ IQ SearchUsers \(eleName) | \(eleXmlns) | \(searchResult)")
+                self.sendSearchUsersResult(withJids: searchResult)
+            }
+        }
+
         if let eleError = iq.childErrorElement {
             var vCode : String = ""
             var vErrorMess : String = ""
@@ -273,7 +334,7 @@ extension XMPPController : XMPPRoomDelegate {
             if let _ = APP_DELEGATE.objXMPP.arrGroups.firstIndex(where: { (objGroup) -> Bool in
                 return objGroup.name == vMUCRoomName
             }) {
-                sendMUCJoinStatus(false,vMUCRoomName, "Error Joining Group")
+                sendMUCJoinStatus(false, vMUCRoomName, "Error Joining Group")
                 return true
             }
             printLog("\(#function) | Not getting MUCRoom")
@@ -440,4 +501,16 @@ extension XMPPController {
     func xmppRoom(_ sender: XMPPRoom, didNotFetchOwnersList iqError: XMPPIQ) {
         printLog("\(#function) | Get XMPPRoom Owners error | sender: \(sender) | iqError: \(iqError)")
     }
+}
+
+// MARK: - Constants
+fileprivate struct CustomXmlStorageConstants {
+    static let xmlns = "jabber:iq:search"
+    static let queryElement = "query"
+    static let xElement = "x"
+    static let itemElement = "item"
+    static let fieldElement = "field"
+    static let varAttribute = "var"
+    static let jidValue = "jid"
+    static let valueElement = "value"
 }

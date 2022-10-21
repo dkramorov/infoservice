@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../helpers/dialogs.dart';
+import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
 import '../../models/registration_model.dart';
 import '../../settings.dart';
 import '../../widgets/progress_bar.dart';
 import '../../widgets/rounded_input_text.dart';
 import '../../widgets/submit_button.dart';
-
 
 class StepRegisterPhoneView extends StatefulWidget {
   final PageController? pageController;
@@ -83,8 +83,21 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
     final RegistrationModel? reg =
         await RegistrationModel.requestRegistration(_phone, _name, _passwd);
 
+    Log.d(TAG, reg.toString());
     if (reg != null && reg.id != null) {
+      widget.userData!['isSimpleReg'] =
+      (reg.isSimpleReg != null && reg.isSimpleReg == true);
       nextPageView();
+    } else if (reg != null && reg.code == 429) {
+      Future.delayed(Duration.zero, () {
+        openInfoDialog(
+          context,
+          null,
+          'Попробуйте поздже',
+          reg.message ?? 'Мы уже отправили звонок на $_phone, если звонок не пришел, попробуйте через полчаса',
+          'Понятно',
+        );
+      });
     } else {
       Future.delayed(Duration.zero, () {
         openInfoDialog(

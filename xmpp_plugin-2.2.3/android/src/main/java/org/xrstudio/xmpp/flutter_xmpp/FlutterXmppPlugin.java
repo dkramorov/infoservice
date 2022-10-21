@@ -501,6 +501,27 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 Utils.printLog("--------------------------------------droid");
                 break;
 
+            case Constants.REQUEST_SLOT:
+                // REQUEST_SLOT
+                if (!call.hasArgument(Constants.FILENAME) || !call.hasArgument(Constants.FILESIZE)) {
+                    result.error("MISSING", "Missing argument filename / size.", null);
+                }
+                String filename = call.argument(Constants.FILENAME);
+                Integer filesize = call.argument(Constants.FILESIZE);
+                String slotUrl = FlutterXmppConnection.requestSlot(filename, filesize);
+                result.success(slotUrl);
+                break;
+
+            case Constants.SEARCH_USERS:
+                // SEARCH_USERS
+                if (!call.hasArgument(Constants.USERNAME)) {
+                    result.error("MISSING", "Missing argument username.", null);
+                }
+                String username = call.argument(Constants.USERNAME);
+                List<String> searchResult = FlutterXmppConnection.searchUsers(username);
+                result.success(searchResult);
+                break;
+
             case Constants.SEND_MESSAGE:
             case Constants.SEND_GROUP_MESSAGE:
                 // Handle sending message.

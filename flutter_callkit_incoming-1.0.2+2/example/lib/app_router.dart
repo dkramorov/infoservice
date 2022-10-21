@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_callkit_incoming_example/calling_page.dart';
-import 'package:flutter_callkit_incoming_example/home_page.dart';
+import 'calling_page.dart';
+import 'home_page.dart';
 
 class AppRoute {
   static const homePage = '/home_page';

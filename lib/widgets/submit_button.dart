@@ -15,7 +15,7 @@ class SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => RawMaterialButton(
-        fillColor: disabled ? disabledButtonColor : PRIMARY_COLOR,
+        fillColor: disabled ? disabledButtonColor : tealColor,
         constraints: BoxConstraints(
             minHeight: 56,
             minWidth: expanded ? MediaQuery.of(context).size.width : 250),

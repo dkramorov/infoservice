@@ -244,7 +244,7 @@ class _MyDialPadWidget extends State<DialPadWidget>
                   ),
                   ActionButton(
                     icon: Icons.dialer_sip,
-                    fillColor: PRIMARY_COLOR,
+                    fillColor: tealColor,
                     onPressed: () => _handleCall(context, true),
                   ),
                   ActionButton(

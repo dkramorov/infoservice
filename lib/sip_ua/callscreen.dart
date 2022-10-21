@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:all_sensors/all_sensors.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../helpers/log.dart';
@@ -74,6 +73,10 @@ class _CallScreenWidget extends State<CallScreenWidget>
       if (arg is Call) {
         call = arg;
         Log.d(TAG, '---> call is ${call?.id}');
+        /* Для ios тут мы видим звонок - пробуем ответить на него ожидая регистрацию
+        */
+        callKitIncomingInterceptor();
+
         break;
       }
     }
@@ -84,6 +87,11 @@ class _CallScreenWidget extends State<CallScreenWidget>
     proximitySubscription = proximityEvents!.listen((ProximityEvent event) {
       Log.d(TAG, 'proximityEvent: $event');
     });
+  }
+
+  void callKitIncomingInterceptor() {
+    // Тут надо ожидать, CallStateEnum.ACCEPTED и принимать звонок
+    //_handleAccept();
   }
 
   @override
@@ -411,14 +419,14 @@ class _CallScreenWidget extends State<CallScreenWidget>
 
   Widget _buildActionButtons() {
     var hangupBtn = ActionButton(
-      title: "hangup",
+      title: "Сброс",
       onPressed: () => _handleHangup(),
       icon: Icons.call_end,
       fillColor: Colors.red,
     );
 
     var hangupBtnInactive = ActionButton(
-      title: "hangup",
+      title: "Сброс",
       onPressed: () {},
       icon: Icons.call_end,
       fillColor: Colors.grey,
@@ -432,8 +440,8 @@ class _CallScreenWidget extends State<CallScreenWidget>
       case CallStateEnum.CONNECTING:
         if (direction == 'INCOMING') {
           basicActions.add(ActionButton(
-            title: "Accept",
-            fillColor: PRIMARY_COLOR,
+            title: "Принять",
+            fillColor: tealColor,
             icon: Icons.phone,
             onPressed: () => _handleAccept(),
           ));
@@ -635,7 +643,7 @@ class _CallScreenWidget extends State<CallScreenWidget>
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-            backgroundColor: PRIMARY_COLOR,
+            backgroundColor: tealColor,
             automaticallyImplyLeading: false,
             title: Text('[$direction] ${EnumHelper.getName(_state)}')),
         body: Container(

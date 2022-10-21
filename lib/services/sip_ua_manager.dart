@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import 'package:sip_ua/sip_ua.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,19 +18,30 @@ import '../settings.dart';
 class SIPUAListener implements SipUaHelperListener {
   final SIPUAManager helper;
   static AppLifecycleState? appState;
+  static bool enabled = true; // на время отладки можно отключать
+  Call? curCall; // Пишем при callStateChanged для входящего на IOS
+
   SIPUAListener(this.helper) {
+    if (!enabled) {
+      print('--- SIPUAListener DISABLED ---');
+      return;
+    }
     helper.addSipUaHelperListener(this);
     listenCallKit();
   }
 
   @override
   void callStateChanged(Call call, CallState callState) {
-    print('SIPUAListener: callStateChanged');
-
+    print('SIPUAListener: callStateChanged to ${callState.state.toString()}');
+    /* TODO: здесь надо принимать звонок с колкита? */
     switch (callState.state) {
+      case CallStateEnum.PROGRESS:
+        curCall = call;
+        break;
       case CallStateEnum.ENDED:
       case CallStateEnum.FAILED:
         helper.stopCallKitCalls();
+        curCall = null;
         break;
       default:
         break;
@@ -42,7 +55,7 @@ class SIPUAListener implements SipUaHelperListener {
 
   @override
   void registrationStateChanged(RegistrationState state) {
-    print('SIPUAListener: registrationStateChanged');
+    print('SIPUAListener: registrationStateChanged to ${state.state.toString()}');
   }
 
   @override
@@ -55,6 +68,31 @@ class SIPUAListener implements SipUaHelperListener {
     print('saveCallKitAction: $action');
     helper.stateCallKit = action;
     helper.stateCallKitUpdated = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  void iosIncomingCallAccept(){
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      print('${timer.tick}');
+      if ((helper.registered ?? false) && curCall != null) {
+        final mediaConstraints = <String, dynamic>{
+          'audio': true,
+          'video': false,
+        };
+        navigator.mediaDevices
+            .getUserMedia(mediaConstraints)
+            .then((MediaStream mediaStream) {
+          curCall!.answer(helper.buildCallOptions(true),
+              mediaStream: mediaStream);
+        });
+        timer.cancel();
+      } else if (!(helper.registered ?? false)) {
+        helper.register();
+      }
+      if (timer.tick > 10) {
+        print('disable timer');
+        timer.cancel();
+      }
+    });
   }
 
   void listenCallKit() {
@@ -73,6 +111,11 @@ class SIPUAListener implements SipUaHelperListener {
           // TODO: accepted an incoming call
           // TODO: show screen calling in Flutter
           saveCallKitAction('ACTION_CALL_ACCEPT');
+
+          if (Platform.isAndroid) {
+          } else if (Platform.isIOS) {
+            iosIncomingCallAccept();
+          }
           break;
         case CallEvent.ACTION_CALL_DECLINE:
           // TODO: declined an incoming call
@@ -81,6 +124,12 @@ class SIPUAListener implements SipUaHelperListener {
         case CallEvent.ACTION_CALL_ENDED:
           // TODO: ended an incoming/outgoing call
           saveCallKitAction('ACTION_CALL_ENDED');
+          if (Platform.isAndroid) {
+          } else if (Platform.isIOS) {
+            if (curCall != null) {
+              curCall?.hangup();
+            }
+          }
           break;
         case CallEvent.ACTION_CALL_TIMEOUT:
           // TODO: missed an incoming call
@@ -138,10 +187,11 @@ class SIPUAManager extends SIPUAHelper {
   late SIPUAListener listener;
   late SharedPreferences preferences;
   late Timer mainTimer;
-  int checkRegisterTimer = 10;
+  int checkRegisterTimer = 5;
   int updateTokenTimer = 1;
   bool stopFlag = false;
   static String fcmToken = '';
+  static String apnsToken = '';
 
   int stateCallKitUpdated = 0;
   String stateCallKit = '';
@@ -175,10 +225,14 @@ class SIPUAManager extends SIPUAHelper {
         if (registered! == false) {
           doRegister();
         } else if (registered!) {
+          // Отправка токена уже происходит в JabberManager таймере
+          // Пока отключаем отправку токена по сип-регистрации
+          /*
           updateTokenTimer -= 1;
           if (updateTokenTimer < 0) {
             updateTokenTimer = 600;
-            sendToken(preferences.getString('auth_user') ?? '', fcmToken)
+            sendToken(preferences.getString('auth_user') ?? '', fcmToken,
+                    apnsToken: apnsToken)
                 .then((sent) {
               if (sent) {
                 updateTokenTimer = 3600;
@@ -187,6 +241,7 @@ class SIPUAManager extends SIPUAHelper {
               }
             });
           }
+          */
         }
       }
     });
@@ -292,7 +347,7 @@ class SIPUAManager extends SIPUAHelper {
   }
 
   Future<Map<String, dynamic>> checkCallKitCall() async {
-    //check current call from pushkit if possible
+    // check current call from pushkit if possible
     // https://github.com/hiennguyen92/flutter_callkit_incoming/commit/9cb0434e18af8a768209d6fa4d2d1e090a355081
     var calls = await FlutterCallkitIncoming.activeCalls();
     print(calls);
@@ -302,7 +357,9 @@ class SIPUAManager extends SIPUAHelper {
     }
     if (calls.isNotEmpty) {
       print('Active call DATA: $calls, ${calls[0]['id']}');
-      return calls[0];
+      return {
+        calls[0]['id']: calls[0],
+      };
     } else {
       print('checkCurrentCall: There are no calls');
     }

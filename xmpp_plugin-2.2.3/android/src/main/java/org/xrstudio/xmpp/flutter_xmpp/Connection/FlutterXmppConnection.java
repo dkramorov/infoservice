@@ -24,13 +24,21 @@ import org.jivesoftware.smackx.chatstates.ChatState;
 import org.jivesoftware.smackx.chatstates.packet.ChatStateExtension;
 import org.jivesoftware.smackx.iqlast.LastActivityManager;
 import org.jivesoftware.smackx.iqlast.packet.LastActivity;
+import org.jivesoftware.smackx.httpfileupload.HttpFileUploadManager;
+import org.jivesoftware.smackx.httpfileupload.element.Slot;
 import org.jivesoftware.smackx.muc.Affiliate;
 import org.jivesoftware.smackx.muc.MucEnterConfiguration;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.MultiUserChatManager;
 import org.jivesoftware.smackx.receipts.DeliveryReceipt;
 import org.jivesoftware.smackx.receipts.DeliveryReceiptRequest;
+import org.jivesoftware.smackx.search.ReportedData;
+import org.jivesoftware.smackx.search.UserSearchManager;
+import org.jivesoftware.smackx.search.UserSearch;
 import org.jivesoftware.smackx.xdata.Form;
+import org.jivesoftware.smackx.xdata.FormField;
+
+import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
@@ -44,8 +52,10 @@ import org.xrstudio.xmpp.flutter_xmpp.listner.MessageListener;
 import org.xrstudio.xmpp.flutter_xmpp.listner.PresenceListenerAndFilter;
 import org.xrstudio.xmpp.flutter_xmpp.listner.StanzaAckListener;
 
+
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -106,6 +116,52 @@ public class FlutterXmppConnection implements ConnectionListener {
         return mConnection == null ? new XMPPTCPConnection(null) : mConnection;
     }
 
+    public static String requestSlot(String filename, Integer filesize) {
+        HttpFileUploadManager manager = HttpFileUploadManager.getInstanceFor(mConnection);
+        try {
+            Slot slot = manager.requestSlot(filename, filesize);
+            URL url = slot.getPutUrl();
+            Utils.printLog("requestSlot received url: " + url);
+            return url.toString();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (XMPPException.XMPPErrorException e) {
+            e.printStackTrace();
+        } catch (SmackException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    public static List<String> searchUsers(String username) {
+        // https://github.com/igniterealtime/jxmpp/blob/master/jxmpp-jid/src/main/java/org/jxmpp/jid/impl/JidCreate.java
+        List<String> searchUsersResult = new ArrayList();
+        try {
+            String searchDomain = mUsername + "@" + "vjud." + mHost;
+            UserSearchManager searchManager = new UserSearchManager(mConnection);
+            DomainBareJid domainBareJid =  JidCreate.domainBareFrom(searchDomain);
+            Form searchForm = searchManager.getSearchForm(domainBareJid);
+            List<FormField> fields = searchForm.getFields();
+            /*
+            for (FormField field : fields) {
+                Utils.printLog("_____field::" + field.getVariable());
+            }
+            */
+            Form answerForm = searchForm.createAnswerForm();
+            answerForm.setAnswer("user", username);
+            UserSearch userSearch = new UserSearch();
+            ReportedData sdata = userSearch.sendSearchForm(mConnection, answerForm, domainBareJid);
+
+            List<ReportedData.Row> rows = sdata.getRows();
+            for (ReportedData.Row row : rows) {
+                searchUsersResult.add(row.getValues("jid").toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return searchUsersResult;
+    }
+
     public static void sendCustomMessage(String body, String toJid, String msgId, String customText, boolean isDm, String time) {
 
         try {
@@ -141,7 +197,7 @@ public class FlutterXmppConnection implements ConnectionListener {
 
             Utils.addLogInStorage("Action: sentCustomMessageToServer, Content: " + xmppMessage.toXML(null).toString());
 
-            Utils.printLog(" Sent custom message from: " + xmppMessage.toXML(null) + "  sent.");
+            Utils.printLog("Sent custom message from: " + xmppMessage.toXML(null) + "  sent.");
 
         } catch (SmackException.NotConnectedException e) {
             e.printStackTrace();

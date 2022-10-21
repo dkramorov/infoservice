@@ -123,6 +123,11 @@ public class Constants {
     public static final String SEND_GROUP_MESSAGE = "send_group_message";
     public static final String LOGIN = "login";
     public static final String POTESTUA = "potestua";
+    public static final String REQUEST_SLOT = "request_slot";
+    public static final String SEARCH_USERS = "search_users";
+    public static final String FILENAME = "filename";
+    public static final String FILESIZE = "size";
+    public static final String USERNAME = "username";
     public static final String TO_JID = "to_jid";
     public static final String TO_JID_1 = "toJid";
     public static final String NAVIGATE_FILE_PATH = "nativeLogFilePath";

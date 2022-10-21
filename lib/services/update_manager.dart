@@ -127,6 +127,7 @@ class UpdateManager {
   static final UpdateManager _singleton = UpdateManager._internal();
   static Timer? updateTimer;
   static SharedPreferences? preferences;
+  static bool enabled = true; // на время отладки можно отключать
 
   static const int defaultUpdateInterval = 600;
   int intervalUpdateCheck = 1;
@@ -293,6 +294,12 @@ class UpdateManager {
   }
 
   void init() {
+
+    if (!enabled) {
+      Log.i(TAG, '--- UpdateManager DISABLED ---');
+      return;
+    }
+
     updateStream ??= UpdateManagerStream();
     if (updateTimer != null) {
       return;

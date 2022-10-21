@@ -40,7 +40,6 @@ class _TabCompanyViewState extends State<TabCompanyView> {
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
 
-  static const companyCardBackgroudColor = Colors.green;
   static const addressIconColor = Color(0xFF961616);
   final int maxRubrics = 3;
 
@@ -129,7 +128,7 @@ class _TabCompanyViewState extends State<TabCompanyView> {
               ),
             ),
             borderRadius: 8.0,
-            color: companyCardBackgroudColor,
+            color: tealColor,
             onPressed: () {
               Navigator.pushNamed(context, DialpadScreen.id, arguments: {
                 sipHelper,
@@ -259,7 +258,7 @@ class _TabCompanyViewState extends State<TabCompanyView> {
         bottomLeft: Radius.circular(32.0),
         bottomRight: Radius.circular(32.0),
       ),
-      color: companyCardBackgroudColor,
+      color: tealColor,
       image: withBackgroundImage
           ? DecorationImage(
               image: CachedNetworkImageProvider(company.getImagePath()!),
