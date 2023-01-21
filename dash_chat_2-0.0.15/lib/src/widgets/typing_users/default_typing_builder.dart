@@ -26,7 +26,7 @@ class DefaultTypingBuilder extends StatelessWidget {
             child: TypingIndicator(),
           ),
           Text(
-            user.getFullName(),
+            user.getName(),
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../helpers/phone_mask.dart';
 import '../models/user_chat_model.dart';
 import '../pages/chat/chat_page.dart';
+import '../pages/chat/group_chat_page.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
 import '../settings.dart';
@@ -44,6 +45,7 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
   void initState() {
     super.initState();
   }
+
   @override
   void dispose() {
     super.dispose();
@@ -65,17 +67,34 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, ChatScreen.id, arguments: {
-          sipHelper,
-          xmppHelper,
-          ChatUser(id: cleanPhone(widget.user.login ?? '')),
-        });
+        final String login = widget.user.login ?? '';
+        final String phone = cleanPhone(login);
+        if (JabberManager.isConference(login)) {
+          Navigator.pushNamed(context, GroupChatScreen.id, arguments: {
+            sipHelper,
+            xmppHelper,
+            ChatUser(
+                id: login,
+                name: widget.user.getName(),
+                phone: phone,
+            ),
+          });
+        } else {
+          Navigator.pushNamed(context, ChatScreen.id, arguments: {
+            sipHelper,
+            xmppHelper,
+            ChatUser(
+                id: login,
+                name: widget.user.getName(),
+                phone: phone,
+            ),
+          });
+        }
       },
       child: ListTile(
         leading: FutureBuilder<String>(
             future: widget.user.getPhoto(),
-            builder:
-                (BuildContext context, AsyncSnapshot<String> snapshot) {
+            builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
               if (snapshot.hasData) {
                 return buildAvatar(snapshot.data!);
               } else {
@@ -112,7 +131,7 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
         subtitle: SizedBox(
           width: containerMsgTextWidth,
           child: Text(
-            widget.user.msg ?? widget.user.getName(),
+            widget.user.msg ?? widget.user.getLogin(),
             maxLines: 1,
             overflow: TextOverflow.fade,
             softWrap: false,

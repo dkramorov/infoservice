@@ -4,7 +4,7 @@ description: Social service
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.69+69
+version: 1.0.80+80
 
 environment:
   sdk: '>=2.17.0 <3.0.0' # flutter 3.0.0
@@ -43,7 +43,8 @@ dependencies:
   carousel_slider: ^4.1.1
   dio: ^4.0.6
   archive: ^3.3.0
-  sip_ua: ^0.5.1
+  flutter_webrtc: ^0.9.17
+  sip_ua: ^0.5.3
   #flutter_callkit_incoming: ^1.0.2+1
   # https://stackoverflow.com/questions/69650283/open-ios-flutter-app-directly-after-answering-voip-call-from-locked-ios-device
   flutter_callkit_incoming:
@@ -55,6 +56,8 @@ dependencies:
   chat_composer:
     path: chat_composer-1.0.4 # custom version
   just_audio: ^0.9.28
+  url_launcher: ^6.1.6
+  contacts_service: ^0.6.3
 
 dev_dependencies:
   flutter_test:

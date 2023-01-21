@@ -226,23 +226,19 @@ class UpdateManager {
   }
 
   Future<File> getUpdatePath() async {
-    final String destFolder = await makeAppFolder();
-    final updateFilePath = '$destFolder/$updateFName.json';
-    return File(updateFilePath);
+    return await getLocalFilePath('$updateFName.json');
   }
 
   Future<File> getArchivePath() async {
-    final String destFolder = await makeAppFolder();
-    final String updateArchivePath = '$destFolder/$updateFName.tar.gz';
-    Log.d('getArchivePath', updateArchivePath);
-    return File(updateArchivePath);
+    final File updateArchivePath = await getLocalFilePath('$updateFName.tar.gz');
+    Log.d('getArchivePath', updateArchivePath.path);
+    return updateArchivePath;
   }
 
   Future<File> getTarPath() async {
-    final String destFolder = await makeAppFolder();
-    final String tarPath = '$destFolder/temp.tar';
-    Log.d('getTarPath', tarPath);
-    return File(tarPath);
+    final File tarPath = await getLocalFilePath('temp.tar');
+    Log.d('getTarPath', tarPath.path);
+    return tarPath;
   }
 
   void extractUpdateArchive(List<String> args) async {

@@ -20,6 +20,8 @@ import org.jivesoftware.smack.roster.RosterEntry;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.jivesoftware.smack.util.TLSUtils;
+import org.jivesoftware.smack.util.PacketParserUtils;
+
 import org.jivesoftware.smackx.chatstates.ChatState;
 import org.jivesoftware.smackx.chatstates.packet.ChatStateExtension;
 import org.jivesoftware.smackx.iqlast.LastActivityManager;
@@ -35,6 +37,8 @@ import org.jivesoftware.smackx.receipts.DeliveryReceiptRequest;
 import org.jivesoftware.smackx.search.ReportedData;
 import org.jivesoftware.smackx.search.UserSearchManager;
 import org.jivesoftware.smackx.search.UserSearch;
+import org.jivesoftware.smackx.vcardtemp.packet.VCard;
+import org.jivesoftware.smackx.vcardtemp.VCardManager;
 import org.jivesoftware.smackx.xdata.Form;
 import org.jivesoftware.smackx.xdata.FormField;
 
@@ -61,7 +65,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.net.ssl.SSLContext;
@@ -344,6 +350,62 @@ public class FlutterXmppConnection implements ConnectionListener {
         return userLastActivity;
     }
 
+    public static Map<String, Object> getVCard(String userJid) {
+        /* https://xmpp.org/extensions/xep-0054.html
+           <FN>Peter Saint-Andre</FN>
+           <NICKNAME>stpeter</NICKNAME>
+           <URL>http://www.xmpp.org/xsf/people/stpeter.shtml</URL>
+           <BDAY>1966-08-06</BDAY>
+           <TITLE>Executive Director</TITLE>
+           <ROLE>Patron Saint</ROLE>
+           <TEL><WORK/><VOICE/><NUMBER>303-308-3282</NUMBER></TEL>
+           <TEL><HOME/><MSG/><NUMBER/></TEL>
+           <JABBERID>stpeter@jabber.org</JABBERID>
+           <DESC>More information about me is located on my personal website: http://www.saint-andre.com/</DESC>
+           https://docs.ejabberd.im/developer/ejabberd-api/admin-api/#get-vcard
+        */
+        Map<String, Object> result = new HashMap<>();
+        Utils.printLog("Receiving VCard for " + userJid);
+        VCard vCard = new VCard();
+        try {
+            EntityBareJid jid = JidCreate.entityBareFrom(mUsername + "@" + mHost);
+            VCardManager vCardManager = VCardManager.getInstanceFor(mConnection);
+            vCard = vCardManager.loadVCard(jid);
+            result.put("FN", vCard.getField("FN"));
+            result.put("NICKNAME", vCard.getField("NICKNAME"));
+            result.put("URL", vCard.getField("URL"));
+            result.put("BDAY", vCard.getField("BDAY"));
+            result.put("DESC", vCard.getField("DESC"));
+        } catch (SmackException.NotConnectedException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        //byte[] bs = vCard.getAvatar(); // Avtar in byte array convert it to Bitmap
+        return result;
+    }
+
+    public static void saveVCard(String desc) {
+        /* https://xmpp.org/extensions/xep-0054.html
+        */
+        Utils.printLog("Save VCard");
+        VCard vCard = new VCard();
+        try {
+            EntityBareJid jid = JidCreate.entityBareFrom(mUsername + "@" + mHost);
+            VCardManager vCardManager = VCardManager.getInstanceFor(mConnection);
+            vCard = vCardManager.loadVCard(jid);
+            vCard.setField("DESC", desc);
+            vCardManager.saveVCard(vCard);
+        } catch (SmackException.NotConnectedException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     public static List<String> getMyRosters() {
         List<String> muRosterList = new ArrayList<>();
@@ -376,32 +438,35 @@ public class FlutterXmppConnection implements ConnectionListener {
         }
     }
 
-    public static boolean createMUC(String groupName, String persistent) {
+    public static List<String> getMyMUCs() {
+        List<String> roomList = new ArrayList<>();
+        Set<EntityBareJid> joinedRooms = multiUserChatManager.getJoinedRooms();
+        for (EntityBareJid room : joinedRooms) {
+            roomList.add(room.toString());
+        }
+        return roomList;
+    }
 
+    public static boolean createMUC(String groupName, String persistent) {
         boolean isGroupCreatedSuccessfully = false;
         try {
-
             MultiUserChat multiUserChat = multiUserChatManager.getMultiUserChat((EntityBareJid) JidCreate.from(Utils.getRoomIdWithDomainName(groupName, mHost)));
             multiUserChat.create(Resourcepart.from(mUsername));
-
             if (persistent.equals(Constants.TRUE)) {
                 Form form = multiUserChat.getConfigurationForm();
                 Form answerForm = form.createAnswerForm();
                 answerForm.setAnswer(Constants.MUC_PERSISTENT_ROOM, true);
-                answerForm.setAnswer(Constants.MUC_MEMBER_ONLY, true);
+                answerForm.setAnswer(Constants.MUC_MEMBER_ONLY, false);
                 multiUserChat.sendConfigurationForm(answerForm);
             }
-
             isGroupCreatedSuccessfully = true;
-
         } catch (Exception e) {
             e.printStackTrace();
             String groupCreateError = e.getLocalizedMessage();
-            Utils.printLog(" createMUC : exception: " + groupCreateError);
+            Utils.printLog("createMUC : exception: " + groupCreateError);
             Utils.broadcastErrorMessageToFlutter(mApplicationContext, ErrorState.GROUP_CREATION_FAILED, groupCreateError, groupName);
         }
         return isGroupCreatedSuccessfully;
-
     }
 
     public static String joinAllGroups(ArrayList<String> allGroupsIds) {

@@ -194,8 +194,7 @@ class _TabProfileViewState extends State<TabProfileView> {
     final bytes = await file.readAsBytes();
     final imageName = 'my_photo_${file.path.split('/').last}';
 
-    final String destFolder = await makeAppFolder();
-    final File dest = File('$destFolder/$imageName');
+    final File dest = await getLocalFilePath(imageName);
     dest.writeAsBytes(bytes);
 
     // Записать в базу

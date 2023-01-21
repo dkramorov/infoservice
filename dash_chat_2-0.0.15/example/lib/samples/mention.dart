@@ -57,12 +57,12 @@ class _MentionSampleState extends State<MentionSample> {
                 return <Widget>[
                   ListTile(
                     leading: DefaultAvatar(user: user8),
-                    title: Text(user8.getFullName()),
+                    title: Text(user8.getName()),
                     onTap: () {
-                      onMentionClick(user8.getFullName());
+                      onMentionClick(user8.getName());
                       mentions.add(
                         Mention(
-                          title: trigger + user8.getFullName(),
+                          title: trigger + user8.getName(),
                           customProperties: <String, dynamic>{
                             'userId': user8.id,
                           },
@@ -73,12 +73,12 @@ class _MentionSampleState extends State<MentionSample> {
                   const Divider(),
                   ListTile(
                     leading: DefaultAvatar(user: user5),
-                    title: Text(user5.getFullName()),
+                    title: Text(user5.getName()),
                     onTap: () {
-                      onMentionClick(user5.getFullName());
+                      onMentionClick(user5.getName());
                       mentions.add(
                         Mention(
-                          title: trigger + user5.getFullName(),
+                          title: trigger + user5.getName(),
                           customProperties: <String, dynamic>{
                             'userId': user5.id,
                           },

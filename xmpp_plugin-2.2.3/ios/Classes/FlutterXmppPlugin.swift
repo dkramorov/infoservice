@@ -75,6 +75,9 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
              pluginMethod.sendCustomMessage,
              pluginMethod.sendCustomMessageInGroup:
             self.performSendMessageActivity(call, result)
+
+        case pluginMethod.getMyMUCs:
+            self.performGetMyMUCsActivity(call, result)
                         
         case pluginMethod.createMUC:
             self.performCreateMUCActivity(call, result)
@@ -126,6 +129,12 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
 
         case pluginMethod.getMyRosters:
             self.getMyRostersActivity(call, result)
+
+        case pluginMethod.getVCard:
+            self.getVCardActivity(call, result)
+
+        case pluginMethod.saveVCard:
+            self.saveVCardActivity(call, result)
            
         case pluginMethod.reqMAM:
             self.manageMAMActivity(call, result)
@@ -327,6 +336,15 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
                                  withStrem: self.objXMPP.xmppStream)
         result(xmppConstants.SUCCESS)
     }
+
+
+    func performGetMyMUCsActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
+        let vMethod : String = call.method.trim()
+        printLog("\(#function) | \(vMethod)")
+        APP_DELEGATE.singalCallBack = result
+        APP_DELEGATE.objXMPP.getMUCSubscriptions(withStrem: self.objXMPP.xmppStream, objXMPP: self.objXMPP)
+        //result(xmppConstants.SUCCESS)
+    }
     
     func performCreateMUCActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let vData = call.arguments as? [String : Any] else {
@@ -400,10 +418,12 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
         printLog("\(#function) | \(vMethod) | arguments: \(vData)")
         
         let vRoom = vData["group_id"] as? String ?? ""
-        let arrRoomCompo : [String] = vRoom.components(separatedBy: ",")
+        var arrRoomCompo : [String] = vRoom.components(separatedBy: ",")
+        // Нихуя не понял зачем тут через запятую название группы с какой-то цифирой
         if arrRoomCompo.count != 2 {
-            result(false)
-            return
+            //result(false)
+            //return
+            arrRoomCompo = [vRoom, "0"]
         }
         let vRoomName : String = arrRoomCompo.first ?? ""
         let vRoomTS : String = arrRoomCompo.last ?? "0"
@@ -547,6 +567,39 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
         APP_DELEGATE.singalCallBack = result
         APP_DELEGATE.objXMPP.getMyRosters(withStrem: self.objXMPP.xmppStream, objXMPP: self.objXMPP)
         //result(xmppConstants.SUCCESS)
+    }
+
+    func getVCardActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult)  {
+        var vData : [String : Any]?
+        if let data = call.arguments as? [String : Any] { vData = data }
+
+        let vMethod : String = call.method.trim()
+        printLog("\(#function) | \(vMethod) | arguments: \(String(describing: vData))")
+
+        var vUserId : String = (vData!["user_jid"] as? String ?? "").trim()
+        vUserId = (vUserId.components(separatedBy: "@").first ?? "").trim()
+
+        if vUserId.isEmpty {
+            result(xmppConstants.DataNil)
+            return
+        }
+
+        APP_DELEGATE.singalCallBack = result
+        APP_DELEGATE.objXMPP.getVCard(withUserJid: vUserId, withStrem: self.objXMPP.xmppStream, objXMPP: self.objXMPP)
+        //result(xmppConstants.SUCCESS)
+    }
+
+    func saveVCardActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult)  {
+        var vData : [String : Any]?
+        if let data = call.arguments as? [String : Any] { vData = data }
+
+        let vMethod : String = call.method.trim()
+        printLog("\(#function) | \(vMethod) | arguments: \(String(describing: vData))")
+
+        let desc : String = (vData!["DESC"] as? String ?? "").trim()
+
+        APP_DELEGATE.objXMPP.saveVCard(withDesc: desc, withStrem: self.objXMPP.xmppStream, objXMPP: self.objXMPP)
+        result(xmppConstants.SUCCESS)
     }
     
     func manageMAMActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult)  {

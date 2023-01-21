@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:infoservice/pages/new_pages/components/new_main.dart';
 
 import '../../models/companies/catalogue.dart';
 import '../../fonts/funtya.dart';
@@ -48,6 +47,8 @@ class _TabHomeViewState extends State<TabHomeView> {
   int _currentCatInSlider = 0;
   final CarouselController _catsController = CarouselController();
 
+  bool isRubricsSorted = false;
+
   @override
   void initState() {
     super.initState();
@@ -76,6 +77,7 @@ class _TabHomeViewState extends State<TabHomeView> {
 
   void loadRubrics() {
     Catalogue().getFullCatalogue().then((result) {
+      isRubricsSorted = false;
       setState(() {
         rubrics = result;
         sortRubrics();
@@ -84,7 +86,7 @@ class _TabHomeViewState extends State<TabHomeView> {
   }
 
   void sortRubrics() {
-    if (rubrics.isEmpty) {
+    if (rubrics.isEmpty || isRubricsSorted) {
       return;
     }
     Log.d(TAG, 'sorting rubrics ${rubrics.length}');
@@ -96,6 +98,7 @@ class _TabHomeViewState extends State<TabHomeView> {
       }
     }
     rubrics.sort((a, b) => a.position!.compareTo(b.position!));
+    isRubricsSorted = true;
   }
 
   // Обновление состояния

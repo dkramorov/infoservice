@@ -528,7 +528,6 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 if (!call.hasArgument(Constants.TO_JID) || !call.hasArgument(Constants.BODY) || !call.hasArgument(Constants.ID)) {
                     result.error("MISSING", "Missing argument to_jid / body / id chat.", null);
                 }
-
                 to_jid = call.argument(Constants.TO_JID);
                 body = call.argument(Constants.BODY);
                 id = call.argument(Constants.ID);
@@ -537,14 +536,16 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 if (call.hasArgument(Constants.time)) {
                     time = call.argument(Constants.time);
                 }
-
                 sendMessage(body, to_jid, id, call.method, time);
-
                 result.success(Constants.SUCCESS);
                 break;
 
-            case Constants.JOIN_MUC_GROUPS:
+            case Constants.GET_MY_MUCS:
+                List<String> getMyMUCs = FlutterXmppConnection.getMyMUCs();
+                result.success(getMyMUCs);
+                break;
 
+            case Constants.JOIN_MUC_GROUPS:
                 if (!call.hasArgument(Constants.ALL_GROUPS_IDS)) {
                     result.error("MISSING", "Missing argument all_groups_ids.", null);
                 }
@@ -555,7 +556,6 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 break;
 
             case Constants.JOIN_MUC_GROUP:
-
                 boolean isJoined = false;
                 if (!call.hasArgument(Constants.GROUP_ID)) {
                     result.error("MISSING", "Missing argument group_id.", null);
@@ -569,10 +569,8 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 break;
 
             case Constants.CREATE_MUC:
-
                 String group_name = call.argument(Constants.GROUP_NAME);
                 String persistent = call.argument(Constants.PERSISTENT);
-
                 boolean responses = FlutterXmppConnection.createMUC(group_name, persistent);
                 result.success(responses);
                 break;
@@ -582,19 +580,15 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 if (!call.hasArgument(Constants.TO_JID) || !call.hasArgument(Constants.BODY) || !call.hasArgument(Constants.ID)) {
                     result.error("MISSING", "Missing argument to_jid / body / id chat.", null);
                 }
-
                 to_jid = call.argument(Constants.TO_JID);
                 body = call.argument(Constants.BODY);
                 id = call.argument(Constants.ID);
                 customString = call.argument(Constants.CUSTOM_TEXT);
                 time = Constants.ZERO;
-
                 if (call.hasArgument(Constants.time)) {
                     time = call.argument(Constants.time);
                 }
-
                 sendCustomMessage(body, to_jid, id, customString, time);
-
                 result.success(Constants.SUCCESS);
                 break;
 
@@ -603,109 +597,81 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 if (!call.hasArgument(Constants.TO_JID) || !call.hasArgument(Constants.BODY) || !call.hasArgument(Constants.ID)) {
                     result.error("MISSING", "Missing argument to_jid / body / id chat.", null);
                 }
-
                 to_jid = call.argument(Constants.TO_JID);
                 body = call.argument(Constants.BODY);
                 id = call.argument(Constants.ID);
                 customString = call.argument(Constants.CUSTOM_TEXT);
                 time = Constants.ZERO;
-
                 if (call.hasArgument(Constants.time)) {
                     time = call.argument(Constants.time);
                 }
-
                 sendCustomGroupMessage(body, to_jid, id, customString, time);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.SEND_DELIVERY_ACK:
-
                 String toJid = call.argument(Constants.TO_JID_1);
                 String msgId = call.argument(Constants.MESSAGE_ID);
                 String receiptId = call.argument(Constants.RECEIPT_ID);
-
                 FlutterXmppConnection.send_delivery_receipt(toJid, msgId, receiptId);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.ADD_MEMBERS_IN_GROUP:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 membersJid = call.argument(Constants.MEMBERS_JID);
-
                 FlutterXmppConnection.manageAddMembersInGroup(GroupRole.MEMBER, groupName, membersJid);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.ADD_ADMINS_IN_GROUP:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 membersJid = call.argument(Constants.MEMBERS_JID);
-
                 FlutterXmppConnection.manageAddMembersInGroup(GroupRole.ADMIN, groupName, membersJid);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.REMOVE_MEMBERS_FROM_GROUP:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 membersJid = call.argument(Constants.MEMBERS_JID);
-
                 FlutterXmppConnection.manageRemoveFromGroup(GroupRole.MEMBER, groupName, membersJid);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.REMOVE_ADMINS_FROM_GROUP:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 membersJid = call.argument(Constants.MEMBERS_JID);
-
                 FlutterXmppConnection.manageRemoveFromGroup(GroupRole.ADMIN, groupName, membersJid);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.ADD_OWNERS_IN_GROUP:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 membersJid = call.argument(Constants.MEMBERS_JID);
-
                 FlutterXmppConnection.manageAddMembersInGroup(GroupRole.OWNER, groupName, membersJid);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.REMOVE_OWNERS_FROM_GROUP:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 membersJid = call.argument(Constants.MEMBERS_JID);
-
                 FlutterXmppConnection.manageRemoveFromGroup(GroupRole.OWNER, groupName, membersJid);
-
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.GET_OWNERS:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 jidList = FlutterXmppConnection.getMembersOrAdminsOrOwners(GroupRole.OWNER, groupName);
                 result.success(jidList);
                 break;
 
             case Constants.GET_ADMINS:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 jidList = FlutterXmppConnection.getMembersOrAdminsOrOwners(GroupRole.ADMIN, groupName);
                 result.success(jidList);
                 break;
 
             case Constants.GET_MAM:
-
                 String userJid = call.argument(Constants.userJid);
                 String requestBefore = call.argument(Constants.requestBefore);
                 String requestSince = call.argument(Constants.requestSince);
@@ -714,11 +680,9 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 Utils.printLog("userJId " + userJid + " Before : " + requestBefore + " since " + requestSince + " limit " + limit + " lastFlag " + lastFlag);
                 MAMManager.requestMAM(userJid, requestBefore, requestSince, limit, lastFlag);
                 result.success("SUCCESS");
-
                 break;
 
             case Constants.CHANGE_TYPING_STATUS:
-
                 String typingJid = call.argument(Constants.userJid);
                 String typingStatus = call.argument(Constants.typingStatus);
                 Utils.printLog("userJId " + typingJid + " Typing Status : " + typingStatus);
@@ -727,7 +691,6 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 break;
 
             case Constants.CHANGE_PRESENCE_TYPE:
-
                 String presenceType = call.argument(Constants.PRESENCE_TYPE);
                 String presenceMode = call.argument(Constants.PRESENCE_MODE);
                 Utils.printLog("presenceType : " + presenceType + " , Presence Mode : " + presenceMode);
@@ -736,20 +699,17 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 break;
 
             case Constants.GET_CONNECTION_STATUS:
-
                 ConnectionState connectionStatus = FlutterXmppConnectionService.getState();
                 result.success(connectionStatus.toString());
                 break;
 
             case Constants.GET_MEMBERS:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 jidList = FlutterXmppConnection.getMembersOrAdminsOrOwners(GroupRole.MEMBER, groupName);
                 result.success(jidList);
                 break;
 
             case Constants.CURRENT_STATE:
-
                 String state = Constants.STATE_UNKNOWN;
                 switch (FlutterXmppConnectionService.getState()) {
                     case CONNECTED:
@@ -772,35 +732,41 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 break;
 
             case Constants.GET_ONLINE_MEMBER_COUNT:
-
                 groupName = call.argument(Constants.GROUP_NAME);
                 int occupantsSize = FlutterXmppConnection.getOnlineMemberCount(groupName);
                 result.success(occupantsSize);
                 break;
 
             case Constants.GET_LAST_SEEN:
-
                 userJid = call.argument(Constants.USER_JID);
                 long userLastActivity = FlutterXmppConnection.getLastSeen(userJid);
                 result.success(userLastActivity + "");
                 break;
 
+            case Constants.GET_VCARD:
+                userJid = call.argument(Constants.USER_JID);
+                Map<String, Object> vcard = FlutterXmppConnection.getVCard(userJid);
+                result.success(vcard);
+                break;
+
+            case Constants.SAVE_VCARD:
+                String desc = call.argument(Constants.DESC);
+                FlutterXmppConnection.saveVCard(desc);
+                result.success(Constants.SUCCESS);
+                break;
 
             case Constants.GET_MY_ROSTERS:
-
                 List<String> getMyRosters = FlutterXmppConnection.getMyRosters();
                 result.success(getMyRosters);
                 break;
 
             case Constants.CREATE_ROSTER:
-
                 userJid = call.argument(Constants.USER_JID);
                 FlutterXmppConnection.createRosterEntry(userJid);
                 result.success(Constants.SUCCESS);
                 break;
 
             case Constants.DROP_ROSTER:
-
                 userJid = call.argument(Constants.USER_JID);
                 FlutterXmppConnection.dropRosterEntry(userJid);
                 result.success(Constants.SUCCESS);

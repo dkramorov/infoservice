@@ -23,7 +23,7 @@ class DefaultUserName extends StatelessWidget {
     return Padding(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 10),
       child: Text(
-        user.getFullName(),
+        user.getName(),
         style: style ??
             const TextStyle(
               fontSize: 10,

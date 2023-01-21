@@ -19,6 +19,7 @@ import 'package:xmpp_plugin/models/present_mode.dart';
 import 'package:xmpp_plugin/success_response_event.dart';
 import 'package:xmpp_plugin/xmpp_plugin.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 
 import '../../a_notifications/notifications.dart';
 import '../../helpers/log.dart';
@@ -29,22 +30,22 @@ import '../../settings.dart';
 import '../../sip_ua/dialpadscreen.dart';
 import '../../widgets/chat/messages_widgets.dart';
 
-class ChatScreen extends StatefulWidget {
-  static const String id = '/chat_screen/';
+class GroupChatScreen extends StatefulWidget {
+  static const String id = '/group_chat_screen/';
 
   final SIPUAManager? _sipHelper;
   final JabberManager? _xmppHelper;
   final Object? _arguments;
-  const ChatScreen(this._sipHelper, this._xmppHelper, this._arguments,
+  const GroupChatScreen(this._sipHelper, this._xmppHelper, this._arguments,
       {Key? key})
       : super(key: key);
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  _GroupChatScreenState createState() => _GroupChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
-  static const String TAG = 'ChatScreen';
+class _GroupChatScreenState extends State<GroupChatScreen> implements DataChangeEvents {
+  static const String TAG = 'GroupChatScreen';
 
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
@@ -65,10 +66,10 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
     if (JabberManager.enabled) {
       jabberSubscription =
           xmppHelper?.jabberStream.registration.listen((isRegistered) {
-        if (isRegistered) {
-          initMamMessages();
-        }
-      });
+            if (isRegistered) {
+              initMamMessages();
+            }
+          });
       XmppConnection.addListener(this);
       List args = (widget._arguments as Set).toList();
       for (Object? arg in args) {
@@ -81,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
       }
     }
     String login = xmppHelper?.getLogin() ?? '';
-    me = ChatUser(id: cleanPhone(login), phone: login, name: phoneMaskHelper(login));
+    me = ChatUser(id: login, phone: cleanPhone(login), name: phoneMaskHelper(login));
   }
 
   @override
@@ -92,6 +93,7 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
   }
 
   void initMamMessages() {
+    // TODO: GROUP MAM MESSAGES
     messages = [];
     xmppHelper?.requestMamMessages(friend.id, limit: 20, lastFlag: true);
   }
@@ -155,7 +157,7 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
 
     String fname = file.path.split('/').last;
     String? putUrl =
-        await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
+    await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
 
     if (putUrl != null) {
       final uri = Uri.parse(putUrl);
@@ -176,7 +178,7 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
           'url': putUrl,
         };
         msg.customProperties ??= {};
-        String? pk = await xmppHelper?.sendCustomMessage(
+        String? pk = await xmppHelper?.sendCustomGroupMessage(
             friend.id, mediaType.toString(), jsonEncode(customText));
         setState(() {
           msg.customProperties!['id'] = pk;
@@ -214,9 +216,10 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
         } else if (mediaType == MediaType.video) {
           msgType = 'Отправлено видео-сообщение';
         }
-        sendPush(xmppHelper?.credentialsHash() ?? '',
-            xmppHelper?.getLogin() ?? '', friend.id,
-            only_data: true, text: msgType);
+        // TODO: пуши пока х/з как
+        //sendPush(xmppHelper?.credentialsHash() ?? '',
+        //    xmppHelper?.getLogin() ?? '', friend.id,
+        //    only_data: true, text: msgType);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -266,69 +269,6 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
   void onChatMessage(MessageChat messageChat) {
     Log.d(TAG,
         'receiveEvent onChatMessage: ${messageChat.toEventData().toString()}');
-    if (messageChat.body == null || messageChat.body!.isEmpty) {
-      return;
-    }
-    // Если сообщение уже в списке, тогда пропускаем его
-    for (ChatMessage message in messages) {
-      if (messageChat.id == message.customProperties!['id']) {
-        return;
-      }
-    }
-    Log.d(TAG, 'onChatMessage not in list');
-    final String login = cleanPhone(messageChat.senderJid ?? '');
-    final String phone = login;
-    ChatUser u = ChatUser(id: login, name: phone, phone: phone);
-    if (phone == me.phone) {
-      u = me;
-    }
-    ChatMessage msg = ChatMessage(
-        text: messageChat.body ?? '',
-        user: u,
-        customProperties: {'id': messageChat.id, 'me': phone == me.id},
-        medias: [],
-        // Для отправленных руками тут 0 (не история)
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-            int.parse(messageChat.time.toString())));
-
-    if (messageChat.customText != null && CHAT_MEDIA_TYPES.contains(msg.text)) {
-      MediaType mediaType = MediaType.parse(msg.text);
-      try {
-        Map<String, dynamic> customText = jsonDecode(messageChat.customText!);
-        msg.text = '';
-        // TODO: заглушку
-        String url = customText['url'] ?? '';
-        Map<String, dynamic> customProperties = {};
-        if (mediaType == MediaType.audio) {
-          customProperties['widget'] = VoiceMessage(
-            audioSrc: url,
-            played: false,
-            me: phone == me.id,
-          );
-        } else if (mediaType == MediaType.file) {
-          customProperties['widget'] = FileMessage(
-            fileSrc: url,
-            me: phone == me.id,
-          );
-        } else if (mediaType == MediaType.image) {
-          customProperties['onTap'] = () {
-            launchInWebViewOrVC(url);
-          };
-        }
-        msg.medias!.add(ChatMedia(
-          url: url,
-          type: mediaType,
-          fileName: url.split('/').last,
-          customProperties: customProperties,
-        ));
-      } catch (err) {
-        Log.e(TAG, 'ERROR decode customText in message ${err.toString()}');
-      }
-    }
-    setState(() {
-      messages.insert(0, msg);
-      messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    });
   }
 
   Future<void> launchInWebViewOrVC(String url) async {
@@ -364,12 +304,79 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
 
   @override
   void onGroupMessage(MessageChat messageChat) {
-    Log.d(TAG, 'receiveEvent onGroupMessage: ${messageChat.toString()}');
+    if (messageChat.body == null || messageChat.body!.isEmpty) {
+      return;
+    }
+    // Если сообщение уже в списке, тогда пропускаем его
+    for (ChatMessage message in messages) {
+      if (messageChat.id == message.customProperties!['id']) {
+        return;
+      }
+    }
+    final senderJid = messageChat.senderJid ?? '';
+    final String phone = cleanPhone(senderJid.split('/').last);
+    bool isMe = false;
+    ChatUser u = ChatUser(id: phone, name: phoneMaskHelper(phone), phone: phone);
+    if (phone == me.phone) {
+      u = me;
+      isMe = true;
+    }
+
+    Log.d(TAG, 'onChatMessage not in list for $phone, isMe=$isMe');
+
+
+    ChatMessage msg = ChatMessage(
+        text: messageChat.body ?? '',
+        user: u,
+        customProperties: {'id': messageChat.id, 'me': isMe},
+        medias: [],
+        // Для отправленных руками тут 0 (не история)
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+            int.parse(messageChat.time.toString())));
+
+    if (messageChat.customText != null && CHAT_MEDIA_TYPES.contains(msg.text)) {
+      MediaType mediaType = MediaType.parse(msg.text);
+      try {
+        Map<String, dynamic> customText = jsonDecode(messageChat.customText!);
+        msg.text = '';
+        // TODO: заглушку
+        String url = customText['url'] ?? '';
+        Map<String, dynamic> customProperties = {};
+        if (mediaType == MediaType.audio) {
+          customProperties['widget'] = VoiceMessage(
+            audioSrc: url,
+            played: false,
+            me: isMe,
+          );
+        } else if (mediaType == MediaType.file) {
+          customProperties['widget'] = FileMessage(
+            fileSrc: url,
+            me: isMe,
+          );
+        } else if (mediaType == MediaType.image) {
+          customProperties['onTap'] = () {
+            launchInWebViewOrVC(url);
+          };
+        }
+        msg.medias!.add(ChatMedia(
+          url: url,
+          type: mediaType,
+          fileName: url.split('/').last,
+          customProperties: customProperties,
+        ));
+      } catch (err) {
+        Log.e(TAG, 'ERROR decode customText in message ${err.toString()}');
+      }
+    }
+    setState(() {
+      messages.insert(0, msg);
+      messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    });
   }
 
   @override
   void onNormalMessage(MessageChat messageChat) {
-    //Log.d(TAG, 'receiveEvent onNormalMessage: ${messageChat.toEventData().toString()}');
+    Log.d(TAG, 'receiveEvent onNormalMessage: ${messageChat.toEventData().toString()}');
   }
 
   @override
@@ -403,14 +410,21 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
       return;
     }
     m.text = t;
-    xmppHelper?.sendMessage(friend.id, t).then((String pk) {
+
+    xmppHelper?.sendGroupMessage(friend.id, t).then((String pk) {
+      if (pk == '') {
+        return;
+      }
       m.customProperties!['id'] = pk;
       setState(() {
         messages.insert(0, m);
       });
+      // TODO: push
+      /*
       sendPush(xmppHelper?.credentialsHash() ?? '',
           xmppHelper?.getLogin() ?? '', friend.id,
           only_data: true, text: text);
+      */
     });
   }
 
@@ -421,6 +435,7 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
         title: Text('Чат ${friend.getName()}'),
         backgroundColor: tealColor,
         actions: [
+          /*
           IconButton(
             icon: const Icon(
               Icons.phone,
@@ -434,6 +449,7 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
               });
             },
           ),
+          */
         ],
       ),
       body: DashChat(
@@ -491,43 +507,15 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
               ),
               onPressed: () async {
                 final XFile? image =
-                    await imagePicker.pickImage(source: ImageSource.gallery);
+                await imagePicker.pickImage(source: ImageSource.gallery);
                 await sendChatFile(image?.path, MediaType.image);
               },
             ),
           ],
         ),
         currentUser: me,
-        inputOptions: InputOptions(
-          inputDecoration: buildInputDecoration(),
-          trailing: [
-            Listener(
-              onPointerDown: (event) {},
-              onPointerUp: (event) {},
-              child: IconButton(
-                icon: (const Icon(Icons.mic)),
-                onPressed: () {},
-                color: isRecording ? Colors.red : Colors.grey,
-              ),
-            ),
-          ],
-        ),
         onSend: (ChatMessage m) {
-          m.customProperties ??= {};
-          String text = m.text.trim();
-          if (text.isEmpty) {
-            return;
-          }
-          m.text = text;
-          xmppHelper?.sendMessage(friend.id, m.text).then((String pk) {
-            m.customProperties!['id'] = pk;
-            setState(() {
-              messages.insert(0, m);
-            });
-            sendPush(xmppHelper?.credentialsHash() ?? '',
-                xmppHelper?.getLogin() ?? '', friend.id,
-                only_data: true, text: text);
-          });
+          // Not used, see alternative: ChatComposer
         },
         messages: messages,
         messageListOptions: MessageListOptions(

@@ -15,6 +15,9 @@ class PermissionsManager {
       case 'microphone':
         perm = Permission.microphone;
         break;
+      case 'contacts':
+        perm = Permission.contacts;
+        break;
       default:
         perm = Permission.storage;
         break;

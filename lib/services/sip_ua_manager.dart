@@ -10,7 +10,6 @@ import 'package:sip_ua/sip_ua.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../a_notifications/telegram_bot.dart';
-import '../helpers/network.dart';
 import '../helpers/phone_mask.dart';
 import '../models/call_history_model.dart';
 import '../settings.dart';
@@ -32,7 +31,7 @@ class SIPUAListener implements SipUaHelperListener {
 
   @override
   void callStateChanged(Call call, CallState callState) {
-    print('SIPUAListener: callStateChanged to ${callState.state.toString()}');
+    print('SIPUAListener: callStateChanged to ${callState.state.toString()}, ${DateTime.now().toIso8601String()}');
     /* TODO: здесь надо принимать звонок с колкита? */
     switch (callState.state) {
       case CallStateEnum.PROGRESS:
@@ -181,6 +180,11 @@ class SIPUAListener implements SipUaHelperListener {
     );
     await historyRow.insert2Db();
   }
+
+  @override
+  void onNewNotify(Notify ntf) {
+    // TODO: implement onNewNotify
+  }
 }
 
 class SIPUAManager extends SIPUAHelper {
@@ -279,7 +283,7 @@ class SIPUAManager extends SIPUAHelper {
   */
   String credentialsHash() {
     String login = cleanPhone(preferences.getString('auth_user') ?? '');
-    String passwd = cleanPhone(preferences.getString('password') ?? '');
+    String passwd = preferences.getString('password') ?? '';
     List<int> credentials = utf8.encode(login + passwd);
     return sha256.convert(credentials).toString();
   }

@@ -58,7 +58,16 @@ class UserChatModel extends AbstractModel {
   });
 
   String getName() {
-    return phoneMaskHelper(login ?? '');
+    return name ?? getLogin();
+  }
+
+  String getLogin() {
+    String username = cleanPhone(login ?? '');
+    if (username.length != 11) {
+      return username;
+    }
+    String phone = phoneMaskHelper(username);
+    return phone;
   }
 
   Future<String> getPhoto({Function? ifDownloaded}) async {

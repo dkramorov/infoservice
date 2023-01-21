@@ -33,9 +33,12 @@ abstract class DataChangeEvents {
 class XmppConnection {
   static const MethodChannel _channel = MethodChannel('flutter_xmpp/method');
   static const EventChannel _eventChannel = EventChannel('flutter_xmpp/stream');
-  static const EventChannel _successEventChannel = EventChannel('flutter_xmpp/success_event_stream');
-  static const EventChannel _connectionEventChannel = EventChannel('flutter_xmpp/connection_event_stream');
-  static const EventChannel _errorEventChannel = EventChannel('flutter_xmpp/error_event_stream');
+  static const EventChannel _successEventChannel =
+      EventChannel('flutter_xmpp/success_event_stream');
+  static const EventChannel _connectionEventChannel =
+      EventChannel('flutter_xmpp/connection_event_stream');
+  static const EventChannel _errorEventChannel =
+      EventChannel('flutter_xmpp/error_event_stream');
   static late StreamSubscription streamGetMsg;
   static late StreamSubscription successEventStream;
   static late StreamSubscription connectionEventStream;
@@ -93,11 +96,13 @@ class XmppConnection {
       "username": username,
     };
     printLogForMethodCall('searchUsers', params);
-    final List<dynamic> result = await _channel.invokeMethod('search_users', params);
+    final List<dynamic> result =
+        await _channel.invokeMethod('search_users', params);
     return result;
   }
 
-  Future<String> sendMessage(String toJid, String body, String id, int time) async {
+  Future<String> sendMessage(
+      String toJid, String body, String id, int time) async {
     final params = {
       "to_jid": toJid,
       "body": body,
@@ -109,10 +114,20 @@ class XmppConnection {
     return status;
   }
 
-  Future<String> sendMessageWithType(String toJid,
-      String body,
-      String id,
-      int time,) async {
+  Future<void> sendCustomMessage(String toJid, String body, String id,
+      String customString, int time) async {
+    final params = {
+      "to_jid": toJid,
+      "body": body,
+      "id": id,
+      "customText": customString,
+      "time": time.toString(),
+    };
+    await _channel.invokeMethod('send_custom_message', params);
+  }
+
+  Future<String> sendMessageWithType(
+      String toJid, String body, String id, int time) async {
     final params = {
       "to_jid": toJid,
       "body": body,
@@ -124,7 +139,20 @@ class XmppConnection {
     return status;
   }
 
-  Future<String> sendGroupMessage(String toJid, String body, String id, int time) async {
+  Future<void> sendCustomGroupMessage(String toJid, String body, String id,
+      String customString, int time) async {
+    final params = {
+      "to_jid": toJid,
+      "body": body,
+      "id": id,
+      "customText": customString,
+      "time": time.toString(),
+    };
+    await _channel.invokeMethod('send_customgroup_message', params);
+  }
+
+  Future<String> sendGroupMessage(
+      String toJid, String body, String id, int time) async {
     final params = {
       "to_jid": toJid,
       "body": body,
@@ -132,14 +160,13 @@ class XmppConnection {
       "time": time.toString(),
     };
     printLogForMethodCall('send_group_message', params);
-    final String status = await _channel.invokeMethod('send_group_message', params);
+    final String status =
+        await _channel.invokeMethod('send_group_message', params);
     return status;
   }
 
-  Future<String> sendGroupMessageWithType(String toJid,
-      String body,
-      String id,
-      int time,) async {
+  Future<String> sendGroupMessageWithType(
+      String toJid, String body, String id, int time) async {
     final params = {
       "to_jid": toJid,
       "body": body,
@@ -147,7 +174,8 @@ class XmppConnection {
       "time": time.toString(),
     };
     printLogForMethodCall('send_group_message', params);
-    final String status = await _channel.invokeMethod('send_group_message', params);
+    final String status =
+        await _channel.invokeMethod('send_group_message', params);
     return status;
   }
 
@@ -181,22 +209,28 @@ class XmppConnection {
       },
     );
 
-    connectionEventStream = _connectionEventChannel.receiveBroadcastStream().listen((connectionData) {
-      ConnectionEvent connectionEvent = ConnectionEvent.fromJson(connectionData);
+    connectionEventStream = _connectionEventChannel
+        .receiveBroadcastStream()
+        .listen((connectionData) {
+      ConnectionEvent connectionEvent =
+          ConnectionEvent.fromJson(connectionData);
       dataChangelist.forEach((element) {
         element.onConnectionEvents(connectionEvent);
       });
     }, onError: _onError);
 
-    successEventStream = _successEventChannel.receiveBroadcastStream().listen((successData) {
-      SuccessResponseEvent eventModel = SuccessResponseEvent.fromJson(successData);
+    successEventStream =
+        _successEventChannel.receiveBroadcastStream().listen((successData) {
+      SuccessResponseEvent eventModel =
+          SuccessResponseEvent.fromJson(successData);
       print("success event ${eventModel.toSuccessResponseData()}");
       dataChangelist.forEach((element) {
         element.onSuccessEvent(eventModel);
       });
     }, onError: _onError);
 
-    errorEventStream = _errorEventChannel.receiveBroadcastStream().listen((errorData) {
+    errorEventStream =
+        _errorEventChannel.receiveBroadcastStream().listen((errorData) {
       ErrorResponseEvent eventModel = ErrorResponseEvent.fromJson(errorData);
       print("Error event ${eventModel.toErrorResponseData()}");
       dataChangelist.forEach((element) {
@@ -212,15 +246,29 @@ class XmppConnection {
     connectionEventStream.cancel();
   }
 
-  /// Return: "SUCCESS" or "FAIL"
+  void printLogForMethodCall(String methodName, dynamic params) {
+    log('call method to app from flutter methodName: $methodName: params: $params');
+  }
+
+  Future<void> sendDelieveryReceipt(
+      String toJid, String msgId, String receiptID) async {
+    final params = {"toJid": toJid, "msgId": msgId, "receiptId": receiptID};
+    await _channel.invokeMethod('send_delivery_receipt', params);
+  }
+
+  Future<dynamic> getMyMUCs() async {
+    List<dynamic> myMUCs = await _channel.invokeMethod('get_my_mucs');
+    print('checkNewFeat getMyMUCs myMUCs: $myMUCs');
+    return myMUCs;
+  }
+
   Future<bool> createMUC(String name, bool persistent) async {
     final params = {"group_name": name, "persistent": "$persistent"};
     bool response = await _channel.invokeMethod('create_muc', params);
-    print("createMUC response $response");
+    print("createMUC ${params} response $response");
     return response;
   }
 
-  /// Return: "TRUE" or "FALSE"
   Future<String> joinMucGroups(List<String> allGroupsId) async {
     if (allGroupsId.isNotEmpty) {
       final params = {
@@ -228,50 +276,20 @@ class XmppConnection {
       };
       printLogForMethodCall('join_muc_groups', params);
       String response = await _channel.invokeMethod('join_muc_groups', params);
-      print("joinMucGroups response $response");
+      print("joinMucGroups $params response $response");
       return response;
     }
     return "SUCCESS";
   }
 
-  /// Return: "TRUE" or "FALSE"
   Future<bool> joinMucGroup(String groupID) async {
     final params = {
       "group_id": groupID,
     };
     printLogForMethodCall('join_muc_group', params);
-    return await _channel.invokeMethod('join_muc_group', params);
-  }
-
-  Future<void> sendCustomMessage(String toJid, String body, String id, String customString, int time) async {
-    final params = {
-      "to_jid": toJid,
-      "body": body,
-      "id": id,
-      "customText": customString,
-      "time": time.toString(),
-    };
-    await _channel.invokeMethod('send_custom_message', params);
-  }
-
-  void printLogForMethodCall(String methodName, dynamic params) {
-    log('call method to app from flutter methodName: $methodName: params: $params');
-  }
-
-  Future<void> sendCustomGroupMessage(String toJid, String body, String id, String customString, int time) async {
-    final params = {
-      "to_jid": toJid,
-      "body": body,
-      "id": id,
-      "customText": customString,
-      "time": time.toString(),
-    };
-    await _channel.invokeMethod('send_customgroup_message', params);
-  }
-
-  Future<void> sendDelieveryReceipt(String toJid, String msgId, String receiptID) async {
-    final params = {"toJid": toJid, "msgId": msgId, "receiptId": receiptID};
-    await _channel.invokeMethod('send_delivery_receipt', params);
+    bool response = await _channel.invokeMethod('join_muc_group', params);
+    print("joinMucGroup $params response $response");
+    return response;
   }
 
   Future<void> addMembersInGroup(String groupName, List<String> members) async {
@@ -279,9 +297,46 @@ class XmppConnection {
     await _channel.invokeMethod('add_members_in_group', params);
   }
 
-  Future<void> addAdminsInGroup(String groupName, List<String> adminMembers) async {
+  Future<void> addAdminsInGroup(
+      String groupName, List<String> adminMembers) async {
     final params = {"group_name": groupName, "members_jid": adminMembers};
     await _channel.invokeMethod('add_admins_in_group', params);
+  }
+
+  Future<void> addOwner(String groupName, List<String> membersJid) async {
+    final params = {"group_name": groupName, "members_jid": membersJid};
+    print('checkGroups addOwner params: $params');
+    await _channel.invokeMethod('add_owners_in_group', params);
+  }
+
+  Future<List<dynamic>> getMembers(String groupName) async {
+    final params = {"group_name": groupName};
+    List<dynamic> members = await _channel.invokeMethod('get_members', params);
+    print('checkGroups getMembers $params members: $members');
+    return members;
+  }
+
+  Future<List<dynamic>> getAdmins(String groupName) async {
+    final params = {"group_name": groupName};
+    List<dynamic> admins = await _channel.invokeMethod('get_admins', params);
+    print('checkGroups $params getAdmins admins: $admins');
+    return admins;
+  }
+
+  Future<List<dynamic>> getOwners(String groupName) async {
+    final params = {"group_name": groupName};
+    //List<dynamic> owners = await _channel.invokeMethod('get_owners', params);
+    var owners = await _channel.invokeMethod('get_owners', params);
+    print('checkGroups $params getOwners owners: $owners');
+    return owners;
+  }
+
+  Future<int> getOnlineMemberCount(String groupName) async {
+    final params = {"group_name": groupName};
+    int memberCount =
+        await _channel.invokeMethod('get_online_member_count', params);
+    print('checkGroups $params getOccupantsSize: $memberCount');
+    return memberCount;
   }
 
   Future<void> removeMember(String groupName, List<String> membersJid) async {
@@ -296,37 +351,16 @@ class XmppConnection {
     await _channel.invokeMethod('remove_admins_from_group', params);
   }
 
-  Future<void> addOwner(String groupName, List<String> membersJid) async {
-    final params = {"group_name": groupName, "members_jid": membersJid};
-    print('checkGroups addOwner params: $params');
-    await _channel.invokeMethod('add_owners_in_group', params);
-  }
-
   Future<void> removeOwner(String groupName, List<String> membersJid) async {
     final params = {"group_name": groupName, "members_jid": membersJid};
     print('checkGroups removeOwner params: $params');
     await _channel.invokeMethod('remove_owners_from_group', params);
   }
 
-  Future<List<dynamic>> getOwners(String groupName) async {
-    final params = {"group_name": groupName};
-    print('group_name: $groupName');
-    List<dynamic> owners = await _channel.invokeMethod('get_owners', params);
-    print('checkGroups getOwners owners: $owners');
-    return owners;
-  }
-
-  Future<int> getOnlineMemberCount(String groupName) async {
-    final params = {"group_name": groupName};
-    int memberCount = await _channel.invokeMethod('get_online_member_count', params);
-    print('checkGroups getOccupantsSize: $memberCount');
-    return memberCount;
-  }
-
   Future<String> getLastSeen(String userJid) async {
     final params = {"user_jid": userJid};
     String lastSeenTime = await _channel.invokeMethod('get_last_seen', params);
-    print('checkNewFeat getLastSeen lastSeenTime: $lastSeenTime');
+    print('checkNewFeat getLastSeen $params lastSeenTime: $lastSeenTime');
     return lastSeenTime;
   }
 
@@ -348,23 +382,24 @@ class XmppConnection {
     return myRosters;
   }
 
-  Future<List<dynamic>> getMembers(String groupName) async {
-    final params = {"group_name": groupName};
-    print('group_name: $groupName');
-    List<dynamic> members = await _channel.invokeMethod('get_members', params);
-    print('checkGroups getMembers members: $members');
-    return members;
+  Future<Map<Object?, Object?>> getVCard(String userJid) async {
+    final params = {"user_jid": userJid};
+    Map<Object?, Object?> vCard =
+        await _channel.invokeMethod('get_vcard', params);
+    print('checkNewFeat getVCard vcard: $vCard');
+    return vCard;
   }
 
-  Future<List<dynamic>> getAdmins(String groupName) async {
-    final params = {"group_name": groupName};
-    List<dynamic> admins = await _channel.invokeMethod('get_admins', params);
-    print('checkGroups getAdmins admins: $admins');
-    return admins;
+  Future<void> saveVCard(Map<Object?, Object?> vCard) async {
+    final params = {"DESC": vCard['DESC']};
+    await _channel.invokeMethod('save_vcard', params);
+    print('checkNewFeat saveVCard vcard: $vCard');
   }
 
-  Future<void> requestMamMessages(String userJid, String requestSince, String requestBefore, String limit, bool lastFlag) async {
-    print(" Plugin : User Jid : $userJid , Request since : $requestSince , Request Before : $requestBefore, Limit : $limit, lastFlag : $lastFlag ");
+  Future<void> requestMamMessages(String userJid, String requestSince,
+      String requestBefore, String limit, bool lastFlag) async {
+    print(
+        " Plugin : User Jid : $userJid , Request since : $requestSince , Request Before : $requestBefore, Limit : $limit, lastFlag : $lastFlag ");
     final params = {
       "userJid": userJid,
       "requestBefore": requestBefore,
@@ -375,8 +410,10 @@ class XmppConnection {
     await _channel.invokeMethod('request_mam', params);
   }
 
-  Future<void> changeTypingStatus(String userJid,
-      String typingstatus,) async {
+  Future<void> changeTypingStatus(
+    String userJid,
+    String typingstatus,
+  ) async {
     print(" Plugin : User Jid : $userJid , Typing Status : $typingstatus ");
     final params = {
       "userJid": userJid,
@@ -385,15 +422,18 @@ class XmppConnection {
     await _channel.invokeMethod('change_typing_status', params);
   }
 
-  Future<void> changePresenceType(String presenceType, String presenceMode) async {
-    print(" Plugin : presenceType : $presenceType , presenceMode : $presenceMode");
+  Future<void> changePresenceType(
+      String presenceType, String presenceMode) async {
+    print(
+        " Plugin : presenceType : $presenceType , presenceMode : $presenceMode");
     final params = {"presenceType": presenceType, "presenceMode": presenceMode};
     await _channel.invokeMethod('change_presence_type', params);
   }
 
   Future<XmppConnectionState> getConnectionStatus() async {
     printLogForMethodCall('get_connection_status', '');
-    String connectionState = await _channel.invokeMethod('get_connection_status');
+    String connectionState =
+        await _channel.invokeMethod('get_connection_status');
     return connectionState.toConnectionState();
   }
 

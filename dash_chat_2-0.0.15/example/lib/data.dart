@@ -6,16 +6,16 @@ String profileImage =
 // We have all the possibilities for users
 ChatUser user = ChatUser(id: '0');
 ChatUser user1 = ChatUser(id: '1');
-ChatUser user2 = ChatUser(id: '2', firstName: 'Niki Lauda');
-ChatUser user3 = ChatUser(id: '3', lastName: 'Clark');
+ChatUser user2 = ChatUser(id: '2', name: 'Niki Lauda');
+ChatUser user3 = ChatUser(id: '3', name: 'Clark');
 ChatUser user4 = ChatUser(id: '4', profileImage: profileImage);
-ChatUser user5 = ChatUser(id: '5', firstName: 'Charles', lastName: 'Leclerc');
+ChatUser user5 = ChatUser(id: '5', name: 'Charles', phone: 'Leclerc');
 ChatUser user6 =
-    ChatUser(id: '6', firstName: 'Max', profileImage: profileImage);
+    ChatUser(id: '6', name: 'Max', profileImage: profileImage);
 ChatUser user7 =
-    ChatUser(id: '7', lastName: 'Toto', profileImage: profileImage);
+    ChatUser(id: '7', name: 'Toto', profileImage: profileImage);
 ChatUser user8 = ChatUser(
-    id: '8', firstName: 'Toto', lastName: 'Clark', profileImage: profileImage);
+    id: '8', name: 'Toto', phone: 'Clark', profileImage: profileImage);
 
 List<ChatMessage> allUsersSample = <ChatMessage>[
   ChatMessage(

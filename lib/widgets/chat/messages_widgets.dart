@@ -1,6 +1,15 @@
 import 'dart:math' as math;
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:infoservice/settings.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:open_file/open_file.dart';
+
+import '../../helpers/network.dart';
+import '../../helpers/string_parser.dart';
 
 final MediaQueryData media =
     MediaQueryData.fromWindow(WidgetsBinding.instance.window);
@@ -300,7 +309,6 @@ class _VoiceMessageState extends State<VoiceMessage>
       final processingState = playerState.processingState;
       if (processingState == ProcessingState.loading ||
           processingState == ProcessingState.buffering) {
-
       } else if (processingState == ProcessingState.completed) {
         _stopPlaying();
         player.seek(Duration.zero);
@@ -326,7 +334,7 @@ class _VoiceMessageState extends State<VoiceMessage>
       duration = p.inSeconds;
       final newRemaingTime1 = p.toString().split('.')[0];
       final newRemaingTime2 =
-      newRemaingTime1.substring(newRemaingTime1.length - 5);
+          newRemaingTime1.substring(newRemaingTime1.length - 5);
       if (newRemaingTime2 != remaingTime) {
         setState(() => remaingTime = newRemaingTime2);
       }
@@ -388,5 +396,182 @@ class CustomTrackShape extends RoundedRectSliderTrackShape {
         offset.dy + (parentBox.size.height - trackHeight) / 2;
     final double trackWidth = parentBox.size.width;
     return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
+  }
+}
+
+class FileMessage extends StatefulWidget {
+  static const fileIcon = 'assets/svg/file.svg';
+
+  final String fileSrc;
+  final Color meBgColor, contactBgColor;
+  final bool me;
+  final localPath;
+
+  FileMessage({
+    Key? key,
+    required this.fileSrc,
+    required this.me,
+    this.meBgColor = const Color(0xFFFF4550),
+    this.contactBgColor = const Color(0xffffffff),
+    this.localPath = '',
+  }) : super(key: key);
+
+  @override
+  _FileMessageState createState() => _FileMessageState();
+}
+
+class _FileMessageState extends State<FileMessage> {
+  late final String ext;
+  final int maxFnameLen = 15;
+  int percent = 0;
+  bool isDownloaded = false;
+  late String fname;
+
+  @override
+  void initState() {
+    super.initState();
+    fname = uri2rus(widget.fileSrc.split('/').last);
+    if (fname.length > maxFnameLen) {
+      ext = '...${fname.substring(fname.length - maxFnameLen, fname.length)}';
+    } else {
+      ext = fname;
+    }
+
+    // Если файл пользователя
+    if (widget.me && widget.localPath != '') {
+      if (mounted) {
+        setState(() {
+          isDownloaded = true;
+        });
+      }
+    } else {
+      //fname = translit(fname);
+      getLocalFilePath(fname).then((file) {
+        file.exists().then((isExists) {
+          setState(() {
+            isDownloaded = isExists;
+          });
+        });
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _sizerChild(context);
+
+  Future<void> launchInWebViewOrVC(String url) async {
+    Uri urla = Uri.parse(url);
+    if (!await launchUrl(
+      urla,
+      mode: LaunchMode.inAppWebView,
+      webViewConfiguration: const WebViewConfiguration(
+          headers: <String, String>{'my_header_key': 'my_header_value'}),
+    )) {
+      print('Could not launch $url');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Не удалось открыть файл'),
+        ));
+      }
+    }
+  }
+
+  Future<void> download2Local(String url) async {
+    final file = await getLocalFilePath(fname);
+    Dio dio = Dio();
+    dio.download(url, file.path, onReceiveProgress: (actualBytes, totalBytes) {
+      int p = (actualBytes / totalBytes * 100).toInt();
+      if (p > 1) {
+        setState(() {
+          percent = p;
+        });
+      }
+    }).then((success) {
+      setState(() {
+        isDownloaded = true;
+      });
+    });
+  }
+
+  GestureDetector _sizerChild(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        // Deprecated: open link
+        //await launchInWebViewOrVC(widget.fileSrc);
+        File file = await getLocalFilePath(fname);
+
+        if (widget.me && widget.localPath != '') {
+          file = File(widget.localPath);
+        }
+
+        if (isDownloaded) {
+          print('opening ${file.path}...');
+          final result = await OpenFile.open(file.path);
+          print('opening result ${result.message}');
+        } else {
+          if (percent > 0) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Файл еще загружается, пожалуйста, подождите'),
+              ));
+            }
+          } else {
+            if (percent == 0) {
+              setState(() {
+                percent = 1;
+              });
+              await download2Local(widget.fileSrc);
+            }
+          }
+        }
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: .8.w()),
+        constraints: BoxConstraints(maxWidth: 100.w() * .7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(6.w()),
+            bottomLeft:
+                widget.me ? Radius.circular(6.w()) : Radius.circular(2.w()),
+            bottomRight:
+                !widget.me ? Radius.circular(6.w()) : Radius.circular(1.2.w()),
+            topRight: Radius.circular(6.w()),
+          ),
+          color: widget.me ? widget.meBgColor : widget.contactBgColor,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.w(), vertical: 2.8.w()),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SvgPicture.asset(
+                FileMessage.fileIcon,
+                width: 32,
+                height: 32,
+                color: widget.me ? Colors.white : Colors.black,
+              ),
+              SizedBox(width: 3.w()),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    ext,
+                    style: TextStyle(
+                        color: widget.me ? Colors.white : Colors.black),
+                  ),
+                  SIZED_BOX_H06,
+                  Text(
+                    isDownloaded ? 'Файл загружен' : (percent == 0 ? 'Загрузить файл' : 'Загрузка ${percent}%'),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+                  ),
+                ],
+              ),
+              SizedBox(width: 2.2.w()),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

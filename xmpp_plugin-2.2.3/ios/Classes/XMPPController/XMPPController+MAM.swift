@@ -23,7 +23,8 @@ extension XMPPController {
         let vType : String? = nil
         var fields: [XMLElement] = []
         var defaultLimit : Int = 50
-        //1
+        var isMUC = false
+
         // Before
         if tsBefore > 0 {
             let date = Date(timeIntervalSince1970: Double(tsBefore)/1000.0)
@@ -60,17 +61,25 @@ extension XMPPController {
             let aJIDField = XMPPMessageArchiveManagement.field(withVar: "with",
                                                                type: nil,
                                                                andValue: jidString)
-            fields.append(aJIDField)
+            if jidString.contains("@conference.") {
+                isMUC = true
+            } else {
+                fields.append(aJIDField)
+            }
         }
-        printLog("\(#function) | req mam: since \(tsSince) | JIDString: \(jidString) | Limit \(defaultLimit)")
+        printLog("\(#function) | req mam: since \(tsSince) | JIDString: \(jidString) | Limit \(defaultLimit) | isMUC \(isMUC)")
   
         var xmppRS : XMPPResultSet = XMPPResultSet(max: defaultLimit)
         // добавляем before чтобы получать последние
         if lastFlag {
             xmppRS = XMPPResultSet(max: defaultLimit, before: "")
         }
-        objXMPP.xmppMAM?.retrieveMessageArchive (at: nil, withFields: fields, with:xmppRS)
-       
+        if (isMUC) {
+            let roomJID = XMPPJID(string: jid)
+            objXMPP.xmppMAM?.retrieveMessageArchive (at: roomJID, withFields: fields, with:xmppRS)
+        } else {
+            objXMPP.xmppMAM?.retrieveMessageArchive (at: nil, withFields: fields, with:xmppRS)
+        }
     }
     
     func manageMAMMessage(message: XMPPMessage) {

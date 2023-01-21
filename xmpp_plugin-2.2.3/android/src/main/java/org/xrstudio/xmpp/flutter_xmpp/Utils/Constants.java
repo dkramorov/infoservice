@@ -30,6 +30,9 @@ public class Constants {
     public static final String CREATE_ROSTER = "create_roster";
     public static final String DROP_ROSTER = "drop_roster";
     public static final String GET_MY_ROSTERS = "get_my_rosters";
+    public static final String GET_VCARD = "get_vcard";
+    public static final String SAVE_VCARD = "save_vcard";
+    public static final String GET_MY_MUCS = "get_my_mucs";
     public static final String CUSTOM_MESSAGE = "send_custom_message";
     public static final String ADD_ADMINS_IN_GROUP = "add_admins_in_group";
     public static final String SEND_DELIVERY_ACK = "send_delivery_receipt";
@@ -59,6 +62,7 @@ public class Constants {
     public static final String URN_XMPP_TIME = "urn:xmpp:time";
     public static final String AUTHENTICATED = "Authenticated";
     public static final String URN_XMPP_CUSTOM = "urn:xmpp:custom";
+    public static final String DESC = "DESC";
 
     // Params
     public static final String userJid = "userJid";

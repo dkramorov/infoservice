@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:infoservice/pages/chat/tab_add_contact.dart';
+import 'package:infoservice/pages/chat/tab_add_muc.dart';
 
-import '../../helpers/log.dart';
-import '../../helpers/phone_mask.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
-import '../../widgets/rounded_button_widget.dart';
-import '../../widgets/rounded_input_text.dart';
 
 class Add2RosterScreen extends StatefulWidget {
   final SIPUAManager? _sipHelper;
   final JabberManager? _xmppHelper;
-  const Add2RosterScreen(this._sipHelper, this._xmppHelper, {Key? key}) : super(key: key);
+  const Add2RosterScreen(this._sipHelper, this._xmppHelper, {Key? key})
+      : super(key: key);
   static const String id = '/add2roster_screen/';
 
   @override
@@ -26,6 +25,25 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
 
   String newUser = '8';
 
+  String title = NavigationData.nav[0]['title'];
+  final Duration _durationPageView = const Duration(milliseconds: 500);
+  final Curve _curvePageView = Curves.easeInOut;
+
+  int _pageIndex = 0;
+  final PageController _pageController = PageController(
+    initialPage: 0,
+    keepPage: false,
+  );
+  void setPageview(int index, {gotoInvisible: false}) {
+    if (!gotoInvisible) {
+      setState(() {
+        _pageIndex = index;
+      });
+    }
+    _pageController.animateToPage(index,
+        curve: _curvePageView, duration: _durationPageView);
+  }
+
   @override
   void setState(fn) {
     if (mounted) {
@@ -38,37 +56,22 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
     super.initState();
   }
 
-  /* Отправка формы авторизации */
-  void addUserFormSubmit() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    _formKey.currentState?.save();
-
-    String phone = cleanPhone(newUser);
-    JabberManager.flutterXmpp?.searchUsers(phone).then((List<dynamic> users) {
-      List<String> result = [];
-      bool founded = false;
-      for (String user in users) {
-        String curUser = cleanPhone(user);
-        result.add(curUser);
-        if (curUser == phone) {
-          founded = true;
-        }
-      }
-      Log.d(TAG, 'founded by $phone: $result');
-      if (founded) {
-        xmppHelper?.add2Roster(newUser);
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red,
-            content: Text('Пользователь $newUser не найден'),
-          ),
-        );
-      }
+  void _onPageChanged(int page) {
+    setState(() {
+      title = NavigationData.nav[page]['title'];
     });
+  }
+
+  void setStateCallback(Map<String, dynamic> newState) {
+    if (newState['setPageview'] != null) {
+      int pind = newState['setPageview'];
+      bool gotoInvisible = false;
+      // Все странички видимые пока
+      if (pind >= NavigationData.nav.length) {
+        gotoInvisible = true;
+      }
+      setPageview(pind, gotoInvisible: gotoInvisible);
+    }
   }
 
   @override
@@ -79,83 +82,80 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
         backgroundColor: tealColor,
       ),
       body: Center(
-          child: SingleChildScrollView(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 40.0,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(
-                    height: 15.0,
-                  ),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'Добавление нового контакта',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20.0,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 15.0,
-                        ),
-                        RoundedInputText(
-                          hint: 'Логин пользователя',
-                          onChanged: (String? text) {
-                            setState(() {
-                              newUser = text ?? '';
-                            });
-                          },
-                          /*
-                          validator: (String value) {
-                            bool match = RegExp(r'^[a-z0-9]+@[a-z0-9\.]+$')
-                                .hasMatch(value);
-                            if (value.isEmpty || !match) {
-                              return 'Неправильный логин';
-                            }
-                          },
-                           */
-                          formatters: [PhoneFormatter()],
-                          validator: (String? value) {
-                            String v = value ?? '';
-                            bool match = phoneMaskValidator().hasMatch(v);
-                            if (v.isEmpty || !match) {
-                              return 'Телефон нового контакта';
-                            }
-                            return null;
-                          },
-                          keyboardType: TextInputType.number,
-                          defaultValue: newUser,
-                        ),
-                        const SizedBox(
-                          height: 15.0,
-                        ),
-                        RoundedButtonWidget(
-                          text: const Text(
-                            'Добавить',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          color: tealColor,
-                          onPressed: () {
-                            addUserFormSubmit();
-                          },
-                        )
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: _onPageChanged,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            TabAddContact(
+              sipHelper: sipHelper,
+              xmppHelper: xmppHelper,
+              pageController: _pageController,
+              setStateCallback: setStateCallback,
             ),
+            TabAddMuc(
+              sipHelper: sipHelper,
+              xmppHelper: xmppHelper,
+              pageController: _pageController,
+              setStateCallback: setStateCallback,
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12.0),
+          topRight: Radius.circular(12.0),
+        ),
+        child: SizedBox(
+          child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _pageIndex,
+            selectedItemColor: tealColor,
+            unselectedItemColor: Colors.grey.shade500,
+            backgroundColor: backgroundLightColor,
+            // Показывать подписи к вкладкам
+            //showSelectedLabels: false,
+            //showUnselectedLabels: false,
+            elevation: 0,
+            onTap: (index) {
+              setPageview(index);
+              setState(() => _pageIndex = index);
+            },
+            items: NavigationData.nav
+                .where((navItem) => navItem['hide'] == null) // прячем некоторые
+                .map(
+                  (navItem) => BottomNavigationBarItem(
+                icon: Icon(
+                  navItem['icon'],
+                ),
+                tooltip: navItem['tooltip'],
+                label: navItem['label'],
+              ),
+            )
+                .toList(),
           ),
         ),
+      ),
     );
   }
+}
+
+class NavigationData {
+  static List<dynamic> nav = [
+    {
+      'icon': Icons.person_add,
+      'index': 0,
+      'label': 'Добавить контакт',
+      'tooltip': 'Добавить контакт',
+      'title': 'Добавить контакт',
+    },
+    {
+      'icon': Icons.group_add,
+      'index': 1,
+      'label': 'Добавить группу',
+      'tooltip': 'Добавить группу',
+      'title': 'Добавить группу',
+    },
+  ];
 }

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
 
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
 import 'package:xmpp_plugin/error_response_event.dart';
@@ -40,12 +39,16 @@ class JabberManager implements DataChangeEvents {
   late SharedPreferences preferences;
   late Timer mainTimer;
   static bool enabled = true; // на время отладки можно отключать
+  static Map<Object?, Object?> myVCard = {};
 
   int checkRegisterTimer = 5;
   int updateTokenTimer = 1;
   bool stopFlag = false;
   static String fcmToken = '';
   static String apnsToken = '';
+
+  static int lastRosterFetchTime = 0;
+  static int rosterFetchInterval = 15 * 60 * 1000;
 
   List<MessageChat> events = [];
   List<PresentModel> presentMo = [];
@@ -78,6 +81,13 @@ class JabberManager implements DataChangeEvents {
     return preferences.getString('password') ?? '';
   }
 
+  String getJid({String? phone}) {
+    if (phone != null) {
+      return '${cleanPhone(phone)}@$JABBER_SERVER';
+    }
+    return '${cleanPhone(getLogin())}@$JABBER_SERVER';
+  }
+
   void setStopFlag(bool flag) {
     stopFlag = flag;
   }
@@ -85,6 +95,14 @@ class JabberManager implements DataChangeEvents {
   /* Debug print */
   static void doprintln(String msg) {
     print(msg);
+  }
+
+  static bool isConference(String jid) {
+    /* Проверка на наличие conference в идентификаторе */
+    if (jid.endsWith('@conference.$JABBER_SERVER')) {
+      return true;
+    }
+    return false;
   }
 
   /* Регистрация на сип сервере */
@@ -191,11 +209,11 @@ class JabberManager implements DataChangeEvents {
   }
 
   Future<void> start(String login, String passwd) async {
-    final String authUser = cleanPhone(login);
+    final String authUser = getJid(phone:login);
     updateTokenTimer = 1;
 
     final auth = {
-      'user_jid': '$authUser@$JABBER_SERVER/${Uuid().v4()}',
+      'user_jid': '$authUser/${const Uuid().v4()}',
       'password': passwd,
       'host': JABBER_SERVER,
       'port': '$JABBER_PORT', // Порт обязательно строкой
@@ -214,24 +232,8 @@ class JabberManager implements DataChangeEvents {
   }
 
   Future<void> stop() async {
+    myVCard = {};
     await flutterXmpp?.logout();
-  }
-
-  void checkStoragePermission() async {
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      final PermissionStatus permissionStatus =
-          await Permission.storage.request();
-      if (permissionStatus.isGranted) {
-        String filePath = await NativeLogHelper().getDefaultLogFilePath();
-        doprintln('logFilePath: $filePath');
-      } else {
-        doprintln('logFilePath: please allow permission');
-      }
-    } else {
-      String filePath = await NativeLogHelper().getDefaultLogFilePath();
-      doprintln('logFilePath: $filePath');
-    }
   }
 
   void _onError(Object error) {
@@ -285,6 +287,22 @@ class JabberManager implements DataChangeEvents {
     doprintln('onConnectionEvents ~~>>${connectionEvent.toJson()}');
     jabberStream.registrationChanged(
         connectionEvent.type == XmppConnectionState.authenticated);
+    // Выполняем вход во все группы, которые у нас есть
+    if (connectionEvent.type == XmppConnectionState.authenticated) {
+      lastRosterFetchTime = 0;
+      enter2GroupsFromVCard();
+    }
+  }
+
+  Future<dynamic> getMyMUCs() async {
+    final mucs = await flutterXmpp!.getMyMUCs();
+    return mucs ?? [];
+  }
+
+  Future<bool> createMUC(String groupName, bool persistent) async {
+    bool resp = await flutterXmpp!.createMUC(groupName, persistent);
+    doprintln('createMUC $groupName, result $resp');
+    return resp;
   }
 
   Future<String> joinMucGroups(List<String> allGroupsId) async {
@@ -304,16 +322,24 @@ class JabberManager implements DataChangeEvents {
     await flutterXmpp!.addAdminsInGroup(groupName, adminMembers);
   }
 
-  Future<void> getMembers(String groupName) async {
-    await flutterXmpp!.getMembers(groupName);
+  Future<void> addOwner(String groupName, List<String> membersJid) async {
+    await flutterXmpp!.addOwner(groupName, membersJid);
   }
 
-  Future<void> getOwners(String groupName) async {
-    await flutterXmpp!.getOwners(groupName);
+  Future<List<dynamic>> getMembers(String groupName) async {
+    return await flutterXmpp!.getMembers(groupName);
   }
 
-  Future<void> getOnlineMemberCount(String groupName) async {
-    await flutterXmpp!.getOnlineMemberCount(groupName);
+  Future<List<dynamic>> getAdmins(String groupName) async {
+    return await flutterXmpp!.getAdmins(groupName);
+  }
+
+  Future<List<dynamic>> getOwners(String groupName) async {
+    return await flutterXmpp!.getOwners(groupName);
+  }
+
+  Future<int> getOnlineMemberCount(String groupName) async {
+    return await flutterXmpp!.getOnlineMemberCount(groupName);
   }
 
   Future<void> removeMember(String groupName, List<String> membersJid) async {
@@ -324,25 +350,16 @@ class JabberManager implements DataChangeEvents {
     await flutterXmpp!.removeAdmin(groupName, membersJid);
   }
 
-  Future<void> addOwner(String groupName, List<String> membersJid) async {
-    await flutterXmpp!.addOwner(groupName, membersJid);
-  }
-
   Future<void> removeOwner(String groupName, List<String> membersJid) async {
     await flutterXmpp!.removeOwner(groupName, membersJid);
   }
 
-  Future<void> getAdmins(String groupName) async {
-    await flutterXmpp!.getAdmins(groupName);
+  Future<String> getLastSeen(String userJid) async {
+    return await flutterXmpp!.getLastSeen(userJid);
   }
 
   Future<void> changePresenceType(presenceType, presenceMode) async {
     await flutterXmpp!.changePresenceType(presenceType, presenceMode);
-  }
-
-  createMUC(String groupName, bool persistent) async {
-    bool groupResponse = await flutterXmpp!.createMUC(groupName, persistent);
-    doprintln('responseTest groupResponse $groupResponse');
   }
 
   Future<XmppConnectionState?> showConnectionStatus() async {
@@ -353,40 +370,131 @@ class JabberManager implements DataChangeEvents {
     return null;
   }
 
+  Future<dynamic> getVCard(String phone) async {
+    return await flutterXmpp?.getVCard(getJid(phone: phone)) ?? {};
+  }
+
+  Future<dynamic> getMyVCard() async {
+    if (myVCard.isNotEmpty) {
+      doprintln('VCARD already received ${myVCard.toString()}');
+      return myVCard;
+    }
+    myVCard = await flutterXmpp?.getVCard(getJid()) ?? {};
+    return myVCard;
+  }
+
+  Future<dynamic> saveMyVCard() async {
+    if (myVCard.isEmpty) {
+      doprintln('Can not save my vcard because it is empty');
+      return;
+    }
+    return await flutterXmpp?.saveVCard(myVCard);
+  }
+
+  Future<dynamic> saveVCard(Map<Object, Object> vCard) async {
+    /* Сохранять можно только свою vСard, но здесь получаем произвольный словарь */
+    return await flutterXmpp?.saveVCard(vCard);
+  }
+
+  Future<Map<String, dynamic>> getVCardDescAsDict() async {
+    await getMyVCard();
+    Map<String, dynamic> descObj = {};
+    try {
+      descObj = jsonDecode(JabberManager.myVCard['DESC'].toString());
+    } catch (ex, stacktrace) {
+      doprintln('[EXCEPTION]: ${ex.toString()}');
+      doprintln(stacktrace.toString());
+    }
+    return descObj;
+  }
+
+  Future<void> group2VCard(String newMuc) async {
+    /* Добавляем группу в VCard и сохраняем
+       TODO: предусмотреть случай, если с двух устройств будет это делаться (перетрет)
+    */
+    Map<String, dynamic> descObj = await getVCardDescAsDict();
+    if (descObj['groups'] != null) {
+      if (descObj['groups'][newMuc] != null) {
+        doprintln('group $newMuc already in VCard');
+      } else {
+        descObj['groups'][newMuc] = 1;
+      }
+    } else {
+      descObj['groups'] = {
+        newMuc: 1,
+      };
+    }
+    // Сохраняем VCard
+    JabberManager.myVCard['DESC'] = jsonEncode(descObj);
+    await saveMyVCard();
+  }
+
+  Future<void> enter2GroupsFromVCard() async {
+    /* Выполнить вход во все группы, которые вписаны в VCard */
+    Map<String, dynamic> descObj = await getVCardDescAsDict();
+    if (descObj['groups'] == null) {
+      doprintln('Can not enter to groups from VCard[DESC]: Groups is null');
+      return;
+    }
+    for (String key in descObj['groups'].keys) {
+      await joinMucGroup(key);
+    }
+    ;
+  }
+
   Future<dynamic> getRoster() async {
     final roster = await flutterXmpp?.getMyRosters();
     return roster ?? [];
   }
 
   Future<dynamic> add2Roster(String phone) async {
-    String userJid = '${cleanPhone(phone)}@$JABBER_SERVER';
-    await flutterXmpp?.createRoster(userJid);
+    await flutterXmpp?.createRoster(getJid(phone: phone));
   }
 
   Future<dynamic> dropFromRoster(String phone) async {
-    String userJid = '${cleanPhone(phone)}@$JABBER_SERVER';
-    await flutterXmpp?.dropRoster(userJid);
+    await flutterXmpp?.dropRoster(getJid(phone: phone));
   }
 
   Future<String> sendCustomMessage(
       String to, String body, String customText) async {
-    String userJid = '${cleanPhone(to)}@$JABBER_SERVER';
+    /* Отправка сообщения с использованием медиа файлов */
     int now = DateTime.now().millisecondsSinceEpoch;
     String pk = const Uuid().v4();
-    await flutterXmpp?.sendCustomMessage(
-        userJid, body, pk, customText, now);
+    await flutterXmpp?.sendCustomMessage(getJid(phone: to), body, pk, customText, now);
     return pk;
   }
 
   Future<String> sendMessage(String to, String body) async {
-    String toJid = '${cleanPhone(to)}@$JABBER_SERVER';
     int now = DateTime.now().millisecondsSinceEpoch;
     String pk = const Uuid().v4();
-    await flutterXmpp?.sendMessage(toJid, body, pk, now);
+    await flutterXmpp?.sendMessage(getJid(phone: to), body, pk, now);
     return pk;
   }
 
-  Future<void> requestMamMessages(String phone,
+  Future<String> sendCustomGroupMessage(
+      String to, String body, String customText) async {
+    if (!JabberManager.isConference(to)) {
+      doprintln('sendCustomGroupMessage ERROR: $to without conference');
+      return '';
+    }
+    int now = DateTime.now().millisecondsSinceEpoch;
+    String pk = const Uuid().v4();
+    await flutterXmpp?.sendCustomGroupMessage(to, body, pk, customText, now);
+    return pk;
+  }
+
+  Future<String> sendGroupMessage(String to, String body) async {
+    if (!JabberManager.isConference(to)) {
+      doprintln('sendGroupMessage ERROR: $to without conference');
+      return '';
+    }
+    int now = DateTime.now().millisecondsSinceEpoch;
+    String pk = const Uuid().v4();
+    await flutterXmpp?.sendGroupMessage(to, body, pk, now);
+    return pk;
+  }
+
+  Future<void> requestMamMessages(String userJid,
       {String since = '',
       String before = '',
       int limit = 10,
@@ -397,7 +505,9 @@ class JabberManager implements DataChangeEvents {
     if (!registered) {
       return;
     }
-    String userJid = '${cleanPhone(phone)}@$JABBER_SERVER';
+    // userJid должен быть полным - с доменом
+    //String userJid = '${cleanPhone(phone)}@$JABBER_SERVER';
+
     /*
     int now = DateTime.now().millisecondsSinceEpoch;
     int longAgo = now - 60 * 60 * 12 * 1000 * 300;

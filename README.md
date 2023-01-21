@@ -42,3 +42,39 @@ just add and it does resolves your bug
 2) и прием в активном приложении
 3) Убрать ограничение на время разговора
 Приоритетные 4, 5 пункты и звонки
+
+TODO:
+писать в базу и проверять доступны ли пути к файлам из база
+на медиа сообщения чата, например,
+грузим из /data/sd/ файл и этот файл сразу можно проверить,
+но если снова получить сообщения, тогда будет только ссылка
+и придется качать, без записи в базу пути к файлу так и будет
+
+
+https://github.com/igniterealtime/Smack/blob/master/smack-extensions/src/main/java/org/jivesoftware/smackx/muc/MultiUserChatManager.java
+https://github.com/igniterealtime/Smack/blob/f65cf45b5c1aecb6cbfef94890523bc3a1906ac8/smack-extensions/src/integration-test/java/org/jivesoftware/smackx/muc/MultiUserChatTest.java#L368
+/Users/jocker/StudioProjects/infoservice/ios/.symlinks/plugins/xmpp_plugin/android/src/main/java/org/xrstudio/xmpp/flutter_xmpp/Connection/FlutterXmppConnection.java
+    // Возвращает пустой список
+    Utils.printLog("---------------------------------------");
+    Utils.printLog(multiUserChatManager.getJoinedRooms().toString());
+    Utils.printLog(multiUserChatManager.getJoinedRooms(Utils.getFullJid("89016598623@chat.masterme.ru").asEntityJidOrThrow()).toString());
+    // Тоже пусто
+    Utils.printLog("---------------------------------------1");
+    Jid me = Utils.getFullJid(groupName + "@" + "conference." + mHost);
+    Utils.printLog(multiUserChatManager.isServiceEnabled(me) + "");
+    Utils.printLog(multiUserChatManager.getJoinedRooms().toString());
+    Utils.printLog("---------------------------------------2");
+
+https://discourse.igniterealtime.org/t/muc-getjoinedrooms-userjid-returns-empty/62517/2
+    // Возвращает все
+    Utils.printLog("---------------------------------------");
+    String searchDomain = mUsername + "@" + "conference." + mHost;
+    Utils.printLog(multiUserChatManager.getHostedRooms(JidCreate.domainBareFrom(searchDomain)).toString());
+
+Чтобы войти в группу
+https://xmpp.org/extensions/xep-0045.html#enter
+
+Search Module
+https://github.com/dbsGen/XEP-0055
+https://github.com/dbsGen/XEP-0055/issues/1
+https://stackoverflow.com/questions/51758226/how-to-check-if-a-user-jid-is-already-taken-in-xmppframework

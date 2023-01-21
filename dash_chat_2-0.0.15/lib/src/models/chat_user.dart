@@ -4,10 +4,10 @@ part of dash_chat_2;
 class ChatUser {
   ChatUser({
     required this.id,
+    this.phone,
+    this.name,
     this.profileImage,
     this.customProperties,
-    this.firstName,
-    this.lastName,
   });
 
   /// Create a ChatUser instance from json data
@@ -15,8 +15,8 @@ class ChatUser {
     return ChatUser(
       id: jsonData['id'].toString(),
       profileImage: jsonData['profileImage']?.toString(),
-      firstName: jsonData['firstName']?.toString(),
-      lastName: jsonData['lastName']?.toString(),
+      name: jsonData['name']?.toString(),
+      phone: jsonData['phone']?.toString(),
       customProperties: jsonData['customProperties'] as Map<String, dynamic>,
     );
   }
@@ -35,17 +35,13 @@ class ChatUser {
   /// First name of the user,
   /// if you only have the name as one string
   /// you can put the entire value in the [fristName] field
-  String? firstName;
+  String? name;
 
   /// Last name of the user
-  String? lastName;
+  String? phone;
 
-  /// Get the full name (firstName + lastName) of the user
-  String getFullName() {
-    return (firstName ?? '') +
-        (firstName != null && lastName != null
-            ? ' ${lastName!}'
-            : lastName ?? '');
+  String getName() {
+    return name ?? id;
   }
 
   /// Convert a ChatUser into a json
@@ -53,8 +49,8 @@ class ChatUser {
     return <String, dynamic>{
       'id': id,
       'profileImage': profileImage,
-      'firstName': firstName,
-      'lastName': lastName,
+      'name': name,
+      'phone': phone,
       'customProperties': customProperties,
     };
   }

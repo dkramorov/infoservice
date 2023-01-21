@@ -8,6 +8,7 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:infoservice/pages/authorization.dart';
 import 'package:infoservice/pages/chat/add2roster.dart';
 import 'package:infoservice/pages/chat/chat_page.dart';
+import 'package:infoservice/pages/chat/group_chat_page.dart';
 import 'package:infoservice/pages/companies/companies_listing_screen.dart';
 import 'package:infoservice/pages/companies/company_wizard_screen.dart';
 import 'package:infoservice/pages/default_page.dart';
@@ -22,7 +23,6 @@ import 'package:infoservice/sip_ua/dialpadscreen.dart';
 import 'package:uuid/uuid.dart';
 
 import 'a_notifications/notifications.dart';
-import 'a_notifications/telegram_bot.dart';
 import 'helpers/phone_mask.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -151,7 +151,8 @@ void main() {
       } else {
         String err = 'token not received for ${Platform.operatingSystem}';
         err += ' ${Platform.operatingSystemVersion}';
-        await TelegramBot().sendNotify(err);
+        print(err);
+        //await TelegramBot().sendNotify(err);
       }
     });
 
@@ -203,6 +204,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         Add2RosterScreen(sipHelper, xmppHelper),
     ChatScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         ChatScreen(sipHelper, xmppHelper, arguments),
+    GroupChatScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        GroupChatScreen(sipHelper, xmppHelper, arguments),
     CompaniesListingScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         CompaniesListingScreen(sipHelper, xmppHelper, arguments),
     CompanyWizardScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>

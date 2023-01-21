@@ -134,6 +134,24 @@ extension XMPPController {
         }
     }
 
+    func sendVCard(withVCard vCard : [String : String]) {
+        printLog("\(#function) | vCard: \(vCard)")
+        addLogger(.sentMessageToFlutter, vCard)
+
+        if let callBack = APP_DELEGATE.singalCallBack {
+            callBack(vCard)
+        }
+    }
+    
+    func sendMyRooms(withUsersJid arrJid : [String]) {
+        printLog("\(#function) | arrJid: \(arrJid)")
+        addLogger(.sentMessageToFlutter, arrJid)
+        
+        if let callBack = APP_DELEGATE.singalCallBack {
+            callBack(arrJid)
+        }
+    }
+
     func sendSlot(slot: XMPPSlot?, resultIq: XMPPIQ?, error: Error?) {
         printLog("\(#function) | slot: \(slot)")
         addLogger(.sentMessageToFlutter, [slot, resultIq, error])

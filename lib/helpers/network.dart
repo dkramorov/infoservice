@@ -100,6 +100,11 @@ Future<String> makeAppFolder() async {
   return destFolder;
 }
 
+Future<File> getLocalFilePath(String filename) async {
+  final String destFolder = await makeAppFolder();
+  return File('$destFolder/$filename');
+}
+
 Future<File> downloadFile(String url, File file) async {
   var req = await http.get(Uri.parse(url));
   var bytes = req.bodyBytes;

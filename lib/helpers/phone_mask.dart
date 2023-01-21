@@ -8,6 +8,9 @@ String cleanPhone(String phone) {
      Надо сплитить по @ иначе почему-то все восьмерки телефон дублируется
   */
   String newPhone = phone.split('@')[0].replaceAll(RegExp('[^0-9]+'), '');
+  if (newPhone.startsWith('7')) {
+    newPhone = '8${newPhone.substring(1)}';
+  }
   return newPhone;
 }
 

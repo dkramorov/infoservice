@@ -39,21 +39,33 @@ class _DefaultPageWidget extends State<DefaultPage>
   late bool awesomeNotificationsPerms = false;
 
   String title = NavigationData.nav[0]['title'];
-  final Duration _durationPageView = const Duration(milliseconds: 500);
+  final Duration _durationPageView = const Duration(milliseconds: 700);
   final Curve _curvePageView = Curves.easeInOut;
   int _pageIndex = 0;
   final PageController _pageController = PageController(
     initialPage: 0,
     keepPage: false,
   );
-  void setPageview(int index, {gotoInvisible: false}) {
+  void setPageview(int index, {gotoInvisible = false, withAnimation = false}) {
+    // Будем анимировать если переход на следующую или предыдущую
+    if (!withAnimation) {
+      if (index == (_pageIndex + 1) || index == (_pageIndex - 1)) {
+        withAnimation = true;
+      }
+    }
+
     if (!gotoInvisible) {
       setState(() {
         _pageIndex = index;
       });
     }
-    _pageController.animateToPage(index,
-        curve: _curvePageView, duration: _durationPageView);
+
+    if (withAnimation) {
+      _pageController.animateToPage(index,
+          curve: _curvePageView, duration: _durationPageView);
+    } else {
+      _pageController.jumpToPage(index);
+    }
   }
 
   void _onPageChanged(int page) {
@@ -66,7 +78,8 @@ class _DefaultPageWidget extends State<DefaultPage>
     if (newState['setPageview'] != null) {
       int pind = newState['setPageview'];
       bool gotoInvisible = false;
-      if (pind >= 5) {
+      // После пятой невидимые странички идут
+      if (pind >= NavigationData.nav.length - 1) {
         gotoInvisible = true;
       }
       setPageview(pind, gotoInvisible: gotoInvisible);
@@ -116,17 +129,6 @@ class _DefaultPageWidget extends State<DefaultPage>
       jabberSubscription =
           xmppHelper?.jabberStream.registration.listen((isRegistered) {
         setState(() {});
-/* Тестирование запроса слота с сервера
-        if (isRegistered) {
-          Future.delayed(const Duration(seconds:2), () {
-            JabberManager.flutterXmpp
-                ?.requestSlot('test.txt', 10)
-                .then((String slotUrl) {
-              print("++++++++++++++++++++++++++$slotUrl");
-            });
-          });
-        }
- */
       });
     }
 
@@ -346,6 +348,11 @@ class _DefaultPageWidget extends State<DefaultPage>
 
   @override
   void transportStateChanged(TransportState state) {}
+
+  @override
+  void onNewNotify(Notify ntf) {
+    // TODO: implement onNewNotify
+  }
 }
 
 class NavigationData {

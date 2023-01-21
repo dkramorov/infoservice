@@ -76,8 +76,7 @@ class _CallScreenWidget extends State<CallScreenWidget>
         /* Для ios тут мы видим звонок - пробуем ответить на него ожидая регистрацию
         */
         callKitIncomingInterceptor();
-
-        break;
+        //break;
       }
     }
     _initRenderers();
@@ -213,15 +212,17 @@ class _CallScreenWidget extends State<CallScreenWidget>
   void _handelStreams(CallState event) async {
     MediaStream? stream = event.stream;
     if (event.originator == 'local') {
+      /* TODO: Вылезает Unhandled Exception: Call initialize before setting the stream
+               пока ложим болт на видео
       if (_localRenderer != null) {
         _localRenderer!.srcObject = stream;
       }
+      */
       if (!kIsWeb && !WebRTC.platformIsDesktop) {
         event.stream?.getAudioTracks().first.enableSpeakerphone(false);
       }
       _localStream = stream;
-    }
-    if (event.originator == 'remote') {
+    } else if (event.originator == 'remote') {
       if (_remoteRenderer != null) {
         _remoteRenderer!.srcObject = stream;
       }
@@ -658,5 +659,10 @@ class _CallScreenWidget extends State<CallScreenWidget>
   @override
   void onNewMessage(SIPMessageRequest msg) {
     // NO OP
+  }
+
+  @override
+  void onNewNotify(Notify ntf) {
+    // TODO: implement onNewNotify
   }
 }

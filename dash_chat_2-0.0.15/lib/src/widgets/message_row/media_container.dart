@@ -31,7 +31,14 @@ class MediaContainer extends StatelessWidget {
         return Stack(
           alignment: AlignmentDirectional.bottomEnd,
           children: <Widget>[
-            VideoPlayer(url: media.url),
+            GestureDetector(
+                onTap: () async {
+                  if (media.customProperties != null &&
+                      media.customProperties!['onTap'] != null) {
+                    media.customProperties!['onTap']();
+                  }
+                },
+                child: VideoPlayer(url: media.url)),
             if (media.isUploading) loading
           ],
         );
@@ -39,21 +46,32 @@ class MediaContainer extends StatelessWidget {
         return Stack(
           alignment: AlignmentDirectional.bottomEnd,
           children: <Widget>[
-            Image(
-              height: height,
-              width: width,
-              fit: BoxFit.cover,
-              alignment: isOwnMessage ? Alignment.topRight : Alignment.topLeft,
-              image: getImageProvider(media.url),
+            GestureDetector(
+              onTap: () async {
+                if (media.customProperties != null &&
+                    media.customProperties!['onTap'] != null) {
+                  media.customProperties!['onTap']();
+                }
+              },
+              child: Image(
+                height: height,
+                width: width,
+                fit: BoxFit.cover,
+                alignment:
+                    isOwnMessage ? Alignment.topRight : Alignment.topLeft,
+                image: getImageProvider(media.url),
+              ),
             ),
             if (media.isUploading) loading
           ],
         );
+      case MediaType.file:
       case MediaType.audio:
         return Stack(
           alignment: AlignmentDirectional.bottomEnd,
           children: <Widget>[
-            if (media.customProperties != null && media.customProperties!['widget'] != null)
+            if (media.customProperties != null &&
+                media.customProperties!['widget'] != null)
               media.customProperties!['widget'] as Widget,
             if (media.isUploading) loading
           ],

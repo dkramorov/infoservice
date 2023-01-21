@@ -325,4 +325,9 @@ class _MyDialPadWidget extends State<DialPadWidget>
       receivedMsg = msgBody;
     });
   }
+
+  @override
+  void onNewNotify(Notify ntf) {
+    // TODO: implement onNewNotify
+  }
 }

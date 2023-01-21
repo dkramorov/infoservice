@@ -18,11 +18,11 @@ class XMPPController : NSObject {
     var xmppRoster : XMPPRoster?
     var xmppRosterStorage: XMPPRosterCoreDataStorage?
     var xmppLastActivity = XMPPLastActivity()
-    
-    /// Using get chat Archive Messages
     var xmppMAM: XMPPMessageArchiveManagement? // = XMPPMessageArchiveManagement.init()
-
-    var xmppFileUpload: XMPPHTTPFileUpload? // = XMPPHTTPFileUpload.init()
+    var xmppFileUpload: XMPPHTTPFileUpload?
+    var xmppMUC: XMPPMUC?
+    var xmppVCardStorage: XMPPvCardCoreDataStorage?
+    var xmppVCardTemp: XMPPvCardTempModule?
     
     internal var hostName: String = ""
     internal var hostPort: Int16 = 0
@@ -96,6 +96,30 @@ class XMPPController : NSObject {
        self.xmppFileUpload = XMPPHTTPFileUpload.init()
        self.xmppFileUpload?.activate(self.xmppStream)
        self.xmppFileUpload?.addDelegate(self, delegateQueue: DispatchQueue.main)
+        
+        // XMPPMUC Configuration
+        self.xmppMUC = XMPPMUC.init()
+        self.xmppMUC?.activate(self.xmppStream)
+        self.xmppMUC?.addDelegate(self, delegateQueue: DispatchQueue.main)
+
+        // xmppVCardTemp
+        self.xmppVCardStorage = XMPPvCardCoreDataStorage.init()
+        if let objVCardSto = self.xmppVCardStorage {
+            self.xmppVCardTemp = XMPPvCardTempModule.init(vCardStorage: objVCardSto, dispatchQueue: DispatchQueue.main)
+            self.xmppVCardTemp?.activate(self.xmppStream)
+            self.xmppVCardTemp?.addDelegate(self, delegateQueue: DispatchQueue.main)
+        }
+        
+        /* Тут на перелогин выбрасывается исключение, поэтому делаем как в ростере
+
+           TODO: решить как то эту проблему, потому что в этом случае и ростер пустой
+                 а хотелось бы вывозить через VCard
+         
+        self.xmppVCardStorage = XMPPvCardCoreDataStorage()
+        self.xmppVCardTemp = XMPPvCardTempModule.init(vCardStorage: self.xmppVCardStorage!, dispatchQueue: DispatchQueue.main)
+        self.xmppVCardTemp?.activate(self.xmppStream)
+        self.xmppVCardTemp?.addDelegate(self, delegateQueue: DispatchQueue.main)
+         */
     }
         
     func connect() {
@@ -230,7 +254,7 @@ extension XMPPController {
         }
         // Other Chat message received
         let body =  message.body;
-        printLog("\(#function) | message body  \(body)")
+        printLog("\(#function) | message body  \(String(describing: body))")
         let vMessType : String = (message.type ?? xmppChatType.NORMAL).trim()
         switch vMessType {
             case xmppChatType.NORMAL:
