@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:infoservice/pages/register/step_confirm_phone_view.dart';
 import 'package:infoservice/pages/register/step_register_phone_view.dart';
 
+import '../../models/bg_tasks_model.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
 
@@ -53,8 +54,11 @@ class _RegWizardScreenWidgetState extends State<RegWizardScreenWidget> {
       });
     }
     if (newState['userConfirmed'] != null && newState['userConfirmed']) {
-      xmppHelper?.changeSettings(userData);
-      sipHelper?.changeSettings(userData);
+      userData['login'] = userData['phone'];
+      BGTasksModel.createRegisterTask(userData);
+
+      //xmppHelper?.changeSettings(userData);
+      //sipHelper?.changeSettings(userData);
     }
   }
 

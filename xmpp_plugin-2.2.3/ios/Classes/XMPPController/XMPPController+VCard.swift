@@ -27,7 +27,7 @@ extension XMPPController {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MM-yyyy HH:mm:ss"
 
-        vCard["FN"] = user.familyName
+        vCard["FN"] = user.formattedName
         vCard["NICKNAME"] = user.nickname
         vCard["URL"] = user.url
         if (user.bday != nil) {

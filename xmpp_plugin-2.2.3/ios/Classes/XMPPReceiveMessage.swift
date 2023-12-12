@@ -19,7 +19,7 @@ extension XMPPController {
         }
         
         //TODO: Message - Singal
-        var objMess : Message = Message.init()
+        let objMess : Message = Message.init()
         objMess.initWithMessage(message: message)
         let vId : String = objMess.id.trim()
         if vId.count == 0 {
@@ -32,6 +32,7 @@ extension XMPPController {
         let dicDate = ["type" : pluginMessType.Message,
                        "id" : objMess.id,
                        "from" : objMess.senderJid,
+                       "to" : objMess.jid,
                        "body" : objMess.message,
                        "customText" : customElement,
                        "msgtype" : vMessType,

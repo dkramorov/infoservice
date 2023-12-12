@@ -16,8 +16,8 @@ class DialpadModel {
 
   @override
   String toString() {
-    return 'phone: $phone, isSip: $isSip, startCall: $startCall' +
-        ' company: ${company.toString()},' +
+    return 'phone: $phone, isSip: $isSip, startCall: $startCall'
+        ' company: ${company.toString()},'
         ' user: ${user.toString()}';
   }
 }

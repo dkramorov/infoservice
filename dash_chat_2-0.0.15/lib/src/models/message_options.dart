@@ -31,7 +31,19 @@ class MessageOptions {
     this.timeFormat,
     this.messageTimeBuilder,
     this.messageMediaBuilder,
+    this.readStatusIcon,
+    this.unreadStatusIcon,
+    this.fontSize,
   });
+
+  // Text font size
+  final double? fontSize;
+
+  // Icon with single arrow - message not read
+  final Widget? unreadStatusIcon;
+
+  // Icon with double arrow - message read
+  final Widget? readStatusIcon;
 
   /// Format of the time if [showTime] is true
   /// Default to: DateFormat('HH:mm')

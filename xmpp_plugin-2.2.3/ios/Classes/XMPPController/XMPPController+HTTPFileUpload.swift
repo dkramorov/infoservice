@@ -15,7 +15,7 @@ extension XMPPController {
 
         print("\(#function) | requestSlot | filename : \(filename)")
         let hostName = "upload." + withStrem.hostName!
-        var serviceJID = XMPPJID(string: hostName)
+        let serviceJID = XMPPJID(string: hostName)
         objXMPP.xmppFileUpload?.requestSlot(fromService:serviceJID!,
                                             filename:filename,
                                             size:UInt(filesize),

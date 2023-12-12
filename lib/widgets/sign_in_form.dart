@@ -1,11 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:infoservice/helpers/dialogs.dart';
+import 'package:infoservice/models/bg_tasks_model.dart';
+import 'package:infoservice/models/user_settings_model.dart';
+import 'package:infoservice/services/shared_preferences_manager.dart';
 import 'package:infoservice/widgets/rounded_input_text.dart';
 import 'package:infoservice/widgets/submit_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/phone_mask.dart';
+import '../helpers/log.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
 
@@ -52,23 +58,34 @@ class _SignInFormWidgetState extends State<SignInFormWidget> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    await showLoading(removeAfterSec: 5);
+
     Map<String, dynamic> userData = {
-      'phone': loginController.text,
+      'login': loginController.text,
       'passwd': passwdController.text,
-      'name': loginController.text,
+      //'name': loginController.text,
     };
-
-    SharedPreferences preferences = await SharedPreferences.getInstance();
-    bool? isDropped = preferences.getBool(userData['phone']);
-    print('check account for drop ${userData['phone']} (isDropped $isDropped)');
-    if (isDropped != null && isDropped) {
-      openInfoDialog(context, () {}, 'Аккаунт удален',
-          'К сожалению, нельзя войти, воспользуйтесь регистрацией', 'Хорошо');
-      return;
+    UserSettingsModel? user = await UserSettingsModel().getUser();
+    if (user != null) {
+      Log.d('loginFormSubmit', 'check account for drop => ${user.isDropped}');
+      if (user.isDropped != null && user.isDropped!) {
+        if (mounted) {
+          openInfoDialog(
+              context,
+              () {},
+              'Аккаунт удален',
+              'К сожалению, нельзя войти, воспользуйтесь регистрацией',
+              'Хорошо');
+          return;
+        }
+      }
     }
-
-    xmppHelper?.changeSettings(userData);
-    sipHelper?.changeSettings(userData);
+    /* Задача на проверку авторизации в фоне
+       после выполнения успешной,
+       остальные запросы на авторизацию должны быть удалены
+    */
+    await BGTasksModel.createRegisterTask(userData);
+    // Ожидаем результат в authorization.dart
   }
 
   @override

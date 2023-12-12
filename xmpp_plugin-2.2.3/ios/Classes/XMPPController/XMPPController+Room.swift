@@ -195,7 +195,7 @@ extension XMPPController : XMPPRoomDelegate {
         let newConfiguration = configForm.copy() as? DDXMLElement
         
         let vKey : String = "field"
-        guard let arrRoomConfig = newConfiguration?.elements(forName: vKey) as? [DDXMLElement] else {
+        guard let arrRoomConfig = newConfiguration?.elements(forName: vKey) else {
             print("\(#function) | Not getting XMPPRoom Configuration | XMPPRoom: \(vRoomName)")
             return
         }
@@ -255,44 +255,43 @@ extension XMPPController : XMPPRoomDelegate {
 
         if let ele = iq.childElement {
             /*
-        <iq xmlns="jabber:client" lang="en" to="89148959223@chat.masterme.ru/03ff2067-6ebc-473c-9b10-a95ca4e7de54" from="vjud.chat.masterme.ru" type="result" id="3D9E14F7-7897-477E-8E16-5C57D5E0FB5F">
-            <query xmlns="jabber:iq:search">
-                <x xmlns="jabber:x:data" type="result">
-                    <title>Search Results for vjud.chat.masterme.ru</title>
-                    <reported>
-                        <field var="jid" type="text-single" label="Jabber ID"></field>
-                        <field var="fn" type="text-single" label="Full Name"></field>
-                        <field var="first" type="text-single" label="Name"></field>
-                        <field var="middle" type="text-single" label="Middle Name"></field>
-                        <field var="last" type="text-single" label="Family Name"></field>
-                        <field var="nick" type="text-single" label="Nickname"></field>
-                        <field var="bday" type="text-single" label="Birthday"></field>
-                        <field var="ctry" type="text-single" label="Country"></field>
-                        <field var="locality" type="text-single" label="City"></field>
-                        <field var="email" type="text-single" label="Email"></field>
-                        <field var="orgname" type="text-single" label="Organization Name"></field>
-                        <field var="orgunit" type="text-single" label="Organization Unit"></field>
-                    </reported>
-                    <item>
-                        <field var="jid"><value>89148959223@chat.masterme.ru</value></field>
-                        <field var="fn"><value>Den</value></field><field var="last"><value></value></field>
-                        <field var="first"><value></value></field><field var="middle"><value></value></field>
-                        <field var="nick"><value>Денис Краморов</value></field>
-                        <field var="bday"><value></value></field><field var="ctry"><value></value></field>
-                        <field var="locality"><value></value></field><field var="email"><value></value></field>
-                        <field var="orgname"><value></value></field><field var="orgunit"><value></value></field>
-                    </item>
-                </x>
-            </query>
-        </iq>
+            <iq xmlns="jabber:client" lang="en" to="89148959223@chat.masterme.ru/03ff2067-6ebc-473c-9b10-a95ca4e7de54" from="vjud.chat.masterme.ru" type="result" id="3D9E14F7-7897-477E-8E16-5C57D5E0FB5F">
+                <query xmlns="jabber:iq:search">
+                    <x xmlns="jabber:x:data" type="result">
+                        <title>Search Results for vjud.chat.masterme.ru</title>
+                        <reported>
+                            <field var="jid" type="text-single" label="Jabber ID"></field>
+                            <field var="fn" type="text-single" label="Full Name"></field>
+                            <field var="first" type="text-single" label="Name"></field>
+                            <field var="middle" type="text-single" label="Middle Name"></field>
+                            <field var="last" type="text-single" label="Family Name"></field>
+                            <field var="nick" type="text-single" label="Nickname"></field>
+                            <field var="bday" type="text-single" label="Birthday"></field>
+                            <field var="ctry" type="text-single" label="Country"></field>
+                            <field var="locality" type="text-single" label="City"></field>
+                            <field var="email" type="text-single" label="Email"></field>
+                            <field var="orgname" type="text-single" label="Organization Name"></field>
+                            <field var="orgunit" type="text-single" label="Organization Unit"></field>
+                        </reported>
+                        <item>
+                            <field var="jid"><value>89148959223@chat.masterme.ru</value></field>
+                            <field var="fn"><value>Den</value></field><field var="last"><value></value></field>
+                            <field var="first"><value></value></field><field var="middle"><value></value></field>
+                            <field var="nick"><value>Денис Краморов</value></field>
+                            <field var="bday"><value></value></field><field var="ctry"><value></value></field>
+                            <field var="locality"><value></value></field><field var="email"><value></value></field>
+                            <field var="orgname"><value></value></field><field var="orgunit"><value></value></field>
+                        </item>
+                    </x>
+                </query>
+            </iq>
             */
-            var searchResult = [String]()
-
             var eleName : String = ""
             var eleXmlns : String = ""
             if let checkEleName = ele.name { eleName = checkEleName.trim() }
             if let checkEleXmlns = ele.xmlns { eleXmlns = checkEleXmlns.trim() }
-            if (eleName == CustomXmlStorageConstants.queryElement && eleXmlns == CustomXmlStorageConstants.xmlns) {
+            if (eleName == CustomXmlStorageConstants.queryElement && eleXmlns == CustomXmlStorageConstants.xmlns_search) {
+                var searchResult = [String]()
                 for xEle in ele.elements(forName: CustomXmlStorageConstants.xElement) {
                     for itemEle in xEle.elements(forName: CustomXmlStorageConstants.itemElement) {
                         for fieldEle in itemEle.elements(forName: CustomXmlStorageConstants.fieldElement) {
@@ -311,6 +310,32 @@ extension XMPPController : XMPPRoomDelegate {
                 }
                 printLog("+++ IQ SearchUsers \(eleName) | \(eleXmlns) | \(searchResult)")
                 self.sendSearchUsersResult(withJids: searchResult)
+            }
+            /*
+             <iq xml:lang='en' to='89016598623@chat.masterme.ru/57827693-950f-49d8-9358-99b5162ba556' from='89016598623@chat.masterme.ru' type='result' id='Emly6-35'>
+               <query xmlns='jabber:iq:private'>
+                 <chats xmlns='chats:new_messages'>
+                   <chat_id_1>value_long_long_text and etc...</chat_id_1>
+                 </chats>
+               </query>
+             </iq>
+            */
+            if (eleName == CustomXmlStorageConstants.queryElement && eleXmlns == CustomXmlStorageConstants.xmlns_private_storage) {
+                var searchResult = [String:[String:String]]()
+                if let subElements = ele.children {
+                    for childEle in subElements {
+                        if let curXmlns = childEle.value(forKey: "xmlns") as? String {
+                            searchResult[curXmlns] = [:]
+                            if let subItems = childEle.children {
+                                for subItem in subItems {
+                                    searchResult[curXmlns]![subItem.name!] = subItem.stringValue!
+                                }
+                            }
+                        }
+                    }
+                }
+                printLog("+++ IQ PrivateStorage \(eleName) | \(eleXmlns) | \(searchResult)")
+                self.sendPrivateStorageResult(withResult: searchResult)
             }
         }
 
@@ -505,7 +530,8 @@ extension XMPPController {
 
 // MARK: - Constants
 fileprivate struct CustomXmlStorageConstants {
-    static let xmlns = "jabber:iq:search"
+    static let xmlns_search = "jabber:iq:search"
+    static let xmlns_private_storage = "jabber:iq:private"
     static let queryElement = "query"
     static let xElement = "x"
     static let itemElement = "item"

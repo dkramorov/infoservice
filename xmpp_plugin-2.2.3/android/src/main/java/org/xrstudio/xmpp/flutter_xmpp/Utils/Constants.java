@@ -43,6 +43,8 @@ public class Constants {
     public static final String REMOVE_OWNERS_FROM_GROUP = "remove_owners_from_group";
     public static final String REMOVE_ADMINS_FROM_GROUP = "remove_admins_from_group";
     public static final String REMOVE_MEMBERS_FROM_GROUP = "remove_members_from_group";
+    public static final String GET_PRIVATE_STORAGE = "get_private_storage";
+    public static final String SET_PRIVATE_STORAGE = "set_private_storage";
 
     public static final String DOT = ".";
     public static final String TS = "ts";

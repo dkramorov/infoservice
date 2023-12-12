@@ -45,7 +45,8 @@ class AbstractModel {
   }
 
   Future<int> insert2Db() async {
-    Log.i('$tableName insert2Db', toMap().toString());
+    final Map<String, dynamic> mapA = toMap();
+    Log.i('$tableName insert2Db', mapA.toString());
     final db = await openDB();
     if (db == null) {
       return 0;
@@ -53,13 +54,16 @@ class AbstractModel {
     // id null if we need new row
     int pk = await db.insert(
       tableName,
-      toMap(),
+      mapA,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    id = pk;
     return pk;
   }
 
   Future<void> update2Db() async {
+    final Map<String, dynamic> mapA = toMap();
+    Log.i('$tableName update2Db', mapA.toString());
     if (id == null) {
       Log.e('$tableName update2Db', 'id is null, we can not update');
       return;
@@ -70,13 +74,15 @@ class AbstractModel {
     }
     await db.update(
       tableName,
-      toMap(),
+      mapA,
       where: 'id = ?',
       whereArgs: [id],
     );
   }
 
   Future<void> delete2Db() async {
+    final Map<String, dynamic> mapA = toMap();
+    Log.i('$tableName delete2Db', mapA.toString());
     if (id == null) {
       Log.e('$tableName delete2Db', 'id is null, we can not drop');
       return;

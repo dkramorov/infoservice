@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:infoservice/models/dialpad_model.dart';
+import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/sip_ua/dialpadscreen.dart';
 import 'package:intl/intl.dart';
+import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
 import '../../models/call_history_model.dart';
 import '../../models/companies/orgs.dart';
@@ -30,6 +32,7 @@ class TabCallHistoryView extends StatefulWidget {
 }
 
 class _TabCallHistoryViewState extends State<TabCallHistoryView> {
+  static const tag = 'TabCallHistoryView';
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
 
@@ -60,13 +63,19 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
     setState(() {});
   }
 
-  void loadHistory() {
-    CallHistoryModel()
-        .getAllHistory(sipHelper?.getLogin() ?? '')
-        .then((result) {
-      setState(() {
+  Future<void> loadHistory() async {
+    UserSettingsModel? user = await UserSettingsModel().getUser();
+    if (user == null) {
+      Log.d(tag, 'user is null');
+      return;
+    }
+    List<CallHistoryModel> result =
+        await CallHistoryModel().getAllHistory(user.phone ?? '');
+
+    setState(() {
+      if (mounted) {
         history = result;
-      });
+      }
     });
   }
 
@@ -150,7 +159,7 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
                           )
                         : Container(),
                     Text(
-                      phoneMaskHelper(item.dest ?? ''),
+                      item.name ?? phoneMaskHelper(item.dest ?? ''),
                       style: const TextStyle(
                         fontSize: 19.0,
                       ),

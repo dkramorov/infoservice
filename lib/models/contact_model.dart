@@ -148,11 +148,11 @@ class ContactModel extends AbstractModel {
   @override
   String toString() {
     final String table = getTableName();
-    return '$table{id: $id, identifier: $identifier, displayName: $displayName, ' +
-        'givenName: $givenName, middleName: $middleName, familyName: $familyName, ' +
-        'prefix: $prefix, suffix: $suffix, company: $company, jobTitle: $jobTitle, ' +
-        'androidAccountType: $androidAccountType, androidAccountName: $androidAccountName, ' +
-        'emails: $emails} phones: $phones, postalAddresses: $postalAddresses, ' +
+    return '$table{id: $id, identifier: $identifier, displayName: $displayName, '
+        'givenName: $givenName, middleName: $middleName, familyName: $familyName, '
+        'prefix: $prefix, suffix: $suffix, company: $company, jobTitle: $jobTitle, '
+        'androidAccountType: $androidAccountType, androidAccountName: $androidAccountName, '
+        'emails: $emails} phones: $phones, postalAddresses: $postalAddresses, '
         'avatar: $avatar, birthday: $birthday, hasXMPP: $hasXMPP, updated: $updated';
   }
 
@@ -170,17 +170,19 @@ class ContactModel extends AbstractModel {
     return toModel(user);
   }
 
-  Future<List<ContactModel>> getAllContacts(
+  Future<Map<String, ContactModel>> getAllContacts(
       {int? limit, int? offset}) async {
+    Map<String, ContactModel> result = {};
     final db = await openDB();
     final List<Map<String, dynamic>> maps = await db.query(
       tableContactsModel,
       limit: limit,
       offset: offset,
     );
-    return List.generate(maps.length, (i) {
-      return toModel(maps[i]);
-    });
+    for (int i=0; i < maps.length; i++) {
+      ContactModel contactModel = toModel(maps[i]);
+      result[contactModel.identifier ?? ''] = contactModel;
+    }
+    return result;
   }
-
 }

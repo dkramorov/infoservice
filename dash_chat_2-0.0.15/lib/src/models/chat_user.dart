@@ -4,6 +4,7 @@ part of dash_chat_2;
 class ChatUser {
   ChatUser({
     required this.id,
+    this.jid,
     this.phone,
     this.name,
     this.profileImage,
@@ -14,6 +15,7 @@ class ChatUser {
   factory ChatUser.fromJson(Map<String, dynamic> jsonData) {
     return ChatUser(
       id: jsonData['id'].toString(),
+      jid: jsonData['jid'].toString(),
       profileImage: jsonData['profileImage']?.toString(),
       name: jsonData['name']?.toString(),
       phone: jsonData['phone']?.toString(),
@@ -23,6 +25,9 @@ class ChatUser {
 
   /// Id of the user
   String id;
+
+  /// Jid of the user
+  String? jid;
 
   /// Profile image of the user
   String? profileImage;
@@ -44,10 +49,17 @@ class ChatUser {
     return name ?? id;
   }
 
+  @override
+  String toString() {
+    return '{id: $id, name: $name, jid: $jid, profileImage: $profileImage, '
+        'phone: $phone, customProperties: $customProperties}';
+  }
+
   /// Convert a ChatUser into a json
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'id': id,
+      'jid': jid,
       'profileImage': profileImage,
       'name': name,
       'phone': phone,

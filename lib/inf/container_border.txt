@@ -1,0 +1,4 @@
+рамка в Container
+              decoration: BoxDecoration(
+                  border: Border.all(color: Colors.blueAccent)
+              ),

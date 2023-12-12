@@ -18,6 +18,7 @@ class CallHistoryModel extends AbstractModel {
 
   int? id; // null if we need new row
   String? login;
+  String? name;
   String? time;
   int? duration;
   String? source; // от кого-то
@@ -37,13 +38,14 @@ class CallHistoryModel extends AbstractModel {
   CallHistoryModel({
     this.id,
     this.login,
+    this.name,
     this.time,
     this.duration,
     this.source,
     this.dest,
     this.action,
     this.companyId,
-    this.isSip=0,
+    this.isSip = 0,
   });
 
   @override
@@ -51,6 +53,7 @@ class CallHistoryModel extends AbstractModel {
     return {
       'id': id,
       'login': login,
+      'name': name,
       'time': time,
       'duration': duration,
       'source': source,
@@ -66,6 +69,7 @@ class CallHistoryModel extends AbstractModel {
     return CallHistoryModel(
       id: dbItem['id'],
       login: dbItem['login'],
+      name: dbItem['name'],
       time: dbItem['time'],
       duration: dbItem['duration'],
       source: dbItem['source'],
@@ -79,8 +83,8 @@ class CallHistoryModel extends AbstractModel {
   @override
   String toString() {
     final String table = getTableName();
-    return '$table{id: $id, login: $login, time: $time,' +
-        ' duration: $duration, source: $source, dest: $dest, action: $action,' +
+    return '$table{id: $id, login: $login, name: $name, time: $time,'
+        ' duration: $duration, source: $source, dest: $dest, action: $action,'
         'companyId: $companyId, isSip: $isSip';
   }
 

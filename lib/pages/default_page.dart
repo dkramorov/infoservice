@@ -16,9 +16,9 @@ import '../helpers/phone_mask.dart';
 import '../services/jabber_manager.dart';
 import '../services/permissions_manager.dart';
 import '../services/sip_ua_manager.dart';
-import '../services/update_manager.dart';
 import '../settings.dart';
 import 'chat/chat_page.dart';
+import 'chat/group_chat_page.dart';
 
 class DefaultPage extends StatefulWidget {
   final SIPUAManager? _sipHelper;
@@ -35,7 +35,6 @@ class _DefaultPageWidget extends State<DefaultPage>
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
 
-  late StreamSubscription<bool>? jabberSubscription;
   late bool awesomeNotificationsPerms = false;
 
   String title = NavigationData.nav[0]['title'];
@@ -114,7 +113,6 @@ class _DefaultPageWidget extends State<DefaultPage>
 
   @override
   void dispose() {
-    jabberSubscription?.cancel();
     sipHelper!.removeSipUaHelperListener(this);
     super.dispose();
   }
@@ -123,21 +121,15 @@ class _DefaultPageWidget extends State<DefaultPage>
   initState() {
     super.initState();
     checkPermissions();
-    sipHelper!.addSipUaHelperListener(this);
-
-    if (JabberManager.enabled) {
-      jabberSubscription =
-          xmppHelper?.jabberStream.registration.listen((isRegistered) {
-        setState(() {});
-      });
+    if (sipHelper != null && SIPUAManager.enabled) {
+      sipHelper!.addSipUaHelperListener(this);
     }
 
     _listedNotificationActionStream();
-    loadCatalogue();
   }
 
   /* Слушаем поток от AwesomeNotifications,
-  который получает созданные уведомления
+     который получает созданные уведомления
   */
   void _listedNotificationCreatedStream() {
     AwesomeNotifications().createdStream.listen((notification) {
@@ -152,13 +144,35 @@ class _DefaultPageWidget extends State<DefaultPage>
   void _listedNotificationActionStream() {
     AwesomeNotifications().actionStream.listen((action) {
       print('AwesomeNotifications action stream event: $action');
+
       if (action.payload != null) {
         if (action.payload!['action'] == 'chat') {
+          String sender = action.payload!['sender'] ?? '';
+          String phone = cleanPhone(sender);
+          String jid = JabberManager().toJid(sender);
+          String name = phoneMaskHelper(sender);
+
+          String screenId = ChatScreen.id;
+          String group = action.payload!['group'] ?? '';
+          if (group != '') {
+            screenId = GroupChatScreen.id;
+            sender = group;
+            phone = group;
+            jid = group;
+            name = group.split('@')[0];
+          }
+
           Navigator.popUntil(context, (route) => (route.isFirst));
-          Navigator.pushNamed(context, ChatScreen.id, arguments: {
+          Navigator.pushNamed(context, screenId, arguments: {
             sipHelper,
             xmppHelper,
-            ChatUser(id: cleanPhone(action.payload!['sender'] ?? '')),
+            ChatUser(
+              id: phone,
+              jid: jid,
+              phone: sender,
+              name: name,
+              customProperties: {'fromPush': true},
+            ),
           });
         }
         /* else if (action.payload!['action'] == 'call') {
@@ -171,11 +185,6 @@ class _DefaultPageWidget extends State<DefaultPage>
         */
       }
     });
-  }
-
-  Future<void> loadCatalogue({bool force = false}) async {
-    UpdateManager updateManager = UpdateManager();
-    updateManager.init();
   }
 
   @override

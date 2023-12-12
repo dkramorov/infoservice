@@ -32,16 +32,23 @@ class DefaultMessageText extends StatelessWidget {
               ? messageOptions.messageTimeBuilder!(message, isOwnMessage)
               : Padding(
                   padding: const EdgeInsets.only(top: 5),
-                  child: Text(
-                    (messageOptions.timeFormat ?? intl.DateFormat('HH:mm'))
-                        .format(message.createdAt),
-                    style: TextStyle(
-                      color: isOwnMessage
-                          ? (messageOptions.currentUserTextColor ??
-                              Colors.white70)
-                          : (messageOptions.textColor ?? Colors.black54),
-                      fontSize: 10,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        (messageOptions.timeFormat ?? intl.DateFormat('HH:mm'))
+                            .format(message.createdAt),
+                        style: TextStyle(
+                          color: isOwnMessage
+                              ? (messageOptions.currentUserTextColor ??
+                                  Colors.white70)
+                              : (messageOptions.textColor ?? Colors.black54),
+                          fontSize: 12,
+                        ),
+                      ),
+                      DashChat.buildReadMessageStatus(
+                          messageOptions, isOwnMessage, message.status),
+                    ],
                   ),
                 ),
       ],
@@ -94,6 +101,7 @@ class DefaultMessageText extends StatelessWidget {
         color: isOwnMessage
             ? (messageOptions.currentUserTextColor ?? Colors.white)
             : (messageOptions.textColor ?? Colors.black),
+        fontSize: messageOptions.fontSize ?? 14,
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sip_ua/sip_ua.dart';
 
 import '../services/jabber_manager.dart';
+import '../services/shared_preferences_manager.dart';
 import '../services/sip_ua_manager.dart';
 import '../settings.dart';
 
@@ -46,7 +47,7 @@ class _MyRegisterWidget extends State<RegisterWidget>
   }
 
   void _loadSettings() async {
-    _preferences = await sipHelper!.loadSettings();
+    _preferences = await SharedPreferencesManager.getSharedPreferences();
     setState(() {
       _wsUriController.text =
           _preferences.getString('ws_uri') ?? SIP_WSS;

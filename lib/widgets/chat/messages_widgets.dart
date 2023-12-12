@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'dart:io';
+import 'package:dash_chat_2/dash_chat_2.dart';
+import 'package:intl/intl.dart' as intl;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -110,6 +112,8 @@ class VoiceMessage extends StatefulWidget {
     this.meFgColor = const Color(0xffffffff),
     this.played = false,
     this.onPlay,
+    this.createdAt,
+    this.readStatus = MessageStatus.none,
   }) : super(key: key);
 
   final String audioSrc;
@@ -122,6 +126,8 @@ class VoiceMessage extends StatefulWidget {
       contactPlayIconColor;
   final bool played, me;
   Function()? onPlay;
+  final DateTime? createdAt;
+  MessageStatus readStatus;
 
   @override
   _VoiceMessageState createState() => _VoiceMessageState();
@@ -131,7 +137,6 @@ class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
   final AudioPlayer player = AudioPlayer();
   final double maxNoiseHeight = 6.w(), noiseWidth = 26.5.w();
-  Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
   bool isPlaying = false, _audioConfigurationDone = false;
   int playingStatus = 0;
@@ -164,14 +169,14 @@ class _VoiceMessageState extends State<VoiceMessage>
         color: widget.me ? widget.meBgColor : widget.contactBgColor,
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4.w(), vertical: 2.8.w()),
+        padding: EdgeInsets.symmetric(horizontal: 3.w(), vertical: 2.8.w()),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             _playButton(context),
             SizedBox(width: 3.w()),
             _durationWithNoise(context),
-            SizedBox(width: 2.2.w()),
+            //SizedBox(width: 2.2.w()),
           ],
         ),
       ),
@@ -212,7 +217,7 @@ class _VoiceMessageState extends State<VoiceMessage>
       );
 
   _durationWithNoise(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           _noise(context),
           SizedBox(height: .3.w()),
@@ -228,7 +233,24 @@ class _VoiceMessageState extends State<VoiceMessage>
                   fontSize: 10,
                   color: widget.me ? widget.meFgColor : widget.contactFgColor,
                 ),
-              )
+              ),
+              const SizedBox(width: 15),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.createdAt == null
+                        ? ''
+                        : intl.DateFormat('HH:mm').format(widget.createdAt!),
+                    style: TextStyle(
+                      color: widget.me ? Colors.white : Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                  DashChat.buildReadMessageStatus(
+                      chatMessageOptions, widget.me, widget.readStatus),
+                ],
+              ),
             ],
           ),
         ],
@@ -303,7 +325,11 @@ class _VoiceMessageState extends State<VoiceMessage>
   }
 
   void initPlayer() async {
-    await player.setUrl(widget.audioSrc);
+    if (widget.audioSrc.startsWith('http')) {
+      await player.setUrl(widget.audioSrc);
+    } else {
+      await player.setFilePath(widget.audioSrc);
+    }
     player.playerStateStream.listen((playerState) {
       isPlaying = playerState.playing;
       final processingState = playerState.processingState;
@@ -313,20 +339,22 @@ class _VoiceMessageState extends State<VoiceMessage>
         _stopPlaying();
         player.seek(Duration.zero);
         _controller?.reset();
-        setState(() {
-          isPlaying = false;
+        isPlaying = false;
+      }
+      if (mounted) {
+        Future.delayed(Duration.zero, () {
+          setState(() {});
         });
       }
-      setState(() {});
     });
 
     player.bufferedPositionStream.listen((Duration bufferedPosition) {
       // Буферизованный вывод - максимальная позиция
-      setState(() {
-        if (mounted) {
+      if (mounted) {
+        setState(() {
           maxDurationForSlider = bufferedPosition.inSeconds.toDouble();
-        }
-      });
+        });
+      }
     });
 
     player.positionStream.listen((Duration p) {
@@ -336,7 +364,9 @@ class _VoiceMessageState extends State<VoiceMessage>
       final newRemaingTime2 =
           newRemaingTime1.substring(newRemaingTime1.length - 5);
       if (newRemaingTime2 != remaingTime) {
-        setState(() => remaingTime = newRemaingTime2);
+        if (mounted) {
+          setState(() => remaingTime = newRemaingTime2);
+        }
       }
     });
 
@@ -356,13 +386,18 @@ class _VoiceMessageState extends State<VoiceMessage>
     _completeAnimationConfiguration();
   }
 
-  void _completeAnimationConfiguration() =>
+  void _completeAnimationConfiguration() {
+    if (mounted) {
       setState(() => _audioConfigurationDone = true);
+    }
+  }
 
   void _changePlayingStatus() async {
     if (widget.onPlay != null) widget.onPlay!();
     isPlaying ? _stopPlaying() : _startPlaying();
-    setState(() => isPlaying = !isPlaying);
+    if (mounted) {
+      setState(() => isPlaying = !isPlaying);
+    }
   }
 
   @override
@@ -377,7 +412,9 @@ class _VoiceMessageState extends State<VoiceMessage>
     _controller?.value = (noiseWidth) * duration / maxDurationForSlider;
     remaingTime = VoiceDuration.getDuration(duration);
     await player.seek(Duration(seconds: duration));
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 }
 
@@ -405,7 +442,9 @@ class FileMessage extends StatefulWidget {
   final String fileSrc;
   final Color meBgColor, contactBgColor;
   final bool me;
-  final localPath;
+  final String localPath;
+  final DateTime? createdAt;
+  MessageStatus readStatus;
 
   FileMessage({
     Key? key,
@@ -414,6 +453,8 @@ class FileMessage extends StatefulWidget {
     this.meBgColor = const Color(0xFFFF4550),
     this.contactBgColor = const Color(0xffffffff),
     this.localPath = '',
+    this.createdAt,
+    this.readStatus = MessageStatus.none,
   }) : super(key: key);
 
   @override
@@ -448,9 +489,11 @@ class _FileMessageState extends State<FileMessage> {
       //fname = translit(fname);
       getLocalFilePath(fname).then((file) {
         file.exists().then((isExists) {
-          setState(() {
-            isDownloaded = isExists;
-          });
+          if (mounted) {
+            setState(() {
+              isDownloaded = isExists;
+            });
+          }
         });
       });
     }
@@ -482,18 +525,23 @@ class _FileMessageState extends State<FileMessage> {
     dio.download(url, file.path, onReceiveProgress: (actualBytes, totalBytes) {
       int p = (actualBytes / totalBytes * 100).toInt();
       if (p > 1) {
-        setState(() {
-          percent = p;
-        });
+        if (mounted) {
+          setState(() {
+            percent = p;
+          });
+        }
       }
     }).then((success) {
-      setState(() {
-        isDownloaded = true;
-      });
+      if (mounted) {
+        setState(() {
+          isDownloaded = true;
+        });
+      }
     });
   }
 
   GestureDetector _sizerChild(BuildContext context) {
+    Color curColor = widget.me ? Colors.white : Colors.black;
     return GestureDetector(
       onTap: () async {
         // Deprecated: open link
@@ -517,9 +565,11 @@ class _FileMessageState extends State<FileMessage> {
             }
           } else {
             if (percent == 0) {
-              setState(() {
-                percent = 1;
-              });
+              if (mounted) {
+                setState(() {
+                  percent = 1;
+                });
+              }
               await download2Local(widget.fileSrc);
             }
           }
@@ -548,7 +598,7 @@ class _FileMessageState extends State<FileMessage> {
                 FileMessage.fileIcon,
                 width: 32,
                 height: 32,
-                color: widget.me ? Colors.white : Colors.black,
+                color: curColor,
               ),
               SizedBox(width: 3.w()),
               Column(
@@ -557,13 +607,36 @@ class _FileMessageState extends State<FileMessage> {
                 children: [
                   Text(
                     ext,
-                    style: TextStyle(
-                        color: widget.me ? Colors.white : Colors.black),
+                    style: TextStyle(color: curColor),
                   ),
                   SIZED_BOX_H06,
                   Text(
-                    isDownloaded ? 'Файл загружен' : (percent == 0 ? 'Загрузить файл' : 'Загрузка ${percent}%'),
-                    style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+                    isDownloaded
+                        ? 'Файл загружен'
+                        : (percent == 0
+                            ? 'Загрузить файл'
+                            : 'Загрузка $percent%'),
+                    style: TextStyle(color: curColor, fontSize: 12.0),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.createdAt == null
+                              ? ''
+                              : intl.DateFormat('HH:mm')
+                                  .format(widget.createdAt!),
+                          style: TextStyle(
+                            color: widget.me ? Colors.white : Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                        DashChat.buildReadMessageStatus(chatMessageOptions,
+                            widget.me, widget.readStatus),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -25,6 +25,7 @@ class RecordAudioCubit extends Cubit<RecordaudioState> {
     required this.onRecordCancel,
     required this.maxRecordLength,
   }) : super(RecordAudioReady()) {
+
     _myRecorder.openAudioSession().then((value) {
       _myRecorder.setSubscriptionDuration(const Duration(milliseconds: 200));
       recorderStream = _myRecorder.onProgress!.listen((event) {
@@ -38,6 +39,7 @@ class RecordAudioCubit extends Cubit<RecordaudioState> {
         }
       });
     });
+
   }
 
   void toggleRecord({required bool canRecord}) {
@@ -56,10 +58,15 @@ class RecordAudioCubit extends Cubit<RecordaudioState> {
       bool hasMic = await Permission.microphone.isGranted;
 
       if (!hasStorage || !hasMic) {
-        if (!hasStorage) await Permission.storage.request();
-        if (!hasMic) await Permission.microphone.request();
-        log('[chat_composer] 🔴 Denied permissions');
-        return;
+        if (!hasStorage) {
+          await Permission.storage.request();
+          log('[chat_composer] 🔴 Denied STORAGE permissions');
+        }
+        if (!hasMic) {
+          await Permission.microphone.request();
+          log('[chat_composer] 🔴 Denied MIC permissions');
+          return;
+        }
       }
       if (onRecordStart != null) onRecordStart!();
 
@@ -106,10 +113,12 @@ class RecordAudioCubit extends Cubit<RecordaudioState> {
   Future<void> close() {
     try {
       _myRecorder.closeAudioSession();
+      if (recorderStream != null) {
+        recorderStream!.cancel();
+      }
     } catch (e) {
       //ignore
     }
-    if (recorderStream != null) recorderStream!.cancel();
     try {
       // _myRecorder = null;
       // timer.cancel();

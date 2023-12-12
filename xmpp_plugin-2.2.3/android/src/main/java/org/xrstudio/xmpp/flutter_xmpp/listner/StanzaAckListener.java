@@ -2,6 +2,7 @@ package org.xrstudio.xmpp.flutter_xmpp.listner;
 
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.packet.Message;
@@ -24,7 +25,7 @@ public class StanzaAckListener implements StanzaListener {
         if (packet instanceof Message) {
 
             Message ackMessage = (Message) packet;
-
+            Log.d("processStanza", "------>>" + ackMessage.toXML(null).toString());
             Utils.addLogInStorage(" Action: receiveStanzaAckFromServer, Content: " + ackMessage.toXML(null).toString());
 
             //Bundle up the intent and send the broadcast.

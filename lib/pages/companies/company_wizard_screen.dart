@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:infoservice/pages/companies/tab_branches_view.dart';
+import 'package:infoservice/pages/companies/tab_chat_view.dart';
 import 'package:infoservice/pages/companies/tab_company_view.dart';
 import 'package:infoservice/pages/companies/tab_phones_view.dart';
 
@@ -154,6 +155,13 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
               setStateCallback: setStateCallback,
               company: company!,
             ),
+            TabChatView(
+              sipHelper,
+              xmppHelper,
+              pageController: _pageController,
+              setStateCallback: setStateCallback,
+              company: company!,
+            ),
           ],
         ),
       ),
@@ -218,6 +226,13 @@ class NavigationData {
       'label': 'Телефоны',
       'tooltip': 'Телефоны',
       'title': 'Телефоны',
+    },
+    {
+      'icon': Icons.chat_rounded,
+      'index': 3,
+      'label': 'Чат',
+      'tooltip': 'Чат',
+      'title': 'Чат',
     },
   ];
 }

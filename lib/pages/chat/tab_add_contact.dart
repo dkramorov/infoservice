@@ -1,6 +1,11 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-import '../../helpers/log.dart';
+import 'package:flutter/material.dart';
+import 'package:infoservice/helpers/dialogs.dart';
+import 'package:infoservice/models/bg_tasks_model.dart';
+import 'package:infoservice/services/shared_preferences_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../helpers/phone_mask.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
@@ -29,11 +34,18 @@ class TabAddContact extends StatefulWidget {
 
 class _TabAddContactState extends State<TabAddContact> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  static const TAG = 'TabAddContact';
+  static const tag = 'TabAddContact';
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
+  late Timer updateTimer;
 
   String newUser = '8';
+
+  @override
+  void dispose() {
+    updateTimer.cancel();
+    super.dispose();
+  }
 
   @override
   void setState(fn) {
@@ -42,28 +54,32 @@ class _TabAddContactState extends State<TabAddContact> {
     }
   }
 
-  /* Отправка формы добавление контакта */
-  void addUserFormSubmit() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    _formKey.currentState?.save();
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration.zero, () async {
+      updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+        await checkNewUser();
+      });
+    });
+  }
 
-    String phone = cleanPhone(newUser);
-    JabberManager.flutterXmpp?.searchUsers(phone).then((List<dynamic> users) {
-      List<String> result = [];
-      bool founded = false;
-      for (String user in users) {
-        String curUser = cleanPhone(user);
-        result.add(curUser);
-        if (curUser == phone) {
-          founded = true;
+  Future<void> checkNewUser() async {
+    SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+    bool? addUserResult = prefs.getBool(BGTasksModel.addRosterPrefKey);
+    if (addUserResult != null) {
+      if (addUserResult) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Пользователь $newUser добавлен'),
+            ),
+          );
         }
-      }
-      Log.d(TAG, 'founded by $phone: $result');
-      if (founded) {
-        xmppHelper?.add2Roster(newUser);
-        Navigator.pop(context);
+        Future.delayed(Duration.zero, () async {
+          Navigator.pop(context);
+        });
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -74,6 +90,22 @@ class _TabAddContactState extends State<TabAddContact> {
           );
         }
       }
+      await prefs.remove(BGTasksModel.addRosterPrefKey);
+    }
+  }
+
+  /* Отправка формы добавление контакта */
+  Future<void> addUserFormSubmit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    _formKey.currentState?.save();
+    await showLoading();
+    SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+    await prefs.remove(BGTasksModel.addRosterPrefKey);
+    String phone = cleanPhone(newUser);
+    BGTasksModel.addRosterTask({
+      'login': phone,
     });
   }
 
@@ -122,7 +154,7 @@ class _TabAddContactState extends State<TabAddContact> {
                               return 'Неправильный логин';
                             }
                           },
-                           */
+                    */
                     formatters: [PhoneFormatter()],
                     validator: (String? value) {
                       String v = value ?? '';
@@ -144,8 +176,8 @@ class _TabAddContactState extends State<TabAddContact> {
                       style: TextStyle(color: Colors.white),
                     ),
                     color: tealColor,
-                    onPressed: () {
-                      addUserFormSubmit();
+                    onPressed: () async {
+                      await addUserFormSubmit();
                     },
                   )
                 ],

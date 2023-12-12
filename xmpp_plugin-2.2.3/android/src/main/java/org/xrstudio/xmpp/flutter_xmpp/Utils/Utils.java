@@ -160,6 +160,10 @@ public class Utils {
         String META_TEXT = Constants.MESSAGE;
         String body = message.getBody();
         String from = message.getFrom().toString();
+        String to = "";
+        if (message.getTo() != null) {
+            to = message.getTo().toString();
+        }
         String msgId = message.getStanzaId();
         String customText = "";
 
@@ -199,6 +203,7 @@ public class Utils {
             Intent intent = new Intent(Constants.RECEIVE_MESSAGE);
             intent.setPackage(mApplicationContext.getPackageName());
             intent.putExtra(Constants.BUNDLE_FROM_JID, from);
+            intent.putExtra(Constants.BUNDLE_TO_JID, to);
             intent.putExtra(Constants.BUNDLE_MESSAGE_BODY, body);
             intent.putExtra(Constants.BUNDLE_MESSAGE_PARAMS, msgId);
             intent.putExtra(Constants.BUNDLE_MESSAGE_TYPE, message.getType().toString());

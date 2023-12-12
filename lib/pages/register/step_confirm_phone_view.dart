@@ -72,22 +72,18 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
       'loading': true,
     });
     final confirm = await RegistrationModel.confirmRegistration(
-        widget.userData!['phone'], confirmCode, widget.userData!['isSimpleReg']);
+        widget.userData!['phone'],
+        confirmCode,
+        widget.userData!['isSimpleReg']);
     if (confirm != null && confirm.message != null && mounted) {
       if (confirm.code == RegistrationModel.CODE_PASSWD_CHANGED) {
-        await cleanAccount();
-        openInfoDialog(context, userConfirmed, 'Ответ от сервера',
-            confirm.getMessage(), 'Понятно');
+        await showDialog(confirm.getMessage(), userConfirmed);
       } else if (confirm.code == RegistrationModel.CODE_REGISTRATION_SUCCESS) {
-        await cleanAccount();
-        openInfoDialog(context, userConfirmed, 'Ответ от сервера',
-            confirm.getMessage(), 'Понятно');
+        await showDialog(confirm.getMessage(), userConfirmed);
       } else if (confirm.code == RegistrationModel.CODE_ERROR) {
-        openInfoDialog(context, nextPageView, 'Ответ от сервера',
-            confirm.getMessage(), 'Понятно');
+        await showDialog(confirm.getMessage(), nextPageView);
       } else if (confirm.code == RegistrationModel.TOO_MANY_ATTEMPTS) {
-        openInfoDialog(context, nextPageView, 'Слишком много попыток',
-            confirm.getMessage(), 'Понятно');
+        await showDialog(confirm.getMessage(), nextPageView, title: 'Слишком много попыток');
       }
     }
     widget.setStateCallback!({
@@ -95,10 +91,11 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
     });
   }
 
-  Future<void> cleanAccount() async {
-    SharedPreferences preferences = await SharedPreferences.getInstance();
-    preferences.remove(widget.userData!['phone']);
-    print('account cleaned ${widget.userData!['phone']}');
+  Future<void> showDialog(String message, Function function,
+      {String title = 'Ответ от сервера'}) async {
+    Future.delayed(Duration.zero, () async {
+      await openInfoDialog(context, function, title, message, 'Понятно');
+    });
   }
 
   /* Регистрация пройдена или
@@ -138,14 +135,14 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
         ..last.isEnd = true;
 
   // Back the previous PageView
-  backPageview() {
+  void backPageView() {
     widget.pageController
         ?.animateToPage(0, curve: _curvePageView, duration: _durationPageView);
     _scopeNode.unfocus();
   }
 
   // Forward the next PageView
-  nextPageView() {
+  void nextPageView() {
     widget.pageController
         ?.animateToPage(2, curve: _curvePageView, duration: _durationPageView);
     _scopeNode.unfocus();
@@ -166,7 +163,7 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
         child: ListView(
           children: [
             PageViewProgressBar(
-              backPageView: () => backPageview(),
+              backPageView: () => backPageView(),
               nextPageView: () => nextPageView(),
               totalStep: _TOTAL_STEPS,
               currentStep: _CURRENT_STEP,

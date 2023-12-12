@@ -6,6 +6,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_parsed_text/flutter_parsed_text.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart' as vp;
 
@@ -38,6 +40,7 @@ part 'src/widgets/message_row/media_container.dart';
 part 'src/widgets/message_row/message_row.dart';
 part 'src/widgets/message_row/text_container.dart';
 part 'src/widgets/message_row/video_player.dart';
+part 'src/widgets/message_row/image_viewer.dart';
 part 'src/widgets/quick_replies/default_quick_reply.dart';
 part 'src/widgets/quick_replies/quick_replies.dart';
 part 'src/widgets/typing_users/default_typing_builder.dart';

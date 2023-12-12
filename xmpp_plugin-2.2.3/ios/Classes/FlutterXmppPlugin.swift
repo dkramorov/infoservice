@@ -150,6 +150,12 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
             
         case pluginMethod.getConnectionStatus :
             self.getConnectionStatus(call, result)
+
+        case pluginMethod.getPrivateStorage:
+            self.getPrivateStorageActivity(call, result)
+
+        case pluginMethod.setPrivateStorage:
+            self.setPrivateStorageActivity(call, result)
             
         default:
             guard let vData = call.arguments as? [String : Any] else {
@@ -769,6 +775,51 @@ public class FlutterXmppPlugin: NSObject, FlutterPlugin {
         default:
             break
         }
+    }
+
+    func getPrivateStorageActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult)  {
+        guard let vData = call.arguments as? [String : Any] else {
+            result(xmppConstants.DataNil);
+            return
+        }
+        var storageCategory : String = ""
+        var storageName : String = ""
+
+        if let value = vData["category"] as? String { storageCategory = value }
+        if let value = vData["name"] as? String { storageName = value }
+
+        let vMethod : String = call.method.trim()
+        printLog("\(#function) | \(vMethod) | arguments: \(String(describing: vData))")
+        APP_DELEGATE.singalCallBack = result
+        APP_DELEGATE.objXMPP.getPrivateStorage(withCategory: storageCategory,
+                                               withName: storageName,
+                                               withStrem: self.objXMPP.xmppStream,
+                                               objXMPP: self.objXMPP)
+        //result(xmppConstants.SUCCESS)
+    }
+
+    func setPrivateStorageActivity(_ call: FlutterMethodCall, _ result: @escaping FlutterResult)  {
+        guard let vData = call.arguments as? [String : Any] else {
+            result(xmppConstants.DataNil);
+            return
+        }
+        var storageCategory: String = ""
+        var storageName: String = ""
+        var dictValue: [String: String] = [:]
+
+        if let value = vData["category"] as? String { storageCategory = value }
+        if let value = vData["name"] as? String { storageName = value }
+        if let value = vData["dict"] as? [String: String] { dictValue = value }
+        printLog("\(#function) | \(dictValue)")
+
+        let vMethod : String = call.method.trim()
+        printLog("\(#function) | \(vMethod) | arguments: \(String(describing: vData))")
+        APP_DELEGATE.objXMPP.setPrivateStorage(withCategory: storageCategory,
+                                               withName: storageName,
+                                               withDict: dictValue,
+                                               withStrem: self.objXMPP.xmppStream,
+                                               objXMPP: self.objXMPP)
+        result(xmppConstants.SUCCESS)
     }
     
     public func manange_NotifcationObservers()  {

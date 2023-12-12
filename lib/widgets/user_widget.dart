@@ -1,9 +1,11 @@
 import 'package:dash_chat_2/dash_chat_2.dart';
+import 'package:infoservice/helpers/date_time.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 
+import '../helpers/log.dart';
 import '../helpers/phone_mask.dart';
-import '../models/user_chat_model.dart';
+import '../models/roster_model.dart';
 import '../pages/chat/chat_page.dart';
 import '../pages/chat/group_chat_page.dart';
 import '../services/jabber_manager.dart';
@@ -15,12 +17,12 @@ class ChatUserWidget extends StatefulWidget {
   final SIPUAManager? sipHelper;
   final JabberManager? xmppHelper;
 
-  final UserChatModel user;
+  final RosterModel rosterModel;
 
   const ChatUserWidget({
     this.sipHelper,
     this.xmppHelper,
-    required this.user,
+    required this.rosterModel,
     Key? key,
   }) : super(key: key);
 
@@ -29,10 +31,14 @@ class ChatUserWidget extends StatefulWidget {
 }
 
 class _ChatUserWidgetState extends State<ChatUserWidget> {
+  static const tag = 'ChatUserWidget';
+
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
+  RosterModel get rosterModel => widget.rosterModel;
 
-  final DateFormat formatter = DateFormat('HH:mm');
+  final DateFormat formatterHHmm = DateFormat('HH:mm');
+  final DateFormat formatter = DateFormat('dd/MM/yy');
 
   @override
   void setState(fn) {
@@ -55,45 +61,60 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
     return Avatar(
       imgPath: avatar,
       isOnline: false,
+      showCounter: rosterModel.newMessagesCount ?? 0,
     );
+  }
+
+  String getMsgTime() {
+    String msgTime = '-- --';
+    if (rosterModel.lastMessageTime != null && rosterModel.lastMessageTime != 0) {
+      DateTime now = DateTime.now();
+      DateTime dt = timestamp2Datetime(rosterModel.lastMessageTime!);
+      if (dt.month == now.month && dt.year == now.year) {
+        if (dt.day == now.day) {
+          msgTime = formatterHHmm.format(dt);
+        } else {
+          DateTime yesterday = now.subtract(const Duration(days:1));
+          if (yesterday.day == dt.day) {
+            msgTime = 'Вчера';
+          } else {
+            msgTime = formatter.format(dt);
+          }
+        }
+      } else {
+        msgTime = formatter.format(dt);
+      }
+    }
+    return msgTime;
   }
 
   @override
   Widget build(BuildContext context) {
     final containerMsgTextWidth = MediaQuery.of(context).size.width * 0.45;
-    final msgTime = (widget.user.time != null && widget.user.time != '-')
-        ? formatter.format(DateTime.parse(widget.user.time!))
-        : '-- --';
 
     return GestureDetector(
       onTap: () {
-        final String login = widget.user.login ?? '';
+        String login = rosterModel.jid ?? '';
         final String phone = cleanPhone(login);
-        if (JabberManager.isConference(login)) {
-          Navigator.pushNamed(context, GroupChatScreen.id, arguments: {
-            sipHelper,
-            xmppHelper,
-            ChatUser(
-                id: login,
-                name: widget.user.getName(),
-                phone: phone,
-            ),
-          });
-        } else {
-          Navigator.pushNamed(context, ChatScreen.id, arguments: {
-            sipHelper,
-            xmppHelper,
-            ChatUser(
-                id: login,
-                name: widget.user.getName(),
-                phone: phone,
-            ),
-          });
+        String screenId = ChatScreen.id;
+        if (rosterModel.isGroup == 1) {
+          screenId = GroupChatScreen.id;
         }
+        Log.d(tag, 'set screen $screenId');
+        Navigator.pushNamed(context, screenId, arguments: {
+          sipHelper,
+          xmppHelper,
+          ChatUser(
+            id: login,
+            jid: login,
+            name: rosterModel.name,
+            phone: phone,
+          ),
+        });
       },
       child: ListTile(
         leading: FutureBuilder<String>(
-            future: widget.user.getPhoto(),
+            future: rosterModel.getPhoto(),
             builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
               if (snapshot.hasData) {
                 return buildAvatar(snapshot.data!);
@@ -101,19 +122,13 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
                 return buildAvatar(DEFAULT_AVATAR);
               }
             }),
-        /*
-        leading: CircleAvatar(
-          backgroundColor: Colors.grey[100],
-          backgroundImage: AssetImage(widget.image),
-        ),
-         */
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             SizedBox(
               width: containerMsgTextWidth,
               child: Text(
-                widget.user.getName(),
+                rosterModel.name ?? '',
                 maxLines: 1,
                 overflow: TextOverflow.fade,
                 softWrap: false,
@@ -124,14 +139,15 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
               ),
             ),
             Text(
-              msgTime,
+              getMsgTime(),
+              style: const TextStyle(fontSize: 10),
             ),
           ],
         ),
         subtitle: SizedBox(
           width: containerMsgTextWidth,
           child: Text(
-            widget.user.msg ?? widget.user.getLogin(),
+            rosterModel.lastMessage ?? '',
             maxLines: 1,
             overflow: TextOverflow.fade,
             softWrap: false,

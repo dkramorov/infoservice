@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/companies/catalogue.dart';
 import '../../models/companies/orgs.dart';
 import '../../helpers/log.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/shared_preferences_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../services/update_manager.dart';
 import '../../settings.dart';
@@ -38,6 +40,8 @@ class _CompaniesListingScreenState extends State<CompaniesListingScreen> {
   List<Orgs> companies = [];
   String title = 'Каталог компаний';
 
+  late Timer updateTimer;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +63,20 @@ class _CompaniesListingScreenState extends State<CompaniesListingScreen> {
             loadOrgs();
           }
         });
+
+    updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+      SharedPreferences preferences = await SharedPreferencesManager.getSharedPreferences();
+      bool catalogueLoadedAction =
+          preferences.getBool(UpdateManager.orgsLoadedAction) ?? false;
+      if (catalogueLoadedAction) {
+        print(
+            'UpdateManager.updateStream.updateSection section'
+                ' ${UpdateManager.orgsLoadedAction}');
+        preferences.setBool(UpdateManager.orgsLoadedAction, false);
+        loadOrgs();
+        updateTimer.cancel();
+      }
+    });
   }
 
   @override
@@ -71,6 +89,7 @@ class _CompaniesListingScreenState extends State<CompaniesListingScreen> {
   @override
   void dispose() {
     updateSubscription?.cancel();
+    updateTimer.cancel();
     super.dispose();
   }
 

@@ -3,12 +3,15 @@ import 'package:sqflite/sqflite.dart';
 
 import '../db/chat_db.dart';
 import '../db/tables.dart';
+import '../helpers/log.dart';
+import '../settings.dart';
 import 'abstract_model.dart';
-
 
 /* Пользователи ростера + группы чатов
 */
 class RosterModel extends AbstractModel {
+  static const String tag = 'RosterModel';
+  static Map<String, RosterModel> prefetchedModels = {};
 
   @override
   Future<Database> openDB() async {
@@ -21,10 +24,13 @@ class RosterModel extends AbstractModel {
   String? name;
   String? jid;
   String? avatar;
+  String? lastMessageId;
   String? lastMessage;
   int? lastMessageTime;
+  int? lastReadMessageTime;
   int? newMessagesCount;
   String? ownerJid;
+  int? isGroup;
 
   String getTableName() {
     return tableRosterModel;
@@ -38,10 +44,13 @@ class RosterModel extends AbstractModel {
     this.name,
     this.jid,
     this.avatar,
+    this.lastMessageId,
     this.lastMessage,
     this.lastMessageTime,
+    this.lastReadMessageTime,
     this.newMessagesCount,
     this.ownerJid,
+    this.isGroup,
   });
 
   @override
@@ -51,10 +60,13 @@ class RosterModel extends AbstractModel {
       'name': name,
       'jid': jid,
       'avatar': avatar,
+      'lastMessageId': lastMessageId,
       'lastMessage': lastMessage,
       'lastMessageTime': lastMessageTime,
+      'lastReadMessageTime': lastReadMessageTime,
       'newMessagesCount': newMessagesCount,
       'ownerJid': ownerJid,
+      'isGroup': isGroup,
     };
   }
 
@@ -65,19 +77,77 @@ class RosterModel extends AbstractModel {
       name: dbItem['name'],
       jid: dbItem['jid'],
       avatar: dbItem['avatar'],
+      lastMessageId: dbItem['lastMessageId'],
       lastMessage: dbItem['lastMessage'],
       lastMessageTime: dbItem['lastMessageTime'],
+      lastReadMessageTime: dbItem['lastReadMessageTime'],
       newMessagesCount: dbItem['newMessagesCount'],
       ownerJid: dbItem['ownerJid'],
+      isGroup: dbItem['isGroup'],
     );
   }
 
   @override
   String toString() {
     final String table = getTableName();
-    return '$table{id: $id, name: $name, jid: $jid, ' +
-        'avatar: $avatar, lastMessage: $lastMessage, lastMessageTime: $lastMessageTime, ' +
-        'newMessagesCount: $newMessagesCount, ownerJid: $ownerJid';
+    return '$table{id: $id, name: $name, jid: $jid, avatar: $avatar, '
+        'lastMessageId: $lastMessageId, lastMessage: $lastMessage, '
+        'lastMessageTime: $lastMessageTime, lastReadMessageTime: $lastReadMessageTime, '
+        'newMessagesCount: $newMessagesCount, ownerJid: $ownerJid, isGroup: $isGroup}';
+  }
+
+  void storeFetched(List<RosterModel> fetchedModels) {
+    // Записать в класс вытащенные модели
+    for (RosterModel rosterModel in fetchedModels) {
+      prefetchedModels[rosterModel.jid ?? ''] = rosterModel;
+    }
+  }
+
+  Future<RosterModel?> getById(int pk) async {
+    final db = await openDB();
+    String where = 'id=?';
+    List<Object?> whereArgs = [pk];
+    final List<Map<String, dynamic>> maps = await db.query(
+      tableRosterModel,
+      where: where,
+      whereArgs: whereArgs,
+    );
+    if (maps.isEmpty) {
+      Log.e(tag, 'roster model not found by id: $pk');
+      return null;
+    }
+    final Map<String, dynamic> rosterItem = maps[0];
+    return toModel(rosterItem);
+  }
+
+  Future<List<RosterModel>> getBy(String ownerJid,
+      {String? jid, bool isGroup = false}) async {
+    final db = await openDB();
+    String where = 'ownerJid=?';
+    List<Object?> whereArgs = [ownerJid];
+
+    if (isGroup) {
+      where += ' AND isGroup=1';
+    } else {
+      // Почему то isGroup!=1 не подходит (если в поле NULL)
+      where += ' AND (isGroup is NULL OR isGroup=0)';
+    }
+
+    if (jid != null) {
+      where += ' AND jid=?';
+      whereArgs.add(jid);
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      tableRosterModel,
+      where: where,
+      whereArgs: whereArgs,
+    );
+    List<RosterModel> result = List.generate(maps.length, (i) {
+      return toModel(maps[i]);
+    });
+    storeFetched(result);
+    return result;
   }
 
   Future<List<RosterModel>> getByOwner(String userJid) async {
@@ -87,9 +157,32 @@ class RosterModel extends AbstractModel {
       where: 'ownerJid=?',
       whereArgs: [userJid],
     );
-    return List.generate(maps.length, (i) {
+    List<RosterModel> result = List.generate(maps.length, (i) {
       return toModel(maps[i]);
     });
+    storeFetched(result);
+    return result;
+  }
+
+  Future<List<RosterModel>> getAll() async {
+    final db = await openDB();
+    final List<Map<String, dynamic>> maps = await db.query(
+      tableRosterModel,
+    );
+    List<RosterModel> result = List.generate(maps.length, (i) {
+      return toModel(maps[i]);
+    });
+    storeFetched(result);
+    return result;
+  }
+
+  Future<String> getPhoto({Function? ifDownloaded}) async {
+    /* Возвращает аватарку пользователя
+    */
+    if (avatar != null && avatar != '') {
+      // TODO: возвращать кэшированное изображение (пишется ссылка в базу)
+    }
+    return DEFAULT_AVATAR;
   }
 
 }

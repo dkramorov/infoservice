@@ -1,6 +1,12 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../helpers/dialogs.dart';
+import '../../models/bg_tasks_model.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/shared_preferences_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
 import '../../widgets/rounded_button_widget.dart';
@@ -13,13 +19,13 @@ class TabAddMuc extends StatefulWidget {
   final Function setStateCallback;
   final PageController pageController;
 
-  const TabAddMuc({
-    this.sipHelper,
-    this.xmppHelper,
-    required this.pageController,
-    required this.setStateCallback,
-    Key? key
-  }) : super(key: key);
+  const TabAddMuc(
+      {this.sipHelper,
+      this.xmppHelper,
+      required this.pageController,
+      required this.setStateCallback,
+      Key? key})
+      : super(key: key);
 
   @override
   State<TabAddMuc> createState() => _TabAddMucState();
@@ -27,11 +33,18 @@ class TabAddMuc extends StatefulWidget {
 
 class _TabAddMucState extends State<TabAddMuc> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  static const TAG = 'TabAddMuc';
+  static const tag = 'TabAddMuc';
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
+  late Timer updateTimer;
 
   String newMuc = '';
+
+  @override
+  void dispose() {
+    updateTimer.cancel();
+    super.dispose();
+  }
 
   @override
   void setState(fn) {
@@ -43,31 +56,55 @@ class _TabAddMucState extends State<TabAddMuc> {
   @override
   void initState() {
     super.initState();
+    Future.delayed(Duration.zero, () async {
+      updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+        await checkNewGroup();
+      });
+    });
+  }
+
+  Future<void> checkNewGroup() async {
+    SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+    bool? addMUCResult = prefs.getBool(BGTasksModel.addRosterPrefKey);
+    if (addMUCResult != null) {
+      if (addMUCResult) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Группа $newMuc добавлена'),
+            ),
+          );
+        }
+        Future.delayed(Duration.zero, () async {
+          Navigator.pop(context);
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red,
+              content: Text('Группа $newMuc не найдена'),
+            ),
+          );
+        }
+      }
+      await prefs.remove(BGTasksModel.addRosterPrefKey);
+    }
   }
 
   /* Отправка формы создания MUC */
-  void addMUCFormSubmit() {
+  Future<void> addMUCFormSubmit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
     _formKey.currentState?.save();
-    if (xmppHelper == null) {
-      return;
-    }
-    if (newMuc.isNotEmpty) {
-      //String me = '${cleanPhone(xmppHelper!.getLogin())}@$JABBER_SERVER';
-      xmppHelper!.createMUC(newMuc, true).then((createMucResult) { // Создаем MUC
-        xmppHelper!.joinMucGroup(newMuc).then((joinMucResult) { // Прикрепиться к MUC
-          xmppHelper!.group2VCard(newMuc);
-          //xmppHelper!.addAdminsInGroup(newMuc, [me]); // Добавиться админом
-          //xmppHelper!.getMembers(newMuc);
-          //xmppHelper!.getAdmins(newMuc);
-          //xmppHelper!.getOwners(newMuc);
-          //xmppHelper!.removeMember(newMuc, [me]);
-        });
-      });
-      Navigator.pop(context);
-    }
+    await showLoading();
+    SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+    await prefs.remove(BGTasksModel.addRosterPrefKey);
+    BGTasksModel.addMUCTask({
+      'group': newMuc,
+    });
   }
 
   @override
@@ -126,8 +163,8 @@ class _TabAddMucState extends State<TabAddMuc> {
                       style: TextStyle(color: Colors.white),
                     ),
                     color: tealColor,
-                    onPressed: () {
-                      addMUCFormSubmit();
+                    onPressed: () async {
+                      await addMUCFormSubmit();
                     },
                   )
                 ],
@@ -139,5 +176,3 @@ class _TabAddMucState extends State<TabAddMuc> {
     );
   }
 }
-
-

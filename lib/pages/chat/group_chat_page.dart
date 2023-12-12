@@ -7,27 +7,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:infoservice/models/dialpad_model.dart';
 import 'package:infoservice/pages/chat/utils.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
-import 'package:xmpp_plugin/error_response_event.dart';
-import 'package:xmpp_plugin/models/chat_state_model.dart';
-import 'package:xmpp_plugin/models/connection_event.dart';
+import 'package:ionicons/ionicons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'package:xmpp_plugin/models/message_model.dart';
-import 'package:xmpp_plugin/models/present_mode.dart';
-import 'package:xmpp_plugin/success_response_event.dart';
-import 'package:xmpp_plugin/xmpp_plugin.dart';
-import 'package:http/http.dart' as http;
-import 'package:open_file/open_file.dart';
 
-import '../../a_notifications/notifications.dart';
+import '../../helpers/dialogs.dart';
 import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
+import '../../models/bg_tasks_model.dart';
+import '../../models/chat_message_model.dart';
+import '../../models/companies/orgs.dart';
+import '../../models/roster_model.dart';
+import '../../models/user_settings_model.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/shared_preferences_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
-import '../../sip_ua/dialpadscreen.dart';
 import '../../widgets/chat/messages_widgets.dart';
 
 class GroupChatScreen extends StatefulWidget {
@@ -44,58 +41,476 @@ class GroupChatScreen extends StatefulWidget {
   _GroupChatScreenState createState() => _GroupChatScreenState();
 }
 
-class _GroupChatScreenState extends State<GroupChatScreen> implements DataChangeEvents {
-  static const String TAG = 'GroupChatScreen';
+class _GroupChatScreenState extends State<GroupChatScreen> {
+  static const String tag = 'GroupChatScreen';
 
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
 
   List<ChatMessage> messages = [];
-  late StreamSubscription<bool>? jabberSubscription;
   late ChatUser friend;
-  late ChatUser me;
+  UserSettingsModel? userSettings;
+  ChatUser me = ChatUser(
+    id: '',
+    jid: '',
+    phone: '',
+    name: '',
+  );
   bool isRecording = false;
   final ImagePicker imagePicker = ImagePicker();
+  late Map<String, dynamic> groupVCard = {};
+  late bool isChannel = false;
+  Timer? updateTimer;
+  int rosterVersion = 0;
+  bool inUpdateTimer = false;
 
-  GlobalKey key = GlobalKey();
   TextEditingController chatComposerController = TextEditingController();
+
+  @override
+  void dispose() {
+    if (updateTimer != null) {
+      updateTimer?.cancel();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    if (JabberManager.enabled) {
-      jabberSubscription =
-          xmppHelper?.jabberStream.registration.listen((isRegistered) {
-            if (isRegistered) {
-              initMamMessages();
-            }
-          });
-      XmppConnection.addListener(this);
-      List args = (widget._arguments as Set).toList();
-      for (Object? arg in args) {
-        if (arg is ChatUser) {
-          friend = arg;
-          Log.d(TAG, '---> chat with ${friend.id}');
-          initMamMessages();
+    List args = (widget._arguments as Set).toList();
+    for (Object? arg in args) {
+      if (arg is ChatUser) {
+        friend = arg;
+        Log.d(tag, '---> chat with ${friend.id}');
+        isChannel = friend.id.startsWith('channel_');
+        break;
+      }
+    }
+
+    Future.delayed(Duration.zero, () async {
+      await initMe();
+      if (friend.jid == null) {
+        Log.e(tag, 'initState error - friend.jid is null');
+        return;
+      }
+      if (me.id == '') {
+        Log.e(tag, 'initState error - me is null');
+        return;
+      }
+      await checkCompany();
+      await loadMamMessages();
+      // Запрашиваем VCard чтобы узнать какие сообщения он прочитал
+      //await getMessagesStatuses();
+      //await markMessagesAsRead(); // TODO: c задержкой нужно
+
+      await checkNewMessages();
+      await startTimer();
+    });
+  }
+
+  Future<void> startTimer() async {
+    updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+      if (inUpdateTimer) {
+        Log.i(tag, 'inUpdateTimer');
+        return;
+      } else {
+        await checkNewMessages();
+      }
+    });
+  }
+
+  Future<void> checkNewMessages() async {
+    inUpdateTimer = true;
+    userSettings = await UserSettingsModel().getUser();
+    if (userSettings != null) {
+      int newRosterVersion = userSettings!.rosterVersion ?? 0;
+      //Log.d(tag, 'compare rosterVersions: $newRosterVersion, ${rosterVersion}');
+      if (newRosterVersion > rosterVersion) {
+        rosterVersion = newRosterVersion;
+        await loadMamMessages();
+      }
+      // Обновление флагов для прочитанных сообщений
+      await updateReadMessages();
+    }
+    inUpdateTimer = false;
+  }
+
+  Future<void> updateReadMessages() async {
+    if (messages.isEmpty) {
+      return;
+    }
+    String myJid = me.jid ?? '';
+    List<String> idsMessages = [];
+    List<String> idsMediaMessages = [];
+
+    for (int i = 0; i < messages.length; i++) {
+      ChatMessage message = messages[i];
+      if (message.user.jid == myJid &&
+          message.status != MessageStatus.received) {
+        idsMessages.add(message.customProperties!['id']);
+      }
+      if (message.medias != null &&
+          message.medias!.isNotEmpty &&
+          message.medias![0].isUploading) {
+        idsMediaMessages.add(message.customProperties!['id']);
+      }
+    }
+    if (idsMessages.isEmpty) {
+      return;
+    }
+    bool needUpdate = false;
+    List<ChatMessageModel> readMessages =
+    await ChatMessageModel().getByReadFlag(idsMessages);
+    print(
+        '----readMessages- ${readMessages.toString()}, ${idsMessages.toString()}');
+    for (ChatMessageModel messageModel in readMessages) {
+      for (ChatMessage message in messages) {
+        print('${message.customProperties!['id']}, ${messageModel.mid}');
+        if (message.customProperties!['id'] == messageModel.mid) {
+          needUpdate = true;
+          message.status = MessageStatus.received;
           break;
         }
       }
     }
-    String login = xmppHelper?.getLogin() ?? '';
-    me = ChatUser(id: login, phone: cleanPhone(login), name: phoneMaskHelper(login));
+    List<ChatMessageModel> mediaMessages =
+    await ChatMessageModel().getByMids(idsMediaMessages);
+    print(
+        '----mediaMessages- ${mediaMessages.toString()}, ${idsMediaMessages.toString()}');
+    for (ChatMessageModel messageModel in mediaMessages) {
+      for (ChatMessage message in messages) {
+        print('${message.customProperties!['id']}, ${messageModel.mid}');
+        if (message.customProperties!['id'] == messageModel.mid) {
+          needUpdate = true;
+
+          Map<String, dynamic> customJson = {};
+
+          //message.status = MessageStatus.received;
+          message.medias![0].isUploading = false;
+
+          MediaType mediaType = MediaType.custom;
+          if (messageModel.customText != null &&
+              CHAT_MEDIA_TYPES.contains(messageModel.body)) {
+            mediaType = MediaType.parse(messageModel.body ?? '');
+            if ([MediaType.audio, MediaType.file, MediaType.image]
+                .contains(mediaType) &&
+                messageModel.customText != null) {
+              customJson = jsonDecode(messageModel.customText ?? '{}');
+            }
+          }
+
+          if (mediaType == MediaType.audio) {
+            Log.d(tag, 'audio found: ${messageModel.toString()}');
+            message.medias![0].url = messageModel.mediaURL!;
+            message.medias![0].fileName =
+                messageModel.mediaURL!.split('/').last;
+            message.medias![0].customProperties = {
+              'widget': VoiceMessage(
+                audioSrc: customJson['url'],
+                played: false,
+                me: myJid == message.user.jid ? true : false,
+                createdAt: message.createdAt,
+                readStatus: message.status,
+              ),
+            };
+          } else if (mediaType == MediaType.file) {
+            Log.d(tag, 'file found: ${messageModel.toString()}');
+            message.medias![0].url = messageModel.mediaURL!;
+            message.medias![0].fileName =
+                messageModel.mediaURL!.split('/').last;
+            message.medias![0].customProperties = {
+              'widget': FileMessage(
+                fileSrc: customJson['url'],
+                me: true,
+                createdAt: message.createdAt,
+                readStatus: message.status,
+              ),
+            };
+          } else if (mediaType == MediaType.image) {
+            message.medias![0].customProperties = {
+              'onTap': () {
+                Log.d(tag, 'image clicked: ${messageModel.toString()}');
+                if (customJson['url'] != null) {
+                  launchInWebViewOrVC(customJson['url'], context);
+                }
+              },
+            };
+          }
+          break;
+        }
+      }
+    }
+    if (needUpdate) {
+      setState(() {});
+    }
   }
 
-  @override
-  void dispose() {
-    jabberSubscription?.cancel();
-    XmppConnection.removeListener(this);
-    super.dispose();
+  Future<void> initMe() async {
+    userSettings = await UserSettingsModel().getUser();
+    if (userSettings == null) {
+      Log.e(tag, 'initState user is null');
+      return;
+    }
+    String phone = phoneMaskHelper(userSettings!.phone ?? '');
+    me = ChatUser(
+      id: userSettings!.phone ?? '',
+      jid: userSettings!.jid ?? '',
+      phone: userSettings!.phone,
+      name: phone,
+    );
+    /*
+      jabberMsgDeliveredSubscription =
+          xmppHelper?.jabberStream.msgStream.listen((msgId) {
+        int deliveredBefore = 0;
+        for (ChatMessage msg in messages) {
+          if (msg.customProperties!['id'] == msgId) {
+            // Нужно все сообщения, которые ранее тоже промаркировать как прочитанные в этом случае
+            deliveredBefore = msg.createdAt.millisecondsSinceEpoch;
+
+            // Медиа файлы - сразу перезапрос сообщений
+            if (msg.medias != null) {
+              for (ChatMedia chatMedia in msg.medias!) {
+                if (chatMedia.customProperties!['widget'] != null) {
+                  if (chatMedia.customProperties!['widget'] is FileMessage ||
+                      chatMedia.customProperties!['widget'] is VoiceMessage) {
+                    Future.delayed(const Duration(seconds: 1), () async {
+                      await initMamMessages();
+                    });
+                    return;
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+        if (deliveredBefore > 0) {
+          for (ChatMessage msg in messages) {
+            if (msg.createdAt.millisecondsSinceEpoch > deliveredBefore) {
+              continue;
+            }
+            msg.status = MessageStatus.received;
+          }
+          setState(() {});
+        }
+      });
+    */
   }
 
-  void initMamMessages() {
-    // TODO: GROUP MAM MESSAGES
+  Future<void> checkCompany() async {
+    List<String> comparts = friend.jid!.split('_');
+    try {
+      int orgPk = int.parse(comparts[1]);
+      // Ищем компанию
+      Orgs? company = await Orgs().getOrg(orgPk);
+      if (company != null) {
+        if (friend.name != company.name && mounted) {
+          setState(() {
+            friend.name = company.name;
+          });
+        }
+      }
+    } catch (ex, stack) {
+      Log.d(tag, ex.toString());
+      //Log.d(tag, stack.toString());
+    }
+
+    String myJid = me.jid ?? '';
+    List<RosterModel> rosterModels =
+        await RosterModel().getBy(myJid, jid: friend.jid, isGroup: true);
+    if (rosterModels.isEmpty) {
+      // Если нету в ростере модели, пробуем присоединиться
+      String newMuc = friend.jid!.split('@')[0];
+
+      await showLoading();
+      SharedPreferences prefs =
+          await SharedPreferencesManager.getSharedPreferences();
+      await prefs.remove(BGTasksModel.addRosterPrefKey);
+      BGTasksModel.addMUCTask({
+        'group': newMuc,
+      });
+      Future.delayed(Duration.zero, () async {
+        updateTimer =
+            Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+          await checkNewGroup(newMuc);
+        });
+      });
+    }
+  }
+
+  Future<void> checkNewGroup(String newMuc) async {
+    SharedPreferences prefs =
+        await SharedPreferencesManager.getSharedPreferences();
+    bool? addMUCResult = prefs.getBool(BGTasksModel.addRosterPrefKey);
+    if (addMUCResult != null) {
+      if (addMUCResult) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Группа $newMuc добавлена'),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red,
+              content: Text('Группа $newMuc не найдена'),
+            ),
+          );
+        }
+        Future.delayed(Duration.zero, () async {
+          Navigator.pop(context);
+        });
+      }
+      await prefs.remove(BGTasksModel.addRosterPrefKey);
+      updateTimer?.cancel();
+    }
+  }
+
+  Future<List<ChatMessageModel>> initMamMessages() async {
     messages = [];
-    xmppHelper?.requestMamMessages(friend.id, limit: 20, lastFlag: true);
+    Log.d(tag, 'INIT MAM MESSAGES');
+    return await ChatMessageModel()
+        .getMessages(me.jid ?? '', friend.jid ?? '', limit: 50, offset: 0);
+  }
+
+  Future<void> loadMamMessages() async {
+    //await ChatMessageModel().dropAllRows();
+    List<ChatMessageModel> mamMessages = [];
+    Map<String, int> times = {};
+    if (messages.isNotEmpty) {
+      times = getMinMaxMessageTime();
+      Log.d(tag, 'receiving messages after $times');
+      mamMessages = await ChatMessageModel().getMessagesAfter(
+          me.jid ?? '', friend.jid ?? '',
+          after: times['max'] ?? 0);
+    } else {
+      mamMessages = await initMamMessages();
+    }
+    if (mamMessages.isEmpty) {
+      return;
+    }
+
+    String setFromName = '';
+    if (isChannel) {
+      setFromName = friend.name ?? friend.id;
+    }
+
+    for (ChatMessageModel dbMessage in mamMessages) {
+      Log.d(tag, 'messages time ${dbMessage.time}');
+      MessageChat chatMessageModel =
+      ChatMessageModel.convert2MessageChat(dbMessage);
+      ChatMessage chatMessage = ChatMessageModel.convert2ChatMessage(
+          chatMessageModel, me,
+          setFromName: setFromName,
+          context: context);
+      messages.add(chatMessage);
+    }
+    times = getMinMaxMessageTime();
+    Future.delayed(const Duration(seconds: 1), () async {
+      // Запрашиваем VCard чтобы добавиться туда для пушей
+      await checkMeInGroupVCard();
+    });
+    Future.delayed(const Duration(seconds: 2), () async {
+      await markMessagesAsRead(force: true);
+    });
+
+    setState(() {});
+  }
+
+  Future<void> checkMeInGroupVCard() async {
+    if (isChannel) {
+      return;
+    }
+    await BGTasksModel.checkMeInGroupVCardTask({
+      'groupJid': friend.id,
+    });
+
+    /*
+    Map<String, dynamic> descObj =
+        await xmppHelper?.getVCardDescAsDict(jid: groupJid) ?? {};
+    String key = 'chat_${me.id}';
+    if (descObj['users'] == null ||
+        !(descObj['users'] as List<dynamic>).contains(me.id)) {
+      Log.d(tag, '$key not in groupVCard DESC: $descObj');
+
+      String myJid = 'TODO jid'; //xmppHelper?.getJid() ?? '';
+      String credentialsHash =
+          'TODO: credentialsHash'; // xmppHelper?.credentialsHash() ?? '';
+      await pushMe2GroupVCard(myJid, credentialsHash, friend.id);
+    }
+    */
+
+
+    /* TODO: для группового чата нет таких данных
+    int lastMessageTime = int.parse(descObj[key] ?? '0');
+    // Мы получили последнее время, надо обновить все сообщения,
+    // которые меньше этого времени как прочитанные
+    int marked = await ChatMessageModel()
+        .setReadFlag(lastMessageTime, me.jid!, friend.jid!);
+    if (marked > 0) {
+      // TODO: обновить сообщения т/к промаркерованы прочитанными
+    }
+    */
+  }
+
+  Future<void> markMessagesAsRead({bool force = false}) async {
+    if (!mounted) {
+      Log.d(tag, 'markMessagesAsRead FAILED, because not mounted');
+      return;
+    }
+    if (friend.jid == null || messages.isEmpty) {
+      Log.d(tag, 'markMessagesAsRead FAILED, because we are not ready');
+      return;
+    }
+
+    DateTime lastTimeMessage = DateTime(1970, 1, 1);
+    for (ChatMessage message in messages) {
+      if (message.createdAt.isAfter(lastTimeMessage)) {
+        lastTimeMessage = message.createdAt;
+      }
+    }
+
+    String myJid = me.jid ?? '';
+    List<RosterModel> rosterModels =
+        await RosterModel().getBy(myJid, jid: friend.jid, isGroup: true);
+    if (rosterModels.isEmpty || !mounted) {
+      Log.d(tag, 'markMessagesAsRead FAILED, roster model not found');
+      return;
+    }
+    RosterModel rosterModel = rosterModels[0];
+    if (rosterModel.jid == null || rosterModel.jid == '') {
+      Log.d(
+          tag,
+          'markMessagesAsRead FAILED, because rosterModel not found ' +
+              'for ${rosterModel.toString()}');
+      return;
+    }
+    Log.d(tag, 'markMessagesAsRead for ${friend.jid}');
+    /*
+    bool needUpdate = await xmppHelper?.updatePrivateStorage(
+            'unread_messages',
+            'lastReadMessageTime',
+            {'chat_group_$confId': '${lastTimeMessage.millisecondsSinceEpoch}'},
+            force: force) ??
+        false;
+    if (needUpdate) {
+      // Дополнительно засылаем рецепт прочтения на отправителя
+      // TODO: на йосе VCard не переполучается каждый раз
+      Log.d(tag, 'send delivery receipt -----> ${friend.jid}, $lastMessageId');
+      xmppHelper?.sendDeliveryReceipt(
+          friend.jid!, lastMessageId, lastMessageId);
+    }
+    */
+    rosterModel.newMessagesCount = 0;
+    await rosterModel.updatePartial(rosterModel.id, {
+      'newMessagesCount': 0,
+      'lastReadMessageTime': lastTimeMessage.millisecondsSinceEpoch,
+    });
+    await UserSettingsModel().updateRosterVersion();
   }
 
   int? getLastMessageTime() {
@@ -111,6 +526,20 @@ class _GroupChatScreenState extends State<GroupChatScreen> implements DataChange
     return firstMessage;
   }
 
+  Map<String, int> getMinMaxMessageTime() {
+    int minMessageTime = 0;
+    int maxMessageTime = 0;
+    if (messages.isNotEmpty) {
+      messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      minMessageTime = messages.last.createdAt.millisecondsSinceEpoch;
+      maxMessageTime = messages.first.createdAt.millisecondsSinceEpoch;
+    }
+    return {
+      'min': minMessageTime,
+      'max': maxMessageTime,
+    };
+  }
+
   @override
   void setState(fn) {
     if (mounted) {
@@ -120,23 +549,23 @@ class _GroupChatScreenState extends State<GroupChatScreen> implements DataChange
 
   Future<void> sendChatFile(String? path, MediaType mediaType) async {
     if (path == null || path == '') {
-      Log.d(TAG, 'NULL picked file');
+      Log.d(tag, 'NULL picked file');
       return;
     }
     File file = File(path);
     bool isExists = await file.exists();
     if (!isExists) {
-      Log.d(TAG, 'file not exists $path');
+      Log.d(tag, 'file not exists $path');
       return;
     }
     int filesize = await file.length();
     if (filesize <= 0) {
-      Log.d(TAG, 'file zero size $path');
+      Log.d(tag, 'file zero size $path');
       return;
     }
-    Log.d(TAG, 'picked file ${file.path}');
+    Log.d(tag, 'picked file ${file.path}');
 
-    ChatMessage msg = ChatMessage(
+    ChatMessage m = ChatMessage(
       createdAt: DateTime.now(),
       user: me,
       medias: [
@@ -145,101 +574,68 @@ class _GroupChatScreenState extends State<GroupChatScreen> implements DataChange
           type: mediaType,
           fileName: file.path,
           isUploading: true,
-        )
+          customProperties: {},
+        ),
       ],
+      status: MessageStatus.pending,
     );
-    // Добавляем в очередь на загрузку файла
-    // по createdAt + fileName сменим isUploading: false
+    m.customProperties = {
+      'id': const Uuid().v4(),
+      'me': true,
+      'icon': const Icon(Ionicons.checkmark_done_outline),
+    };
+    String msgType = 'Отправлен файл';
+    if (mediaType == MediaType.image) {
+      msgType = 'Отправлено фото';
+      m.medias![0].isUploading = false;
+      m.medias![0].customProperties = {
+        'onTap': () {
+          launchInWebViewOrVC(file.path, context);
+        }
+      };
+    } else if (mediaType == MediaType.audio) {
+      msgType = 'Отправлено аудио-сообщение';
+      m.medias![0].isUploading = false;
+      m.medias![0].customProperties = {
+        'widget': VoiceMessage(
+          audioSrc: file.path,
+          played: false,
+          me: true,
+          createdAt: m.createdAt,
+          readStatus: m.status,
+        ),
+      };
+    } else if (mediaType == MediaType.video) {
+      msgType = 'Отправлено видео-сообщение';
+      m.medias![0].isUploading = false;
+    } else if (mediaType == MediaType.file) {
+      m.medias![0].isUploading = false;
+      m.medias![0].customProperties = {
+        'widget': FileMessage(
+          fileSrc: file.path,
+          me: true,
+          createdAt: m.createdAt,
+          readStatus: m.status,
+          localPath: file.path,
+        )
+      };
+    }
+
     setState(() {
-      // update messages
-      messages.insert(0, msg);
+      messages.insert(0, m);
     });
 
-    String fname = file.path.split('/').last;
-    String? putUrl =
-    await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
-
-    if (putUrl != null) {
-      final uri = Uri.parse(putUrl);
-      var response = await http.put(
-        uri,
-        headers: {
-          // HttpHeaders.authorizationHeader: 'Basic xxxxxxx',
-          //'Content-Type': 'image/jpeg',
-        },
-        body: await file.readAsBytes(),
-      );
-
-      if (response.statusCode == 201) {
-        // TODO: Отложенное действие - отправляем сообщение, когда загрузится?
-        Log.i(TAG, 'upload success $putUrl');
-        Map<String, String> customText = {
-          'type': mediaType.toString(),
-          'url': putUrl,
-        };
-        msg.customProperties ??= {};
-        String? pk = await xmppHelper?.sendCustomGroupMessage(
-            friend.id, mediaType.toString(), jsonEncode(customText));
-        setState(() {
-          msg.customProperties!['id'] = pk;
-          msg.medias![0].isUploading = false;
-          msg.medias![0].url = putUrl;
-          if (mediaType == MediaType.audio) {
-            msg.medias![0].customProperties = {
-              'widget': VoiceMessage(
-                audioSrc: putUrl,
-                played: false,
-                me: true,
-              ),
-            };
-          } else if (mediaType == MediaType.file) {
-            msg.medias![0].customProperties = {
-              'widget': FileMessage(
-                fileSrc: putUrl,
-                me: true,
-                localPath: file.path,
-              ),
-            };
-          } else if (mediaType == MediaType.image) {
-            msg.medias![0].customProperties = {
-              'onTap': () {
-                launchInWebViewOrVC(putUrl);
-              },
-            };
-          }
-        });
-        String msgType = 'Отправлен файл';
-        if (mediaType == MediaType.image) {
-          msgType = 'Отправлено фото';
-        } else if (mediaType == MediaType.audio) {
-          msgType = 'Отправлено аудио-сообщение';
-        } else if (mediaType == MediaType.video) {
-          msgType = 'Отправлено видео-сообщение';
-        }
-        // TODO: пуши пока х/з как
-        //sendPush(xmppHelper?.credentialsHash() ?? '',
-        //    xmppHelper?.getLogin() ?? '', friend.id,
-        //    only_data: true, text: msgType);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Ошибка отправки файла'
-                'Не удалось загрузить файл, код ответа сервера ${response
-                .statusCode}'),
-          ));
-        }
-        Log.e(TAG,
-            '[ERROR]: upload ${file.path} failed, ${response.body.toString()}');
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Ошибка отправки файла'
-              'Попробуйте переименовать файл, используя латинские буквы'),
-        ));
-      }
-      Log.e(TAG, 'slotUrl error');
-    }
+    Map<String, dynamic> data = {
+      'from': userSettings!.jid,
+      'filesize': filesize,
+      'path': file.path, // File file = File(path);
+      'mediaType': mediaType.toString(),
+      'to': friend.jid,
+      'now': m.createdAt.millisecondsSinceEpoch,
+      'pk': m.customProperties!['id'],
+      'msgType': msgType,
+    };
+    await BGTasksModel.sendFileGroupMessageTask(data);
   }
 
   InputDecoration buildInputDecoration() {
@@ -265,138 +661,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> implements DataChange
     );
   }
 
-  @override
-  void onChatMessage(MessageChat messageChat) {
-    Log.d(TAG,
-        'receiveEvent onChatMessage: ${messageChat.toEventData().toString()}');
-  }
-
-  Future<void> launchInWebViewOrVC(String url) async {
-    Uri urla = Uri.parse(url);
-    if (!await launchUrl(
-      urla,
-      mode: LaunchMode.inAppWebView,
-      webViewConfiguration: const WebViewConfiguration(
-          headers: <String, String>{'my_header_key': 'my_header_value'}),
-    )) {
-      Log.e(TAG, 'Could not launch $url');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Не удалось открыть файл'),
-        ));
-      }
-    }
-  }
-
-  @override
-  void onChatStateChange(ChatState chatState) {
-    Log.d(TAG, 'receiveEvent onChatStateChange: ${chatState.toString()}');
-  }
-
-  @override
-  void onConnectionEvents(ConnectionEvent connectionEvent) {
-    Log.d(TAG, 'receiveEvent connectionEvent: ${connectionEvent.toString()}');
-    if (connectionEvent.type == XmppConnectionState.authenticated) {
-      messages = [];
-      initMamMessages();
-    }
-  }
-
-  @override
-  void onGroupMessage(MessageChat messageChat) {
-    if (messageChat.body == null || messageChat.body!.isEmpty) {
-      return;
-    }
-    // Если сообщение уже в списке, тогда пропускаем его
-    for (ChatMessage message in messages) {
-      if (messageChat.id == message.customProperties!['id']) {
-        return;
-      }
-    }
-    final senderJid = messageChat.senderJid ?? '';
-    final String phone = cleanPhone(senderJid.split('/').last);
-    bool isMe = false;
-    ChatUser u = ChatUser(id: phone, name: phoneMaskHelper(phone), phone: phone);
-    if (phone == me.phone) {
-      u = me;
-      isMe = true;
-    }
-
-    Log.d(TAG, 'onChatMessage not in list for $phone, isMe=$isMe');
-
-
-    ChatMessage msg = ChatMessage(
-        text: messageChat.body ?? '',
-        user: u,
-        customProperties: {'id': messageChat.id, 'me': isMe},
-        medias: [],
-        // Для отправленных руками тут 0 (не история)
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-            int.parse(messageChat.time.toString())));
-
-    if (messageChat.customText != null && CHAT_MEDIA_TYPES.contains(msg.text)) {
-      MediaType mediaType = MediaType.parse(msg.text);
-      try {
-        Map<String, dynamic> customText = jsonDecode(messageChat.customText!);
-        msg.text = '';
-        // TODO: заглушку
-        String url = customText['url'] ?? '';
-        Map<String, dynamic> customProperties = {};
-        if (mediaType == MediaType.audio) {
-          customProperties['widget'] = VoiceMessage(
-            audioSrc: url,
-            played: false,
-            me: isMe,
-          );
-        } else if (mediaType == MediaType.file) {
-          customProperties['widget'] = FileMessage(
-            fileSrc: url,
-            me: isMe,
-          );
-        } else if (mediaType == MediaType.image) {
-          customProperties['onTap'] = () {
-            launchInWebViewOrVC(url);
-          };
-        }
-        msg.medias!.add(ChatMedia(
-          url: url,
-          type: mediaType,
-          fileName: url.split('/').last,
-          customProperties: customProperties,
-        ));
-      } catch (err) {
-        Log.e(TAG, 'ERROR decode customText in message ${err.toString()}');
-      }
-    }
-    setState(() {
-      messages.insert(0, msg);
-      messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    });
-  }
-
-  @override
-  void onNormalMessage(MessageChat messageChat) {
-    Log.d(TAG, 'receiveEvent onNormalMessage: ${messageChat.toEventData().toString()}');
-  }
-
-  @override
-  void onPresenceChange(PresentModel message) {
-    Log.d(TAG, 'receiveEvent onPresenceChange: ${message.toString()}');
-  }
-
-  @override
-  void onSuccessEvent(SuccessResponseEvent successResponseEvent) {
-    Log.d(TAG,
-        'receiveEvent onSuccessEvent: ${successResponseEvent.toSuccessResponseData().toString()}');
-  }
-
-  @override
-  void onXmppError(ErrorResponseEvent errorResponseEvent) {
-    Log.d(TAG,
-        'receiveEvent onXmppError: ${errorResponseEvent.toErrorResponseData().toString()}');
-  }
-
-  void sendTextMessage(String? text) {
+  Future<void> sendTextMessage(String? text) async {
     if (text == null) {
       return;
     }
@@ -404,120 +669,113 @@ class _GroupChatScreenState extends State<GroupChatScreen> implements DataChange
       createdAt: DateTime.now(),
       user: me,
     );
-    m.customProperties ??= {};
+    m.customProperties = {
+      'id': const Uuid().v4(),
+    };
     String t = text.trim();
     if (t.isEmpty) {
       return;
     }
     m.text = t;
-
-    xmppHelper?.sendGroupMessage(friend.id, t).then((String pk) {
-      if (pk == '') {
-        return;
-      }
-      m.customProperties!['id'] = pk;
-      setState(() {
-        messages.insert(0, m);
-      });
-      // TODO: push
-      /*
-      sendPush(xmppHelper?.credentialsHash() ?? '',
-          xmppHelper?.getLogin() ?? '', friend.id,
-          only_data: true, text: text);
-      */
+    setState(() {
+      messages.insert(0, m);
     });
+    Map<String, dynamic> data = {
+      'from': userSettings!.jid,
+      'text': m.text,
+      'to': friend.jid,
+      'now': m.createdAt.millisecondsSinceEpoch,
+      'pk': m.customProperties!['id'],
+    };
+    await BGTasksModel.sendTextGroupMessageTask(data);
+  }
+
+  Widget alternativeInput() {
+    /* Выводим виджет отправки сообщения,
+       если у нас канал - не выводим
+    */
+    if (isChannel) {
+      return Container();
+    }
+    return ChatComposer(
+      controller: chatComposerController,
+      sendButtonBackgroundColor: tealColor,
+      maxRecordLength: const Duration(seconds: 300),
+      padding: Platform.isIOS
+          ? const EdgeInsets.only(bottom: 25.0, left: 5.0, right: 5.0)
+          : const EdgeInsets.only(bottom: 5.0, left: 5.0, right: 5.0),
+      textFieldDecoration: const InputDecoration(
+        hintText: 'Ваше сообщение...',
+        hintStyle: TextStyle(color: Colors.grey),
+        border: InputBorder.none,
+      ),
+      onReceiveText: (str) {
+        setState(() {
+          chatComposerController.text = '';
+          sendTextMessage(str);
+        });
+      },
+      onRecordEnd: (path) async {
+        await sendChatFile(path, MediaType.audio);
+      },
+      textPadding: EdgeInsets.zero,
+      leading: CupertinoButton(
+        padding: EdgeInsets.zero,
+        child: const Icon(
+          Icons.insert_emoticon_outlined,
+          size: 25,
+          color: Colors.grey,
+        ),
+        onPressed: () {},
+      ),
+      actions: [
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(
+            Icons.attach_file_rounded,
+            size: 25,
+            color: Colors.grey,
+          ),
+          onPressed: () async {
+            FilePickerResult? file = await FilePicker.platform.pickFiles();
+            await sendChatFile(file?.files.single.path, MediaType.file);
+          },
+        ),
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(
+            Icons.image_rounded,
+            size: 25,
+            color: Colors.grey,
+          ),
+          onPressed: () async {
+            final XFile? image =
+                await imagePicker.pickImage(source: ImageSource.gallery);
+            await sendChatFile(image?.path, MediaType.image);
+          },
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Чат ${friend.getName()}'),
+        title: isChannel
+            ? Text('Канал ${friend.getName()}')
+            : Text('Чат ${friend.getName()}'),
         backgroundColor: tealColor,
-        actions: [
-          /*
-          IconButton(
-            icon: const Icon(
-              Icons.phone,
-            ),
-            onPressed: () {
-              Navigator.pushNamed(context, DialpadScreen.id, arguments: {
-                sipHelper,
-                xmppHelper,
-                // в DialPadModel нужно передавать телефон без домена
-                DialpadModel(phone: cleanPhone(friend.id), isSip: true, startCall: true),
-              });
-            },
-          ),
-          */
-        ],
+        actions: [],
       ),
       body: DashChat(
-        alternative: ChatComposer(
-          controller: chatComposerController,
-          sendButtonBackgroundColor: tealColor,
-          maxRecordLength: const Duration(seconds: 300),
-          padding: Platform.isIOS
-              ? const EdgeInsets.only(bottom: 25.0, left: 5.0, right: 5.0)
-              : const EdgeInsets.only(bottom: 5.0, left: 5.0, right: 5.0),
-          textFieldDecoration: const InputDecoration(
-            hintText: 'Ваше сообщение...',
-            hintStyle: TextStyle(color: Colors.grey),
-            border: InputBorder.none,
-          ),
-          onReceiveText: (str) {
-            setState(() {
-              chatComposerController.text = '';
-              sendTextMessage(str);
-            });
-          },
-          onRecordEnd: (path) async {
-            print('audioRecord file $path');
-            await sendChatFile(path, MediaType.audio);
-          },
-          textPadding: EdgeInsets.zero,
-          leading: CupertinoButton(
-            padding: EdgeInsets.zero,
-            child: const Icon(
-              Icons.insert_emoticon_outlined,
-              size: 25,
-              color: Colors.grey,
-            ),
-            onPressed: () {},
-          ),
-          actions: [
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              child: const Icon(
-                Icons.attach_file_rounded,
-                size: 25,
-                color: Colors.grey,
-              ),
-              onPressed: () async {
-                FilePickerResult? file = await FilePicker.platform.pickFiles();
-                await sendChatFile(file?.files.single.path, MediaType.file);
-              },
-            ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              child: const Icon(
-                Icons.image_rounded,
-                size: 25,
-                color: Colors.grey,
-              ),
-              onPressed: () async {
-                final XFile? image =
-                await imagePicker.pickImage(source: ImageSource.gallery);
-                await sendChatFile(image?.path, MediaType.image);
-              },
-            ),
-          ],
-        ),
+        alternative: alternativeInput(),
         currentUser: me,
         onSend: (ChatMessage m) {
           // Not used, see alternative: ChatComposer
         },
         messages: messages,
+        messageOptions: chatMessageOptions,
         messageListOptions: MessageListOptions(
           onLoadEarlier: () async {
             // Будем грузить только если уже загружены сообщения (и занят экран)

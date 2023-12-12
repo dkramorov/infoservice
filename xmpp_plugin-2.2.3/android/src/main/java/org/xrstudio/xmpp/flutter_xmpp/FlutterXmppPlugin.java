@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
+import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 
@@ -101,7 +102,7 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
 
                     // Handle receiving message events.
                     case Constants.RECEIVE_MESSAGE:
-
+                        String bundleTo = intent.getStringExtra(Constants.BUNDLE_TO_JID);
                         String from = intent.getStringExtra(Constants.BUNDLE_FROM_JID);
                         String body = intent.getStringExtra(Constants.BUNDLE_MESSAGE_BODY);
                         String msgId = intent.getStringExtra(Constants.BUNDLE_MESSAGE_PARAMS);
@@ -116,6 +117,7 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                         build.put(Constants.TYPE, metaInfo);
                         build.put(Constants.ID, msgId);
                         build.put(Constants.FROM, from);
+                        build.put(Constants.TO, bundleTo);
                         build.put(Constants.BODY, body);
                         build.put(Constants.MSG_TYPE, type);
                         build.put(Constants.SENDER_JID, senderJid);
@@ -126,6 +128,14 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                         Utils.addLogInStorage("Action: sentMessageToFlutter, Content: " + build.toString());
                         Log.d("TAG", " RECEIVE_MESSAGE-->> " + build.toString());
 
+                        /* Посмотреть все, что приехало от Utils.broadcastMessageToFlutter
+                        Bundle bundle = intent.getExtras();
+                        if (bundle != null) {
+                            for (String key : bundle.keySet()) {
+                                Log.e("TAG", key + " : " + (bundle.get(key) != null ? bundle.get(key) : "NULL"));
+                            }
+                        }
+                        */
                         events.success(build);
 
                         break;
@@ -167,7 +177,9 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
 
                         events.success(presenceBuild);
                         break;
-
+                    default:
+                        Utils.printLog("--- RECEIVED unknown action: " + action.toString());
+                        break;
                 }
             }
         };
@@ -221,7 +233,6 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                         Map<String, Object> successBuild = new HashMap<>();
                         successBuild.put(Constants.TYPE, successType);
                         successBuild.put(Constants.FROM, from);
-
                         Utils.addLogInStorage("Action: sentSuccessMessageToFlutter, Content: " + successBuild.toString());
 
                         events.success(successBuild);
@@ -410,6 +421,27 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
         method_channel.setMethodCallHandler(null);
+        event_channel.setStreamHandler(null);
+        success_channel.setStreamHandler(null);
+        error_channel.setStreamHandler(null);
+        connection_channel.setStreamHandler(null);
+        if (mBroadcastReceiver != null) {
+            Utils.printLog(" cancelling listener: ");
+            activity.unregisterReceiver(mBroadcastReceiver);
+            mBroadcastReceiver = null;
+        }
+        if (errorBroadcastReceiver != null) {
+            activity.unregisterReceiver(errorBroadcastReceiver);
+            errorBroadcastReceiver = null;
+        }
+        if (successBroadcastReceiver != null) {
+            activity.unregisterReceiver(successBroadcastReceiver);
+            successBroadcastReceiver = null;
+        }
+        if (connectionBroadcastReceiver != null) {
+            activity.unregisterReceiver(connectionBroadcastReceiver);
+            connectionBroadcastReceiver = null;
+        }
         Utils.printLog(" onDetachedFromEngine: ");
     }
 
@@ -772,6 +804,21 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
                 result.success(Constants.SUCCESS);
                 break;
 
+            case Constants.GET_PRIVATE_STORAGE:
+                String storageCategory = call.argument("category");
+                String storageName = call.argument("name");
+                Map<String, Map<String, String>> privateStorage = FlutterXmppConnection.getPrivateStorage(storageCategory, storageName);
+                result.success(privateStorage);
+                break;
+
+            case Constants.SET_PRIVATE_STORAGE:
+                storageCategory = call.argument("category");
+                storageName = call.argument("name");
+                Map<String, String> dict = call.argument("dict");
+                FlutterXmppConnection.setPrivateStorage(storageCategory, storageName, dict);
+                result.success(Constants.SUCCESS);
+                break;
+
             default:
                 result.notImplemented();
                 break;
@@ -793,6 +840,12 @@ public class FlutterXmppPlugin implements MethodCallHandler, FlutterPlugin, Acti
             i.putExtra(Constants.USER_STREAM_MANAGEMENT, useStreamManagement);
             i.putExtra(Constants.AUTOMATIC_RECONNECTION, automaticReconnection);
             activity.startService(i);
+        } else {
+            Utils.printLog("DO NOT call login because connection state is " + FlutterXmppConnectionService.getState().toString());
+            if (FlutterXmppConnectionService.getState().equals(ConnectionState.FAILED) || FlutterXmppConnectionService.getState().equals(ConnectionState.CONNECTING)) {
+                Intent i1 = new Intent(activity, FlutterXmppConnectionService.class);
+                activity.stopService(i1);
+            }
         }
     }
 

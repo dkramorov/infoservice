@@ -1,5 +1,9 @@
+import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
+import 'package:ionicons/ionicons.dart';
 
+
+const bool SENTRY_ENABLED = false;
 const String APP_FOLDER = '8800help';
 const int RESULT_SUCCESS = 1;
 const int RESULT_EMPTY = 0;
@@ -14,8 +18,12 @@ const String JABBER_SERVER = 'chat.masterme.ru';
 const int JABBER_PORT = 5222; // В подключение надо строкой передавать
 const String JABBER_REG_ENDPOINT = '/jabber/register_user/';
 const String JABBER_VCARD_ENDPOINT = '/jabber/vcard/';
+const String JABBER_GROUP_VCARD_ENDPOINT = '/jabber/group_vcard/';
+const String JABBER_CONTACTS_ENDPOINT = '/jabber/set_device_contacts/';
+const String JABBER_COMPANY_ENDPOINT = '/companies/chat/';
 //const String JABBER_NOTIFY_ENDPOINT = '/jabber/notification/infoservice-f0261/';
 const String JABBER_NOTIFY_ENDPOINT = '/jabber/notification/mastermechat/';
+const String JABBER_NOTIFY_BATCH_ENDPOINT = '/jabber/notification_batch/mastermechat/';
 
 const DB_SERVER = 'https://chat.masterme.ru';
 const DB_UPDATE_ENDPOINT = '/media/app_json/companies_db_helper.json';
@@ -103,4 +111,13 @@ const INPUT_DECORATION = InputDecoration(
       width: 2.0,
     ),
   ),
+);
+
+const MessageOptions chatMessageOptions = MessageOptions(
+  unreadStatusIcon:
+  Icon(Ionicons.checkmark_outline, size: 16, color: Colors.white),
+  readStatusIcon:
+  Icon(Ionicons.checkmark_done_outline, size: 16, color: Colors.white),
+  showTime: true,
+  fontSize: 16,
 );

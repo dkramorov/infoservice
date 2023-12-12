@@ -60,6 +60,8 @@ struct pluginMethod {
     static let changeTypingStatus : String          = "change_typing_status"
     static let changePresenceType : String          = "change_presence_type"
     static let getConnectionStatus : String         = "get_connection_status"
+    static let getPrivateStorage : String           = "get_private_storage"
+    static let setPrivateStorage : String           = "set_private_storage"
 }
 
 struct pluginMessType {

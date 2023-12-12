@@ -19,7 +19,7 @@ class Add2RosterScreen extends StatefulWidget {
 
 class _Add2RosterScreenState extends State<Add2RosterScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  static const TAG = 'Add2RosterScreen';
+  static const tag = 'Add2RosterScreen';
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
 

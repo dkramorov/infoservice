@@ -38,19 +38,19 @@
 	<key>NSCalendarsUsageDescription</key>
 	<string>Доступ к календарю для добавления напоминаний</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Доступ к камере для отправки видеофайлов</string>
+	<string>Доступ к камере для отправки видеофайлов через чат</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Доступ к контактам для общения в чате</string>
+	<string>Доступ к контактам для общения в чате. Ваш список контактов в приложении будет брать имена из вашего списка контактов на телефоне</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Доступ к геопозиции для отправки в чате</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Доступ к геопозиции для отправки в чате</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Доступ к микрофону для звонков</string>
+	<string>Доступ к микрофону для звонков, которые вы будете совершать через приложение, либо принимать через приложение. Также для чата необходим микрофон, чтобы записывать аудио-сообщения</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Доступ к акселерометру для смены режима работы</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Доступ к фото для отправки файлов</string>
+	<string>Доступ к фото для отправки файлов через чат</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Доступ к синтезу речи для диктовки сообщения</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

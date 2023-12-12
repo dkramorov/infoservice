@@ -153,8 +153,8 @@ extension XMPPController {
     }
 
     func sendSlot(slot: XMPPSlot?, resultIq: XMPPIQ?, error: Error?) {
-        printLog("\(#function) | slot: \(slot)")
-        addLogger(.sentMessageToFlutter, [slot, resultIq, error])
+        printLog("\(#function) | slot: \(slot!)")
+        addLogger(.sentMessageToFlutter, [slot!, resultIq!, error ?? ""])
 
         if let callBack = APP_DELEGATE.singalCallBack {
             callBack(slot?.putURL.absoluteString)
@@ -167,6 +167,15 @@ extension XMPPController {
 
         if let callBack = APP_DELEGATE.singalCallBack {
             callBack(arrJid)
+        }
+    }
+    
+    func sendPrivateStorageResult(withResult privateStorage : [String:[String:String]]) {
+        printLog("\(#function) | privateStorage: \(privateStorage)")
+        addLogger(.sentMessageToFlutter, privateStorage)
+
+        if let callBack = APP_DELEGATE.singalCallBack {
+            callBack(privateStorage)
         }
     }
     

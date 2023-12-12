@@ -45,6 +45,13 @@ class _MessageFieldState extends State<MessageField> {
   }
 
   @override
+  void dispose() {
+    //localController.dispose();
+    //widget.controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: composerHeight),

@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:infoservice/helpers/dialogs.dart';
 import 'package:infoservice/models/user_chat_model.dart';
+import 'package:infoservice/services/shared_preferences_manager.dart';
+import 'package:infoservice/widgets/terms_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/log.dart';
 import '../../helpers/network.dart';
-import '../../helpers/phone_mask.dart';
+import '../../models/bg_tasks_model.dart';
+import '../../models/user_settings_model.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
@@ -40,13 +43,13 @@ class TabProfileView extends StatefulWidget {
 }
 
 class _TabProfileViewState extends State<TabProfileView> {
-  static const TAG = 'TabProfileView';
+  static const String tag = 'TabProfileView';
 
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
 
-  late StreamSubscription<bool>? jabberSubscription;
-  UserChatModel user = UserChatModel();
+  UserChatModel? user = UserChatModel();
+  UserSettingsModel? userSettings;
   bool isRegistered = false;
   bool _editModeDisabled = true;
   String photo = DEFAULT_AVATAR;
@@ -58,30 +61,36 @@ class _TabProfileViewState extends State<TabProfileView> {
   String birthday = '';
   TextEditingController birthdayController = TextEditingController();
   int gender = 1;
+  int dropPersonalDataFlag = 0; // пока пишем в user.status
+  late Timer updateTimer;
 
   final ImagePicker _imagePicker = ImagePicker();
+
+  Future<void> checkUser() async {
+    if (userSettings == null) {
+      userSettings = await UserSettingsModel().getUser();
+      setState(() {});
+    }
+    if (userSettings != null) {
+      if (isRegistered != (userSettings?.isXmppRegistered == 1)) {
+        if (user == null) {
+          await getUser(userSettings?.phone ?? '');
+        }
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration.zero, () {
-      xmppHelper?.showConnectionStatus().then((success) async {
-        isRegistered = xmppHelper?.registered ?? false;
-        getUser();
+    checkUser().then((result) {
+      Future.delayed(Duration.zero, () async {
+        updateTimer =
+            Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+          await checkUser();
+        });
       });
     });
-    if (JabberManager.enabled) {
-      jabberSubscription =
-          xmppHelper?.jabberStream.registration.listen((success) {
-        setState(() {
-          isRegistered = success;
-        });
-        if (success) {
-          print('getRoster because isRegistered $success');
-          getUser();
-        }
-      });
-    }
   }
 
   @override
@@ -93,10 +102,10 @@ class _TabProfileViewState extends State<TabProfileView> {
 
   @override
   void dispose() {
+    updateTimer.cancel();
     nameController.dispose();
     emailController.dispose();
     birthdayController.dispose();
-    jabberSubscription?.cancel();
     super.dispose();
   }
 
@@ -105,27 +114,21 @@ class _TabProfileViewState extends State<TabProfileView> {
     setState(() {});
   }
 
-  void dropAccount() {
+  Future<void> dropAccount() async {
     if (isRegistered) {
-      String? login = xmppHelper?.getLogin();
-      if (login != null) {
-        SharedPreferences.getInstance().then((SharedPreferences preferences) {
-          bool? isDropped = preferences.getBool(login);
-          Log.i(TAG, 'drop account $login (isDropped $isDropped)');
-          preferences.setBool(login, true);
-          logout();
-        });
+      userSettings = await UserSettingsModel().getUser();
+      if (userSettings != null) {
+        userSettings?.updatePartial(userSettings?.id, {'isDropped': true});
+        await logout();
       }
     }
   }
 
-  void logout() {
-    // в async не пашет почему то await xmppHelper?.stop()
-    xmppHelper?.stop();
+  Future<void> logout() async {
+    await BGTasksModel.createUnregisterTask();
     xmppHelper?.setStopFlag(true);
-    sipHelper?.stop();
     sipHelper?.setStopFlag(true);
-    Future.delayed(Duration.zero, () {
+    Future.delayed(Duration.zero, () async {
       Navigator.pushNamed(context, AuthScreenWidget.id, arguments: {
         sipHelper,
         xmppHelper,
@@ -133,37 +136,32 @@ class _TabProfileViewState extends State<TabProfileView> {
     });
   }
 
-  void getUser() {
-    String login = cleanPhone(xmppHelper?.getLogin() ?? '');
+  Future<void> getUser(String login) async {
     UserChatModel defaultUser = UserChatModel(login: login);
-    if (isRegistered) {
-      UserChatModel().getByLogin(login).then((result) {
-        setState(() {
-          user = result ?? defaultUser;
-          if (user.name != null) {
-            nameController.text = user.name!;
-            name = nameController.text;
-          }
-          if (user.email != null) {
-            emailController.text = user.email!;
-            email = emailController.text;
-          }
-          if (user.birthday != null) {
-            birthdayController.text = user.birthday!;
-            birthday = birthdayController.text;
-          }
-          if (user.gender != null) {
-            gender = user.gender!;
-          }
-        });
-        Log.i(TAG, 'fetched user from db by login $login: ${user.toString()}');
-      });
-    } else {
-      setState(() {
-        user = defaultUser;
-        user.login = 'Ваш профиль';
-      });
-    }
+
+    user = await UserChatModel().getByLogin(login) ?? defaultUser;
+    setState(() {
+      if (user!.name != null) {
+        nameController.text = user!.name!;
+        name = nameController.text;
+      }
+      if (user!.email != null) {
+        emailController.text = user!.email!;
+        email = emailController.text;
+      }
+      if (user!.birthday != null) {
+        birthdayController.text = user!.birthday!;
+        birthday = birthdayController.text;
+      }
+      if (user!.gender != null) {
+        gender = user!.gender!;
+      }
+      if (user!.dropPersonalData != null) {
+        dropPersonalDataFlag = user!.dropPersonalData!;
+      }
+
+      Log.i(tag, 'fetched user from db by login $login: ${user.toString()}');
+    });
   }
 
   void ifPhotoDownloaded(String path) {
@@ -179,7 +177,7 @@ class _TabProfileViewState extends State<TabProfileView> {
       source: source,
     );
     if (result != null) {
-      Log.d(TAG, 'handleImageSelection ${result.path}');
+      Log.d(tag, 'handleImageSelection ${result.path}');
       onPickImage(result.path);
     } else {
       // User canceled the picker
@@ -201,18 +199,19 @@ class _TabProfileViewState extends State<TabProfileView> {
     Map<String, dynamic> values = {
       'photo': dest.path,
     };
-    user.photo = dest.path;
-    if (user.id != null) {
-      await user.updatePartial(
-        user.id,
-        values,
-      );
-    } else {
-      int pk = await user.insert2Db();
-      user.id = pk;
+    if (user != null) {
+      user!.photo = dest.path;
+      if (user!.id != null) {
+        await user!.updatePartial(
+          user!.id,
+          values,
+        );
+      } else {
+        int pk = await user!.insert2Db();
+        user!.id = pk;
+      }
     }
     // Обновить UI
-
     setState(() {});
     //setStateCallback({'photo': dest.path});
     //uploadImage(bytes, imageName);
@@ -220,8 +219,8 @@ class _TabProfileViewState extends State<TabProfileView> {
 
   Widget buildView() {
     ImageProvider photo = const AssetImage(DEFAULT_AVATAR);
-    if (user.photo != null && user.photo != '') {
-      photo = FileImage(File(user.photo!));
+    if (user != null && user!.photo != null && user!.photo != '') {
+      photo = FileImage(File(user!.photo!));
     }
 
     return Container(
@@ -251,7 +250,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                           Padding(
                             padding: const EdgeInsets.only(left: 25.0),
                             child: Text(
-                              user.login ?? 'Ваш профиль',
+                              user?.login ?? 'Ваш профиль',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 20.0,
@@ -531,6 +530,33 @@ class _TabProfileViewState extends State<TabProfileView> {
                           ],
                         ),
                       ),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 25.0,
+                          right: 25.0,
+                          top: 25.0,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            const Flexible(
+                              flex: 2,
+                              child: Text(
+                                'Удалить личные\nданные о себе\nна сервере\n(не хранить)?',
+                                style: TextStyle(
+                                  fontSize: 13.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Flexible(
+                              flex: 2,
+                              child: _buildSelectDropPersonalData(),
+                            ),
+                          ],
+                        ),
+                      ),
                       !_editModeDisabled
                           ? _getActionButtons()
                           : buildLogoutButton(),
@@ -538,7 +564,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                   ),
                 ),
               ),
-              SIZED_BOX_H04,
+              const TermsWidget(),
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -612,9 +638,26 @@ class _TabProfileViewState extends State<TabProfileView> {
                                 }
                               }),
                         ),
+                        FutureBuilder<String>(
+                          future: getBgTimer(),
+                          builder: (BuildContext context,
+                              AsyncSnapshot<String> snapshot) {
+                            if (snapshot.hasData) {
+                              return Text(
+                                snapshot.data ?? '',
+                                style: TextStyle(
+                                  color: Colors.grey.shade400,
+                                ),
+                              );
+                            } else {
+                              return const Text('-');
+                            }
+                          },
+                        ),
                       ],
                     )
                   ]),
+              SIZED_BOX_H20,
             ],
           ),
         ],
@@ -628,9 +671,15 @@ class _TabProfileViewState extends State<TabProfileView> {
   }
 
   Future<int> fetchUpdateVersion() async {
-    return UpdateManager.preferences
-            ?.getInt(CompaniesUpdateVersion.CAT_VERSION_KEY) ??
-        0;
+    SharedPreferences prefs =
+        await SharedPreferencesManager.getSharedPreferences();
+    return prefs.getInt(CompaniesUpdateVersion.CAT_VERSION_KEY) ?? 0;
+  }
+
+  Future<String> getBgTimer() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.reload();
+    return preferences.getString('bg_timer') ?? '';
   }
 
   Future<void> saveUserData({
@@ -639,28 +688,36 @@ class _TabProfileViewState extends State<TabProfileView> {
     String? birthday,
     int? gender,
   }) async {
+    userSettings = await UserSettingsModel().getUser();
     // Записать в базу
-    if (xmppHelper?.registered ?? false) {
-      Map<String, dynamic> values = {
-        'name': name,
-        'email': email,
-        'birthday': birthday,
-        'gender': gender,
-      };
-      if (user.id != null) {
-        await user.updatePartial(
-          user.id,
-          values,
-        );
-      } else {
-        user.name = name;
-        user.email = email;
-        user.birthday = birthday;
-        user.gender = gender;
-        user.id = await user.insert2Db();
+    Map<String, dynamic> values = {
+      'name': name,
+      'email': email,
+      'birthday': birthday,
+      'gender': gender,
+      'dropPersonalData': dropPersonalDataFlag,
+    };
+    if (user != null && user!.id != null) {
+      await user!.updatePartial(
+        user!.id,
+        values,
+      );
+    } else {
+      if (userSettings != null) {
+        user = UserChatModel(
+            name: name,
+            email: email,
+            birthday: birthday,
+            gender: gender,
+            dropPersonalData: dropPersonalDataFlag);
+        user!.id = await user!.insert2Db();
       }
-      setState(() {});
     }
+    if (userSettings != null) {
+      values.remove('dropPersonalData');
+      userSettings?.updatePartial(userSettings?.id, values);
+    }
+    setState(() {});
   }
 
   Widget _buildSelectGender() {
@@ -794,10 +851,40 @@ class _TabProfileViewState extends State<TabProfileView> {
     );
   }
 
+  Widget _buildSelectDropPersonalData() {
+    return _editModeDisabled
+        ? Center(
+            child: Text(dropPersonalDataFlag == 1 ? 'Да' : 'Нет'),
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Нет'),
+              Switch(
+                value: dropPersonalDataFlag == 1 ? true : false,
+                onChanged: (value) {
+                  setState(() {
+                    if (value) {
+                      dropPersonalDataFlag = 1;
+                    } else {
+                      dropPersonalDataFlag = 0;
+                    }
+                  });
+                },
+                activeTrackColor: tealColor,
+                activeColor: Colors.white,
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: tealColor,
+              ),
+              const Text('Да'),
+            ],
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: isRegistered
+      child: userSettings != null
           ? buildView()
           : RoundedButtonWidget(
               text: const Text('Вход / Регистрация'),

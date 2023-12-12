@@ -1,29 +1,27 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 import 'package:chat_composer/chat_composer.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:infoservice/models/bg_tasks_model.dart';
 import 'package:infoservice/models/dialpad_model.dart';
 import 'package:infoservice/pages/chat/utils.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
-import 'package:xmpp_plugin/error_response_event.dart';
-import 'package:xmpp_plugin/models/chat_state_model.dart';
-import 'package:xmpp_plugin/models/connection_event.dart';
+import 'package:ionicons/ionicons.dart';
+import 'package:uuid/uuid.dart';
 import 'package:xmpp_plugin/models/message_model.dart';
-import 'package:xmpp_plugin/models/present_mode.dart';
-import 'package:xmpp_plugin/success_response_event.dart';
-import 'package:xmpp_plugin/xmpp_plugin.dart';
-import 'package:http/http.dart' as http;
 
-import '../../a_notifications/notifications.dart';
+import '../../helpers/dialogs.dart';
 import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
+import '../../models/chat_message_model.dart';
+import '../../models/roster_model.dart';
+import '../../models/user_settings_model.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
 import '../../sip_ua/dialpadscreen.dart';
@@ -31,7 +29,6 @@ import '../../widgets/chat/messages_widgets.dart';
 
 class ChatScreen extends StatefulWidget {
   static const String id = '/chat_screen/';
-
   final SIPUAManager? _sipHelper;
   final JabberManager? _xmppHelper;
   final Object? _arguments;
@@ -43,70 +40,427 @@ class ChatScreen extends StatefulWidget {
   _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
-  static const String TAG = 'ChatScreen';
+class _ChatScreenState extends State<ChatScreen> {
+  static const String tag = 'ChatScreen';
 
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
 
   List<ChatMessage> messages = [];
-  late StreamSubscription<bool>? jabberSubscription;
   late ChatUser friend;
-  late ChatUser me;
+  UserSettingsModel? userSettings;
+  ChatUser me = ChatUser(
+    id: '',
+    jid: '',
+    phone: '',
+    name: '',
+  );
   bool isRecording = false;
   final ImagePicker imagePicker = ImagePicker();
+  Timer? updateTimer;
+  int rosterVersion = 0;
+  bool inUpdateTimer = false;
 
-  GlobalKey key = GlobalKey();
   TextEditingController chatComposerController = TextEditingController();
+
+  @override
+  void dispose() {
+    if (updateTimer != null) {
+      updateTimer?.cancel();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    if (JabberManager.enabled) {
-      jabberSubscription =
-          xmppHelper?.jabberStream.registration.listen((isRegistered) {
-        if (isRegistered) {
-          initMamMessages();
-        }
-      });
-      XmppConnection.addListener(this);
-      List args = (widget._arguments as Set).toList();
-      for (Object? arg in args) {
-        if (arg is ChatUser) {
-          friend = arg;
-          Log.d(TAG, '---> chat with ${friend.id}');
-          initMamMessages();
+    List args = (widget._arguments as Set).toList();
+    for (Object? arg in args) {
+      if (arg is ChatUser) {
+        friend = arg;
+        Log.d(tag, '---> chat with ${friend.id}');
+        break;
+      }
+    }
+    Future.delayed(Duration.zero, () async {
+      await initMe();
+      if (friend.jid == null) {
+        Log.e(tag, 'initState error - friend.jid is null');
+        return;
+      }
+      if (me.id == '') {
+        Log.e(tag, 'initState error - me is null');
+        return;
+      }
+      if (friend.customProperties != null &&
+          friend.customProperties!['fromPush'] != null) {
+        RosterModel().getBy(me.jid ?? '', jid: friend.jid).then((result) {
+          Log.d(tag,
+              'PUSH logic - get roster ${result.toString()}, ${me.jid}, ${friend.jid}');
+          if (result.isNotEmpty &&
+              result[0].name != null &&
+              result[0].name != '') {
+            friend.name = result[0].name;
+          }
+        });
+      }
+      await checkNewMessages();
+      await startTimer();
+    });
+  }
+
+  Future<void> startTimer() async {
+    updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+      if (inUpdateTimer) {
+        Log.i(tag, 'inUpdateTimer');
+        return;
+      } else {
+        await checkNewMessages();
+      }
+    });
+  }
+
+  Future<void> checkNewMessages() async {
+    inUpdateTimer = true;
+    userSettings = await UserSettingsModel().getUser();
+    if (userSettings != null) {
+      int newRosterVersion = userSettings!.rosterVersion ?? 0;
+      //Log.d(tag, 'compare rosterVersions: $newRosterVersion, ${rosterVersion}');
+      if (newRosterVersion > rosterVersion) {
+        rosterVersion = newRosterVersion;
+        await loadMamMessages();
+      }
+    }
+    inUpdateTimer = false;
+  }
+
+  Future<void> updateReadMessages() async {
+    if (messages.isEmpty) {
+      return;
+    }
+    String myJid = me.jid ?? '';
+    List<String> idsMessages = [];
+    List<String> idsMediaMessages = [];
+
+    for (int i = 0; i < messages.length; i++) {
+      ChatMessage message = messages[i];
+      if (message.user.jid == myJid &&
+          message.status != MessageStatus.received) {
+        idsMessages.add(message.customProperties!['id']);
+      }
+      if (message.medias != null &&
+          message.medias!.isNotEmpty &&
+          message.medias![0].isUploading) {
+        idsMediaMessages.add(message.customProperties!['id']);
+      }
+    }
+    if (idsMessages.isEmpty) {
+      return;
+    }
+    bool needUpdate = false;
+    List<ChatMessageModel> readMessages =
+        await ChatMessageModel().getByReadFlag(idsMessages);
+    print(
+        '----readMessages- ${readMessages.toString()}, ${idsMessages.toString()}');
+    for (ChatMessageModel messageModel in readMessages) {
+      for (ChatMessage message in messages) {
+        print('${message.customProperties!['id']}, ${messageModel.mid}');
+        if (message.customProperties!['id'] == messageModel.mid) {
+          needUpdate = true;
+          message.status = MessageStatus.received;
           break;
         }
       }
     }
-    String login = xmppHelper?.getLogin() ?? '';
-    me = ChatUser(id: cleanPhone(login), phone: login, name: phoneMaskHelper(login));
-  }
-
-  @override
-  void dispose() {
-    jabberSubscription?.cancel();
-    XmppConnection.removeListener(this);
-    super.dispose();
-  }
-
-  void initMamMessages() {
-    messages = [];
-    xmppHelper?.requestMamMessages(friend.id, limit: 20, lastFlag: true);
-  }
-
-  int? getLastMessageTime() {
-    int? firstMessage;
-    if (messages.isNotEmpty) {
-      firstMessage = messages[0].createdAt.millisecondsSinceEpoch;
+    List<ChatMessageModel> mediaMessages =
+        await ChatMessageModel().getByMids(idsMediaMessages);
+    print(
+        '----mediaMessages- ${mediaMessages.toString()}, ${idsMediaMessages.toString()}');
+    for (ChatMessageModel messageModel in mediaMessages) {
       for (ChatMessage message in messages) {
-        if (message.createdAt.millisecondsSinceEpoch < firstMessage!) {
-          firstMessage = message.createdAt.millisecondsSinceEpoch;
+        print('${message.customProperties!['id']}, ${messageModel.mid}');
+        if (message.customProperties!['id'] == messageModel.mid) {
+          needUpdate = true;
+
+          Map<String, dynamic> customJson = {};
+
+          //message.status = MessageStatus.received;
+          message.medias![0].isUploading = false;
+
+          MediaType mediaType = MediaType.custom;
+          if (messageModel.customText != null &&
+              CHAT_MEDIA_TYPES.contains(messageModel.body)) {
+            mediaType = MediaType.parse(messageModel.body ?? '');
+            if ([MediaType.audio, MediaType.file, MediaType.image]
+                    .contains(mediaType) &&
+                messageModel.customText != null) {
+              customJson = jsonDecode(messageModel.customText ?? '{}');
+            }
+          }
+
+          if (mediaType == MediaType.audio) {
+            Log.d(tag, 'audio found: ${messageModel.toString()}');
+            message.medias![0].url = messageModel.mediaURL!;
+            message.medias![0].fileName =
+                messageModel.mediaURL!.split('/').last;
+            message.medias![0].customProperties = {
+              'widget': VoiceMessage(
+                audioSrc: customJson['url'],
+                played: false,
+                me: myJid == message.user.jid ? true : false,
+                createdAt: message.createdAt,
+                readStatus: message.status,
+              ),
+            };
+          } else if (mediaType == MediaType.file) {
+            Log.d(tag, 'file found: ${messageModel.toString()}');
+            message.medias![0].url = messageModel.mediaURL!;
+            message.medias![0].fileName =
+                messageModel.mediaURL!.split('/').last;
+            message.medias![0].customProperties = {
+              'widget': FileMessage(
+                fileSrc: customJson['url'],
+                me: true,
+                createdAt: message.createdAt,
+                readStatus: message.status,
+              ),
+            };
+          } else if (mediaType == MediaType.image) {
+            message.medias![0].customProperties = {
+              'onTap': () {
+                Log.d(tag, 'image clicked: ${messageModel.toString()}');
+                if (customJson['url'] != null) {
+                  launchInWebViewOrVC(customJson['url'], context);
+                }
+              },
+            };
+          }
+          break;
         }
       }
     }
-    return firstMessage;
+    if (needUpdate) {
+      setState(() {});
+    }
+  }
+
+  Future<void> initMe() async {
+    userSettings = await UserSettingsModel().getUser();
+    if (userSettings == null) {
+      Log.e(tag, 'initState user is null');
+      return;
+    }
+    String phone = phoneMaskHelper(userSettings!.phone ?? '');
+    me = ChatUser(
+      id: userSettings!.phone ?? '',
+      jid: userSettings!.jid ?? '',
+      phone: userSettings!.phone,
+      name: phone,
+    );
+    /*
+      jabberMsgDeliveredSubscription =
+          xmppHelper?.jabberStream.msgStream.listen((msgId) {
+        int deliveredBefore = 0;
+        for (ChatMessage msg in messages) {
+          if (msg.customProperties!['id'] == msgId) {
+            // Нужно все сообщения, которые ранее тоже промаркировать как прочитанные в этом случае
+            deliveredBefore = msg.createdAt.millisecondsSinceEpoch;
+
+            // Медиа файлы - сразу перезапрос сообщений
+            if (msg.medias != null) {
+              for (ChatMedia chatMedia in msg.medias!) {
+                if (chatMedia.customProperties!['widget'] != null) {
+                  if (chatMedia.customProperties!['widget'] is FileMessage ||
+                      chatMedia.customProperties!['widget'] is VoiceMessage) {
+                    Future.delayed(const Duration(seconds: 1), () async {
+                      await initMamMessages();
+                    });
+                    return;
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+        if (deliveredBefore > 0) {
+          for (ChatMessage msg in messages) {
+            if (msg.createdAt.millisecondsSinceEpoch > deliveredBefore) {
+              continue;
+            }
+            msg.status = MessageStatus.received;
+          }
+          setState(() {});
+        }
+      });
+    */
+  }
+
+  Future<List<ChatMessageModel>> initMamMessages() async {
+    messages = [];
+    Log.d(tag, 'INIT MAM MESSAGES');
+    return await ChatMessageModel()
+        .getMessages(me.jid ?? '', friend.jid ?? '', limit: 50, offset: 0);
+  }
+
+  Future<void> loadMamMessages() async {
+    //await ChatMessageModel().dropAllRows();
+    List<ChatMessageModel> mamMessages = [];
+    Map<String, int> times = {};
+    if (messages.isNotEmpty) {
+      times = getMinMaxMessageTime();
+      Log.d(tag, 'receiving messages after $times');
+      mamMessages = await ChatMessageModel().getMessagesAfter(
+          me.jid ?? '', friend.jid ?? '',
+          after: times['max'] ?? 0);
+    } else {
+      mamMessages = await initMamMessages();
+    }
+    if (mamMessages.isEmpty) {
+      return;
+    }
+
+    for (ChatMessageModel dbMessage in mamMessages) {
+      Log.d(tag, 'messages time ${dbMessage.time}');
+      MessageChat chatMessageModel =
+          ChatMessageModel.convert2MessageChat(dbMessage);
+      ChatMessage chatMessage = ChatMessageModel.convert2ChatMessage(
+          chatMessageModel, me,
+          context: context);
+      messages.add(chatMessage);
+    }
+    times = getMinMaxMessageTime();
+    await showUnreadMessagesWidget();
+
+    Future.delayed(const Duration(seconds: 3), () async {
+      await markMessagesAsRead(force: true);
+    });
+
+    setState(() {});
+  }
+
+  Future<void> markMessagesAsRead({bool force = false}) async {
+    if (!mounted) {
+      Log.d(tag, 'markMessagesAsRead FAILED, because not mounted');
+      return;
+    }
+    if (friend.jid == null || messages.isEmpty) {
+      Log.d(tag, 'markMessagesAsRead FAILED, because we are not ready');
+      return;
+    }
+
+    DateTime lastTimeMessage = DateTime(1970, 1, 1);
+    String lastMessageId = '';
+    for (ChatMessage message in messages) {
+      if (message.createdAt.isAfter(lastTimeMessage)) {
+        lastTimeMessage = message.createdAt;
+        lastMessageId = message.customProperties!['id'];
+      }
+    }
+
+    String myJid = me.jid ?? '';
+    List<RosterModel> rosterModels =
+        await RosterModel().getBy(myJid, jid: friend.jid);
+    if (rosterModels.isEmpty) {
+      Log.d(tag, 'markMessagesAsRead FAILED, roster not found');
+      return;
+    }
+    RosterModel rosterModel = rosterModels[0];
+    if (rosterModel.jid == null || rosterModel.jid == '') {
+      Log.d(tag, 'markMessagesAsRead FAILED, rosterModel not found');
+      return;
+    }
+
+    Log.d(tag, 'markMessagesAsRead for ${friend.jid}');
+
+    rosterModel.newMessagesCount = 0;
+    rosterModel.updatePartial(rosterModel.id, {
+      'newMessagesCount': 0,
+      'lastReadMessageTime': lastTimeMessage.millisecondsSinceEpoch,
+    });
+    await UserSettingsModel().updateRosterVersion();
+
+    // Дополнительно засылаем рецепт прочтения на отправителя
+    await BGTasksModel.sendDeliveryReceiptTask({
+      'jid': friend.jid,
+      'lastMessageId': lastMessageId,
+    });
+  }
+
+  Future<void> showUnreadMessagesWidget() async {
+    /* Показывает виджет непрочитанных сообщений */
+    if (messages.isEmpty) {
+      Log.d(tag, 'showUnreadMessagesWidget not ready, empty messages');
+      return;
+    }
+    List<RosterModel> rosterModels =
+        await RosterModel().getBy(me.jid!, jid: friend.jid);
+    if (rosterModels.isEmpty) {
+      Log.d(tag, 'showUnreadMessagesWidget not ready, roster not found');
+      return;
+    }
+    RosterModel rosterModel = rosterModels[0];
+    int newMessagesCount = rosterModel.newMessagesCount ?? 0;
+    if (newMessagesCount == 0 || newMessagesCount > messages.length) {
+      Log.d(tag, 'showUnreadMessagesWidget not ready, messages index error');
+      return;
+    }
+    ChatMessage message = messages[newMessagesCount];
+    messages.insert(
+        newMessagesCount,
+        ChatMessage(
+          customProperties: {
+            'id': '-999',
+          },
+          createdAt: message.createdAt,
+          user: me,
+          medias: [
+            ChatMedia(
+              url: '',
+              type: MediaType.custom,
+              fileName: '',
+              customProperties: {
+                'widget': Container(
+                  color: Colors.grey.shade300,
+                  width: double.infinity,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                    child: Text('Непрочитанные сообщения',
+                        style: TextStyle(color: Colors.grey)),
+                  ),
+                )
+              },
+            ),
+          ],
+        ));
+    Future.delayed(const Duration(seconds: 6), () {
+      int ind = -999;
+      for (int i = 0; i < messages.length; i++) {
+        if (messages[i].customProperties!['id'] == '-999') {
+          ind = i;
+          break;
+        }
+      }
+      if (ind >= 0) {
+        setState(() {
+          messages.removeAt(ind);
+        });
+      }
+    });
+  }
+
+  Map<String, int> getMinMaxMessageTime() {
+    int minMessageTime = 0;
+    int maxMessageTime = 0;
+    if (messages.isNotEmpty) {
+      messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      minMessageTime = messages.last.createdAt.millisecondsSinceEpoch;
+      maxMessageTime = messages.first.createdAt.millisecondsSinceEpoch;
+    }
+    return {
+      'min': minMessageTime,
+      'max': maxMessageTime,
+    };
   }
 
   @override
@@ -116,25 +470,54 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
     }
   }
 
+  Future<void> sendTextMessage(String? text) async {
+    if (text == null) {
+      return;
+    }
+    ChatMessage m = ChatMessage(
+      createdAt: DateTime.now(),
+      user: me,
+    );
+    m.customProperties = {
+      'id': const Uuid().v4(),
+    };
+    String t = text.trim();
+    if (t.isEmpty) {
+      return;
+    }
+    m.text = t;
+    setState(() {
+      messages.insert(0, m);
+    });
+    Map<String, dynamic> data = {
+      'from': userSettings!.jid,
+      'text': m.text,
+      'to': friend.jid,
+      'now': m.createdAt.millisecondsSinceEpoch,
+      'pk': m.customProperties!['id'],
+    };
+    await BGTasksModel.sendTextMessageTask(data);
+  }
+
   Future<void> sendChatFile(String? path, MediaType mediaType) async {
     if (path == null || path == '') {
-      Log.d(TAG, 'NULL picked file');
+      Log.d(tag, 'NULL picked file');
       return;
     }
     File file = File(path);
     bool isExists = await file.exists();
     if (!isExists) {
-      Log.d(TAG, 'file not exists $path');
+      Log.d(tag, 'file not exists $path');
       return;
     }
     int filesize = await file.length();
     if (filesize <= 0) {
-      Log.d(TAG, 'file zero size $path');
+      Log.d(tag, 'file zero size $path');
       return;
     }
-    Log.d(TAG, 'picked file ${file.path}');
+    Log.d(tag, 'picked file ${file.path}');
 
-    ChatMessage msg = ChatMessage(
+    ChatMessage m = ChatMessage(
       createdAt: DateTime.now(),
       user: me,
       medias: [
@@ -143,100 +526,68 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
           type: mediaType,
           fileName: file.path,
           isUploading: true,
-        )
+          customProperties: {},
+        ),
       ],
+      status: MessageStatus.pending,
     );
-    // Добавляем в очередь на загрузку файла
-    // по createdAt + fileName сменим isUploading: false
+    m.customProperties = {
+      'id': const Uuid().v4(),
+      'me': true,
+      'icon': const Icon(Ionicons.checkmark_done_outline),
+    };
+    String msgType = 'Отправлен файл';
+    if (mediaType == MediaType.image) {
+      msgType = 'Отправлено фото';
+      m.medias![0].isUploading = false;
+      m.medias![0].customProperties = {
+        'onTap': () {
+          launchInWebViewOrVC(file.path, context);
+        }
+      };
+    } else if (mediaType == MediaType.audio) {
+      msgType = 'Отправлено аудио-сообщение';
+      m.medias![0].isUploading = false;
+      m.medias![0].customProperties = {
+        'widget': VoiceMessage(
+          audioSrc: file.path,
+          played: false,
+          me: true,
+          createdAt: m.createdAt,
+          readStatus: m.status,
+        ),
+      };
+    } else if (mediaType == MediaType.video) {
+      msgType = 'Отправлено видео-сообщение';
+      m.medias![0].isUploading = false;
+    } else if (mediaType == MediaType.file) {
+      m.medias![0].isUploading = false;
+      m.medias![0].customProperties = {
+        'widget': FileMessage(
+          fileSrc: file.path,
+          me: true,
+          createdAt: m.createdAt,
+          readStatus: m.status,
+          localPath: file.path,
+        )
+      };
+    }
+
     setState(() {
-      // update messages
-      messages.insert(0, msg);
+      messages.insert(0, m);
     });
 
-    String fname = file.path.split('/').last;
-    String? putUrl =
-        await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
-
-    if (putUrl != null) {
-      final uri = Uri.parse(putUrl);
-      var response = await http.put(
-        uri,
-        headers: {
-          // HttpHeaders.authorizationHeader: 'Basic xxxxxxx',
-          //'Content-Type': 'image/jpeg',
-        },
-        body: await file.readAsBytes(),
-      );
-
-      if (response.statusCode == 201) {
-        // TODO: Отложенное действие - отправляем сообщение, когда загрузится?
-        Log.i(TAG, 'upload success $putUrl');
-        Map<String, String> customText = {
-          'type': mediaType.toString(),
-          'url': putUrl,
-        };
-        msg.customProperties ??= {};
-        String? pk = await xmppHelper?.sendCustomMessage(
-            friend.id, mediaType.toString(), jsonEncode(customText));
-        setState(() {
-          msg.customProperties!['id'] = pk;
-          msg.medias![0].isUploading = false;
-          msg.medias![0].url = putUrl;
-          if (mediaType == MediaType.audio) {
-            msg.medias![0].customProperties = {
-              'widget': VoiceMessage(
-                audioSrc: putUrl,
-                played: false,
-                me: true,
-              ),
-            };
-          } else if (mediaType == MediaType.file) {
-            msg.medias![0].customProperties = {
-              'widget': FileMessage(
-                fileSrc: putUrl,
-                me: true,
-                localPath: file.path,
-              ),
-            };
-          } else if (mediaType == MediaType.image) {
-            msg.medias![0].customProperties = {
-              'onTap': () {
-                launchInWebViewOrVC(putUrl);
-              },
-            };
-          }
-        });
-        String msgType = 'Отправлен файл';
-        if (mediaType == MediaType.image) {
-          msgType = 'Отправлено фото';
-        } else if (mediaType == MediaType.audio) {
-          msgType = 'Отправлено аудио-сообщение';
-        } else if (mediaType == MediaType.video) {
-          msgType = 'Отправлено видео-сообщение';
-        }
-        sendPush(xmppHelper?.credentialsHash() ?? '',
-            xmppHelper?.getLogin() ?? '', friend.id,
-            only_data: true, text: msgType);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Ошибка отправки файла'
-                'Не удалось загрузить файл, код ответа сервера ${response
-                .statusCode}'),
-          ));
-        }
-        Log.e(TAG,
-            '[ERROR]: upload ${file.path} failed, ${response.body.toString()}');
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Ошибка отправки файла'
-              'Попробуйте переименовать файл, используя латинские буквы'),
-        ));
-      }
-      Log.e(TAG, 'slotUrl error');
-    }
+    Map<String, dynamic> data = {
+      'from': userSettings!.jid,
+      'filesize': filesize,
+      'path': file.path, // File file = File(path);
+      'mediaType': mediaType.toString(),
+      'to': friend.jid,
+      'now': m.createdAt.millisecondsSinceEpoch,
+      'pk': m.customProperties!['id'],
+      'msgType': msgType,
+    };
+    await BGTasksModel.sendFileMessageTask(data);
   }
 
   InputDecoration buildInputDecoration() {
@@ -263,158 +614,6 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
   }
 
   @override
-  void onChatMessage(MessageChat messageChat) {
-    Log.d(TAG,
-        'receiveEvent onChatMessage: ${messageChat.toEventData().toString()}');
-    if (messageChat.body == null || messageChat.body!.isEmpty) {
-      return;
-    }
-    // Если сообщение уже в списке, тогда пропускаем его
-    for (ChatMessage message in messages) {
-      if (messageChat.id == message.customProperties!['id']) {
-        return;
-      }
-    }
-    Log.d(TAG, 'onChatMessage not in list');
-    final String login = cleanPhone(messageChat.senderJid ?? '');
-    final String phone = login;
-    ChatUser u = ChatUser(id: login, name: phone, phone: phone);
-    if (phone == me.phone) {
-      u = me;
-    }
-    ChatMessage msg = ChatMessage(
-        text: messageChat.body ?? '',
-        user: u,
-        customProperties: {'id': messageChat.id, 'me': phone == me.id},
-        medias: [],
-        // Для отправленных руками тут 0 (не история)
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-            int.parse(messageChat.time.toString())));
-
-    if (messageChat.customText != null && CHAT_MEDIA_TYPES.contains(msg.text)) {
-      MediaType mediaType = MediaType.parse(msg.text);
-      try {
-        Map<String, dynamic> customText = jsonDecode(messageChat.customText!);
-        msg.text = '';
-        // TODO: заглушку
-        String url = customText['url'] ?? '';
-        Map<String, dynamic> customProperties = {};
-        if (mediaType == MediaType.audio) {
-          customProperties['widget'] = VoiceMessage(
-            audioSrc: url,
-            played: false,
-            me: phone == me.id,
-          );
-        } else if (mediaType == MediaType.file) {
-          customProperties['widget'] = FileMessage(
-            fileSrc: url,
-            me: phone == me.id,
-          );
-        } else if (mediaType == MediaType.image) {
-          customProperties['onTap'] = () {
-            launchInWebViewOrVC(url);
-          };
-        }
-        msg.medias!.add(ChatMedia(
-          url: url,
-          type: mediaType,
-          fileName: url.split('/').last,
-          customProperties: customProperties,
-        ));
-      } catch (err) {
-        Log.e(TAG, 'ERROR decode customText in message ${err.toString()}');
-      }
-    }
-    setState(() {
-      messages.insert(0, msg);
-      messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    });
-  }
-
-  Future<void> launchInWebViewOrVC(String url) async {
-    Uri urla = Uri.parse(url);
-    if (!await launchUrl(
-      urla,
-      mode: LaunchMode.inAppWebView,
-      webViewConfiguration: const WebViewConfiguration(
-          headers: <String, String>{'my_header_key': 'my_header_value'}),
-    )) {
-      Log.e(TAG, 'Could not launch $url');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Не удалось открыть файл'),
-        ));
-      }
-    }
-  }
-
-  @override
-  void onChatStateChange(ChatState chatState) {
-    Log.d(TAG, 'receiveEvent onChatStateChange: ${chatState.toString()}');
-  }
-
-  @override
-  void onConnectionEvents(ConnectionEvent connectionEvent) {
-    Log.d(TAG, 'receiveEvent connectionEvent: ${connectionEvent.toString()}');
-    if (connectionEvent.type == XmppConnectionState.authenticated) {
-      messages = [];
-      initMamMessages();
-    }
-  }
-
-  @override
-  void onGroupMessage(MessageChat messageChat) {
-    Log.d(TAG, 'receiveEvent onGroupMessage: ${messageChat.toString()}');
-  }
-
-  @override
-  void onNormalMessage(MessageChat messageChat) {
-    //Log.d(TAG, 'receiveEvent onNormalMessage: ${messageChat.toEventData().toString()}');
-  }
-
-  @override
-  void onPresenceChange(PresentModel message) {
-    Log.d(TAG, 'receiveEvent onPresenceChange: ${message.toString()}');
-  }
-
-  @override
-  void onSuccessEvent(SuccessResponseEvent successResponseEvent) {
-    Log.d(TAG,
-        'receiveEvent onSuccessEvent: ${successResponseEvent.toSuccessResponseData().toString()}');
-  }
-
-  @override
-  void onXmppError(ErrorResponseEvent errorResponseEvent) {
-    Log.d(TAG,
-        'receiveEvent onXmppError: ${errorResponseEvent.toErrorResponseData().toString()}');
-  }
-
-  void sendTextMessage(String? text) {
-    if (text == null) {
-      return;
-    }
-    ChatMessage m = ChatMessage(
-      createdAt: DateTime.now(),
-      user: me,
-    );
-    m.customProperties ??= {};
-    String t = text.trim();
-    if (t.isEmpty) {
-      return;
-    }
-    m.text = t;
-    xmppHelper?.sendMessage(friend.id, t).then((String pk) {
-      m.customProperties!['id'] = pk;
-      setState(() {
-        messages.insert(0, m);
-      });
-      sendPush(xmppHelper?.credentialsHash() ?? '',
-          xmppHelper?.getLogin() ?? '', friend.id,
-          only_data: true, text: text);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -430,13 +629,31 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
                 sipHelper,
                 xmppHelper,
                 // в DialPadModel нужно передавать телефон без домена
-                DialpadModel(phone: cleanPhone(friend.id), isSip: true, startCall: true),
+                DialpadModel(
+                    phone: cleanPhone(friend.id), isSip: true, startCall: true),
               });
             },
           ),
         ],
       ),
       body: DashChat(
+        /* При flutter_background_service плагин регистрируется дважды
+
+ERROR during registerWithRegistrar: flutterSoundPlayerManager != nil
+ERROR during registerWithRegistrar: flutterSoundRecorderManager != nil
+
+plugins/flutter_sound_lite/ios/Classes/FlutterSoundRecorderManager.mm
+
++ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar
+{
+        FlutterMethodChannel* aChannel = [FlutterMethodChannel methodChannelWithName:@"com.dooboolab.flutter_sound_recorder"
+                                        binaryMessenger:[registrar messenger]];
+        if (flutterSoundRecorderManager != nil) {
+                NSLog(@"ERROR during registerWithRegistrar: flutterSoundRecorderManager != nil");
+                return; // <---- THIS prevent second register plugin
+                }
+...
+        */
         alternative: ChatComposer(
           controller: chatComposerController,
           sendButtonBackgroundColor: tealColor,
@@ -449,14 +666,13 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
             hintStyle: TextStyle(color: Colors.grey),
             border: InputBorder.none,
           ),
-          onReceiveText: (str) {
+          onReceiveText: (str) async {
             setState(() {
               chatComposerController.text = '';
-              sendTextMessage(str);
             });
+            await sendTextMessage(str);
           },
           onRecordEnd: (path) async {
-            print('audioRecord file $path');
             await sendChatFile(path, MediaType.audio);
           },
           textPadding: EdgeInsets.zero,
@@ -478,6 +694,14 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
                 color: Colors.grey,
               ),
               onPressed: () async {
+                bool granted =
+                    await PermissionsManager().checkPermissions('storage');
+                if (!granted) {
+                  if (!await PermissionsManager()
+                      .requestPermissions('storage')) {
+                    return;
+                  }
+                }
                 FilePickerResult? file = await FilePicker.platform.pickFiles();
                 await sendChatFile(file?.files.single.path, MediaType.file);
               },
@@ -513,14 +737,18 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
           ],
         ),
         onSend: (ChatMessage m) {
+          // Not used, see alternative: ChatComposer
+          /*
           m.customProperties ??= {};
           String text = m.text.trim();
           if (text.isEmpty) {
             return;
           }
           m.text = text;
-          xmppHelper?.sendMessage(friend.id, m.text).then((String pk) {
-            m.customProperties!['id'] = pk;
+          xmppHelper
+              ?.sendMessage(friend.id, m.text)
+              .then((ChatMessageModel newMsg) {
+            m.customProperties!['id'] = newMsg.mid;
             setState(() {
               messages.insert(0, m);
             });
@@ -528,13 +756,15 @@ class _ChatScreenState extends State<ChatScreen> implements DataChangeEvents {
                 xmppHelper?.getLogin() ?? '', friend.id,
                 only_data: true, text: text);
           });
+          */
         },
         messages: messages,
+        messageOptions: chatMessageOptions,
         messageListOptions: MessageListOptions(
           onLoadEarlier: () async {
             // Будем грузить только если уже загружены сообщения (и занят экран)
             await Future.delayed(const Duration(seconds: 1), () async {
-              int? lastMessageTime = getLastMessageTime();
+              int? lastMessageTime = getMinMaxMessageTime()['min'];
               if (lastMessageTime != null) {
                 await xmppHelper?.requestMamMessages(friend.id,
                     before: lastMessageTime.toString(), lastFlag: true);

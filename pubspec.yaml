@@ -4,10 +4,11 @@ description: Social service
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.80+80
+version: 1.0.107+107
 
 environment:
-  sdk: '>=2.17.0 <3.0.0' # flutter 3.0.0
+  # sdk: '>=2.17.0 <3.0.0' # flutter 3.0.0
+  sdk: '>=2.17.6 <3.0.5' # flutter 3.0.5
   # sdk: '>=2.18.0 <3.0.0' # flutter 3.3.1
 
 dependencies:
@@ -25,17 +26,21 @@ dependencies:
   http: ^0.13.4
   flutter_svg: ^1.0.3
   # https://github.com/Baseflow/flutter-permission-handler/issues/718
-  permission_handler: ^10.0.0
+  # Granular media permissions https://github.com/Baseflow/flutter-permission-handler/issues/907
+  permission_handler: ^11.0.1
   package_info_plus: ^1.4.2
   sqflite: ^2.0.2+1
   cached_network_image: ^3.2.1
   #dash_chat_2: ^0.0.14
   dash_chat_2:
     path: dash_chat_2-0.0.15 # custom version
-  file_picker: ^4.6.1
+  #file_picker: ^4.6.1
+  file_picker: ^5.2.10
   image_picker: ^0.8.5+3
-  open_file: ^3.2.1
-  device_info_plus: ^3.2.4
+  # https://github.com/crazecoder/open_file/issues/255
+  # xmlns:tools="http://schemas.android.com/tools" to AndroidManifest.xml
+  open_file: ^3.3.2
+  device_info_plus: ^4.1.3
   record: ^4.4.0
   #material_floating_search_bar: ^0.3.7
   material_floating_search_bar:
@@ -43,6 +48,9 @@ dependencies:
   carousel_slider: ^4.1.1
   dio: ^4.0.6
   archive: ^3.3.0
+  # android error could not find android-104.5112.03.jar
+  # implementation 'com.github.webrtc-sdk:android:104.5112.06' =>
+  # implementation 'io.github.webrtc-sdk:android:104.5112.07'
   flutter_webrtc: ^0.9.17
   sip_ua: ^0.5.3
   #flutter_callkit_incoming: ^1.0.2+1
@@ -58,6 +66,14 @@ dependencies:
   just_audio: ^0.9.28
   url_launcher: ^6.1.6
   contacts_service: ^0.6.3
+  ionicons: ^0.1.2 # https://ionicons.ez-connect.net/#/
+  flutter_markdown: ^0.6.14
+  wakelock: ^0.6.2
+  flutter_background_service: ^5.0.1
+  sentry_flutter: ^7.9.0
+  flutter_easyloading: ^3.0.5
+  flutter_app_badger: ^1.5.0
+  android_alarm_manager_plus: ^2.1.4
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +85,9 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/contacts_warning.md
+    - assets/privacy_policy.md
+    - assets/terms_and_conditions.md
     - assets/app_icons/appstore.png
     - assets/app_icons/playstore.png
     - assets/avatars/

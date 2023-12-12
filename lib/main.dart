@@ -1,10 +1,15 @@
 import 'dart:ui';
 import 'dart:io' show Platform;
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:infoservice/models/bg_tasks_model.dart';
+import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/pages/authorization.dart';
 import 'package:infoservice/pages/chat/add2roster.dart';
 import 'package:infoservice/pages/chat/chat_page.dart';
@@ -14,12 +19,14 @@ import 'package:infoservice/pages/companies/company_wizard_screen.dart';
 import 'package:infoservice/pages/default_page.dart';
 import 'package:infoservice/pages/new_pages/components/new_main.dart';
 import 'package:infoservice/pages/register/reg_wizard_screen.dart';
+import 'package:infoservice/services/bg_manager.dart';
 import 'package:infoservice/services/jabber_manager.dart';
 import 'package:infoservice/services/navigation_manager.dart';
 import 'package:infoservice/services/sip_ua_manager.dart';
 import 'package:infoservice/settings.dart';
 import 'package:infoservice/sip_ua/callscreen.dart';
 import 'package:infoservice/sip_ua/dialpadscreen.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'a_notifications/notifications.dart';
@@ -28,27 +35,36 @@ import 'helpers/phone_mask.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   print("Handling a background message: ${message.data.toString()}");
-  await generateChatNotification(message.data);
   final String action = message.data['action'];
   if (action == 'call') {
     //AwesomeNotifications().createNotificationFromJsonData(message.data);
-    final String from = phoneMaskHelper(message.data['sender']);
-    showCallkitIncoming(const Uuid().v4(), from:from);
+
+    String displayName = phoneMaskHelper(message.data['sender']);
+    if (message.data['displayName'] != null && message.data['displayName'] != '') {
+      displayName = message.data['displayName']!;
+    }
+    showCallkitIncoming(const Uuid().v4(), from: displayName);
     print('----------------------------------------');
     print('_firebaseMessagingBackgroundHandler CALL');
     print('----------------------------------------');
   }
+  // Не вызываем своё уведомление
+  //await generateChatNotification(message.data);
 }
 
 Future<void> generateChatNotification(Map<String, dynamic> data) async {
-  final String action = data['action'];
-  if (action == 'chat') {
+  final String? action = data['action'];
+  if (action != null && action == 'chat') {
     createChatNotification({
-      'receiver': data['receiver'],
-      'sender': data['sender'],
-      'action': data['action'],
-      'body': data['body'],
+      'receiver': data['receiver'] ?? '',
+      'sender': data['sender'] ?? '',
+      'action': action,
+      'body': data['body'] ?? '',
+      'displayName': data['displayName'] ?? '',
+      'group': data['group'] ?? '',
     });
+  } else {
+    print('generateChatNotification FAILED: Bad data=$data');
   }
 }
 
@@ -100,7 +116,7 @@ Future<void> showCallkitIncoming(String uuid, {String? from}) async {
 typedef PageContentBuilder = Widget Function(
     [SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]);
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   AwesomeNotifications().initialize(
@@ -126,7 +142,6 @@ void main() {
     ],
   );
   Firebase.initializeApp().then((firebaseApp) {
-
     /*
     if (Platform.isIOS) {
       FirebaseMessaging.instance.getAPNSToken().then((apnsToken) async {
@@ -142,12 +157,12 @@ void main() {
       });
     }
     */
-
     FirebaseMessaging.instance.getToken().then((fcmToken) async {
       print('FirebaseMessaging token: $fcmToken');
       if (fcmToken != null) {
         JabberManager.fcmToken = fcmToken;
         SIPUAManager.fcmToken = fcmToken;
+        await UserSettingsModel.updateToken(fcmToken);
       } else {
         String err = 'token not received for ${Platform.operatingSystem}';
         err += ' ${Platform.operatingSystemVersion}';
@@ -159,31 +174,83 @@ void main() {
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('FirebaseMessaging onMessageOpenedApp!');
       print('Message data: ${message.data}');
-      generateChatNotification(message.data);
+      //generateChatNotification(message.data);
+
+
+        if (message.data['action'] == 'chat') {
+          String sender = message.data['sender'] ?? '';
+          String phone = cleanPhone(sender);
+          String jid = JabberManager().toJid(sender);
+          String name = phoneMaskHelper(sender);
+          String screenId = ChatScreen.id;
+          String group = message.data['group'] ?? '';
+          if (group != '') {
+            screenId = GroupChatScreen.id;
+            sender = group;
+            phone = group;
+            jid = group;
+            name = group.split('@')[0];
+          }
+
+          print(NavigationManager.instance.navigationKey.currentContext);
+          if (NavigationManager.instance.navigationKey.currentContext != null) {
+            BuildContext ctx = NavigationManager.instance.navigationKey.currentContext!;
+            const SIPUAManager? sipHelper = null;
+            const JabberManager? xmppHelper = null;
+            Navigator.popUntil(ctx, (route) => (route.isFirst));
+            Navigator.pushNamed(ctx, screenId, arguments: {
+              sipHelper,
+              xmppHelper,
+              ChatUser(
+                id: phone,
+                jid: jid,
+                phone: sender,
+                name: name,
+                customProperties: {'fromPush': true},
+              ),
+            });
+          }
+        }
+
     });
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('FirebaseMessaging onMessage!');
-      print('Message data: ${message.data}');
+      print('FirebaseMessaging onMessage! Message data: ${message.data}');
       if (message.notification != null) {
         print('Message also contained a notification: ${message.notification}');
       }
-      generateChatNotification(message.data);
+      //generateChatNotification(message.data);
     });
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) async {
       print('FirebaseMessaging token: $fcmToken');
       JabberManager.fcmToken = fcmToken;
       SIPUAManager.fcmToken = fcmToken;
+      await UserSettingsModel.updateToken(fcmToken);
       //await TelegramBot().sendNotify('token received: $fcmToken');
     }).onError((err) {
       print('FirebaseMessaging error: $err');
     });
   });
-  runApp(MyApp());
+
+  await initializeService();
+  FlutterAppBadger.removeBadge();
+
+  if (SENTRY_ENABLED) {
+    await SentryFlutter.init(
+          (options) {
+        options.dsn =
+        'https://b2bc3c3c4bbd66293a359ff209559d41@o228487.ingest.sentry.io/4505793208254464';
+        options.tracesSampleRate = 1.0;
+      },
+      appRunner: () => runApp(const MyApp()),
+    );
+  } else {
+    runApp(const MyApp());
+  }
 }
 
 class MyApp extends StatefulWidget {
-  MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -191,7 +258,9 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final SIPUAManager _sipHelper = SIPUAManager();
-  final JabberManager _xmppHelper = JabberManager();
+  //final JabberManager _xmppHelper = JabberManager();
+  //final SIPUAManager? _sipHelper = null;
+  final JabberManager? _xmppHelper = null;
 
   final Map<String, PageContentBuilder> routes = {
     DefaultPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
@@ -266,8 +335,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         break;
       case AppLifecycleState.resumed:
         print('-----> resumed');
-        //_sipHelper.register();
-        _xmppHelper.doRegister();
+        if (_xmppHelper != null) {
+          _xmppHelper!.doRegister();
+        }
+        initializeService().then((success) {
+          BGTasksModel.createLoginUserTask();
+        });
         break;
     }
   }
@@ -280,10 +353,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       title: '8800.help',
       theme: ThemeData.light().copyWith(
         primaryColor: tealColor,
+        textTheme: ThemeData.light().textTheme.copyWith(
+          titleLarge: const TextStyle(fontSize: 14.0, fontStyle: FontStyle.normal),
+        ),
       ),
       navigatorKey: NavigationManager.instance.navigationKey,
       initialRoute: DefaultPage.id,
       onGenerateRoute: _onGenerateRoute,
+      builder: EasyLoading.init(),
     );
   }
 }

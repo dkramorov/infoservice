@@ -4,9 +4,11 @@ import 'package:all_sensors/all_sensors.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:sip_ua/sip_ua.dart';
+import 'package:wakelock/wakelock.dart';
 import '../helpers/log.dart';
-import '../helpers/phone_mask.dart';
+import '../helpers/model_utils.dart';
 import '../main.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
@@ -37,8 +39,11 @@ class _CallScreenWidget extends State<CallScreenWidget>
   late StreamSubscription proximitySubscription;
 
   late Call? call;
+  String callerName = '';
+  String ringOnCallIdStarted = '';
   String get direction => call!.direction;
-  String? get remoteIdentity => call!.remote_identity;
+  String? get remoteIdentity =>
+      callerName == '' ? call!.remote_identity : callerName;
 
   RTCVideoRenderer? _localRenderer = RTCVideoRenderer();
   RTCVideoRenderer? _remoteRenderer = RTCVideoRenderer();
@@ -65,6 +70,8 @@ class _CallScreenWidget extends State<CallScreenWidget>
   */
   bool voiceonly = true;
 
+  late AudioPlayer player;
+
   @override
   initState() {
     super.initState();
@@ -86,11 +93,21 @@ class _CallScreenWidget extends State<CallScreenWidget>
     proximitySubscription = proximityEvents!.listen((ProximityEvent event) {
       Log.d(TAG, 'proximityEvent: $event');
     });
+
+    player = AudioPlayer();
+    Wakelock.enable();
   }
 
   void callKitIncomingInterceptor() {
     // Тут надо ожидать, CallStateEnum.ACCEPTED и принимать звонок
     //_handleAccept();
+  }
+
+  @override
+  void dispose() {
+    player.dispose();
+    Wakelock.disable();
+    super.dispose();
   }
 
   @override
@@ -138,46 +155,67 @@ class _CallScreenWidget extends State<CallScreenWidget>
 
   @override
   void callStateChanged(Call call, CallState callState) {
+    Log.d(TAG,
+        'callStateChanged to ${callState.state.toString()}, ${DateTime.now().toIso8601String()}');
     if (callState.state == CallStateEnum.HOLD ||
         callState.state == CallStateEnum.UNHOLD) {
       _hold = callState.state == CallStateEnum.HOLD;
       _holdOriginator = callState.originator;
-      setState(() {});
       return;
     }
 
     if (callState.state == CallStateEnum.MUTED) {
       if (callState.audio!) _audioMuted = true;
       if (callState.video!) _videoMuted = true;
-      setState(() {});
       return;
     }
 
     if (callState.state == CallStateEnum.UNMUTED) {
       if (callState.audio!) _audioMuted = false;
       if (callState.video!) _videoMuted = false;
-      setState(() {});
       return;
     }
 
     if (callState.state != CallStateEnum.STREAM) {
       _state = callState.state;
+      setState(() {});
     }
 
     switch (callState.state) {
       case CallStateEnum.STREAM:
+        if (direction == 'OUTGOING' && call.id != ringOnCallIdStarted) {
+          print("______________${call.remote_identity}");
+          getRosterNameByPhone(xmppHelper, call.remote_identity ?? '')
+              .then((name) {
+            setState(() {
+              if (mounted) {
+                callerName = name;
+              }
+            });
+          });
+          Future.delayed(Duration.zero, () async {
+            ringOnCallIdStarted = call.id ?? '';
+            player.setLoopMode(LoopMode.one);
+            await player.setAsset('assets/call/ringbacktone.wav');
+            player.play();
+          });
+        }
         _handelStreams(callState);
         break;
+
       case CallStateEnum.ENDED:
       case CallStateEnum.FAILED:
+        player.stop();
         _backToDialPad();
+        break;
+      case CallStateEnum.ACCEPTED:
+      case CallStateEnum.CONFIRMED:
+        player.stop();
         break;
       case CallStateEnum.UNMUTED:
       case CallStateEnum.MUTED:
       case CallStateEnum.CONNECTING:
       case CallStateEnum.PROGRESS:
-      case CallStateEnum.ACCEPTED:
-      case CallStateEnum.CONFIRMED:
       case CallStateEnum.HOLD:
       case CallStateEnum.UNHOLD:
       case CallStateEnum.NONE:
@@ -285,7 +323,8 @@ class _CallScreenWidget extends State<CallScreenWidget>
 
     // Втыкаем в историю входящий
     // все входящие только сипом пока
-    await sipHelper?.listener.call2History(call?.remote_identity ?? '',
+    String name = await getRosterNameByPhone(xmppHelper, call?.remote_identity ?? '');
+    await sipHelper?.listener.call2History(call?.remote_identity ?? '', name: name,
         direction: 'incoming', isSip: true);
   }
 
@@ -462,8 +501,14 @@ class _CallScreenWidget extends State<CallScreenWidget>
                 sipHelper?.stateCallKitUpdated = 0;
                 _handleHangup();
               } else {
-                await showCallkitIncoming(const Uuid().v4(),
-                    from: phoneMaskHelper(call?.remote_identity ?? ''));
+                String phone = call?.remote_identity ?? '';
+                String name = await getRosterNameByPhone(xmppHelper, phone);
+                setState(() {
+                  if (mounted) {
+                    callerName = name;
+                  }
+                });
+                await showCallkitIncoming(const Uuid().v4(), from: name);
               }
             }
           });
@@ -646,7 +691,8 @@ class _CallScreenWidget extends State<CallScreenWidget>
         appBar: AppBar(
             backgroundColor: tealColor,
             automaticallyImplyLeading: false,
-            title: Text('[$direction] ${EnumHelper.getName(_state)}')),
+            title: Text(
+                '[$direction] ${EnumHelper.getName(_state)}, $callerName')),
         body: Container(
           child: _buildContent(),
         ),

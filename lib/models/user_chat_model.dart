@@ -33,6 +33,7 @@ class UserChatModel extends AbstractModel {
   String? status;
   String? time;
   String? msg;
+  int? dropPersonalData;
 
   String getTableName() {
     return tableUserChatModel;
@@ -55,6 +56,7 @@ class UserChatModel extends AbstractModel {
     this.status,
     this.time,
     this.msg,
+    this.dropPersonalData,
   });
 
   String getName() {
@@ -100,6 +102,7 @@ class UserChatModel extends AbstractModel {
       'status': status,
       'time': time,
       'msg': msg,
+      'dropPersonalData': dropPersonalData,
     };
   }
 
@@ -119,14 +122,15 @@ class UserChatModel extends AbstractModel {
       status: dbItem['status'],
       time: dbItem['time'],
       msg: dbItem['msg'],
+      dropPersonalData: dbItem['dropPersonalData'],
     );
   }
 
   @override
   String toString() {
     final String table = getTableName();
-    return '$table{id: $id, login: $login, passwd: $passwd,' +
-        ' lastLogin: $lastLogin, photo: $photo, photoUrl: $photoUrl, birthday: $birthday,' +
+    return '$table{id: $id, login: $login, passwd: $passwd, dropPersonalData: $dropPersonalData'
+        ' lastLogin: $lastLogin, photo: $photo, photoUrl: $photoUrl, birthday: $birthday,'
         ' gender: $gender, email: $email, name: $name, status: $status, time: $time, msg: $msg}';
   }
 

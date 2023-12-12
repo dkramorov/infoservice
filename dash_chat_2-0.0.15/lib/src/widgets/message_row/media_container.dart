@@ -20,6 +20,7 @@ class MediaContainer extends StatelessWidget {
 
   /// Get the right media widget according to its type
   Widget _getMedia(ChatMedia media, double? height, double? width) {
+    final Map<String, dynamic>? customProperties = media.customProperties;
     final Widget loading = Container(
       width: 15,
       height: 15,
@@ -27,15 +28,23 @@ class MediaContainer extends StatelessWidget {
       child: const CircularProgressIndicator(),
     );
     switch (media.type) {
+      case MediaType.custom:
+        return Stack(
+          alignment: AlignmentDirectional.bottomEnd,
+          children: <Widget>[
+            if (customProperties != null && customProperties['widget'] != null)
+              customProperties['widget'] as Widget,
+          ],
+        );
       case MediaType.video:
         return Stack(
           alignment: AlignmentDirectional.bottomEnd,
           children: <Widget>[
             GestureDetector(
                 onTap: () async {
-                  if (media.customProperties != null &&
-                      media.customProperties!['onTap'] != null) {
-                    media.customProperties!['onTap']();
+                  if (customProperties != null &&
+                      customProperties['onTap'] != null) {
+                    customProperties['onTap']();
                   }
                 },
                 child: VideoPlayer(url: media.url)),
@@ -48,9 +57,9 @@ class MediaContainer extends StatelessWidget {
           children: <Widget>[
             GestureDetector(
               onTap: () async {
-                if (media.customProperties != null &&
-                    media.customProperties!['onTap'] != null) {
-                  media.customProperties!['onTap']();
+                if (customProperties != null &&
+                    customProperties['onTap'] != null) {
+                  customProperties['onTap']();
                 }
               },
               child: Image(
@@ -62,7 +71,26 @@ class MediaContainer extends StatelessWidget {
                 image: getImageProvider(media.url),
               ),
             ),
-            if (media.isUploading) loading
+            if (media.isUploading) loading,
+            if (messageOptions.showTime)
+              Positioned(
+                left: 5,
+                bottom: 5,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      intl.DateFormat('HH:mm').format(message.createdAt),
+                      style: TextStyle(
+                        color: isOwnMessage ? Colors.white : Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    DashChat.buildReadMessageStatus(
+                        messageOptions, isOwnMessage, message.status),
+                  ],
+                ),
+              ),
           ],
         );
       case MediaType.file:
@@ -70,9 +98,8 @@ class MediaContainer extends StatelessWidget {
         return Stack(
           alignment: AlignmentDirectional.bottomEnd,
           children: <Widget>[
-            if (media.customProperties != null &&
-                media.customProperties!['widget'] != null)
-              media.customProperties!['widget'] as Widget,
+            if (customProperties != null && customProperties['widget'] != null)
+              customProperties['widget'] as Widget,
             if (media.isUploading) loading
           ],
         );

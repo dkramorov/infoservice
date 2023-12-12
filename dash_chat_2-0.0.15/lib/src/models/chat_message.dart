@@ -69,11 +69,18 @@ class ChatMessage {
   /// Mentionned elements in the message
   List<Mention>? mentions;
 
-  /// Status of the message TODO:
-  MessageStatus? status;
+  /// Status of the message
+  MessageStatus status;
 
   /// If the message is a reply of another one TODO:
   ChatMessage? replyTo;
+
+  @override
+  String toString() {
+    return 'user: $user, createdAt: $createdAt, text: $text, medias: $medias, '
+        'quickReplies: $quickReplies, customProperties: $customProperties, '
+        'mentions: $mentions, status: $status, replyTo: $replyTo}';
+  }
 
   /// Convert a ChatMessage into a json
   Map<String, dynamic> toJson() {

@@ -1,19 +1,29 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
 import 'package:infoservice/models/dialpad_model.dart';
+import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/sip_ua/dialpadscreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../helpers/dialogs.dart';
+import '../../helpers/network.dart';
+import '../../models/bg_tasks_model.dart';
 import '../../models/companies/branches.dart';
 import '../../models/companies/catalogue.dart';
 import '../../models/companies/orgs.dart';
 import '../../helpers/phone_mask.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/shared_preferences_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
 import '../../widgets/companies/branch_row.dart';
 import '../../widgets/companies/company_logo.dart';
 import '../../widgets/companies/star_rating_widget.dart';
 import '../../widgets/rounded_button_widget.dart';
+import '../chat/group_chat_page.dart';
 
 class TabCompanyView extends StatefulWidget {
   final SIPUAManager? _sipHelper;
@@ -35,7 +45,7 @@ class TabCompanyView extends StatefulWidget {
 }
 
 class _TabCompanyViewState extends State<TabCompanyView> {
-  static const TAG = 'TabCompanyView';
+  static const tag = 'TabCompanyView';
 
   SIPUAManager? get sipHelper => widget._sipHelper;
   JabberManager? get xmppHelper => widget._xmppHelper;
@@ -44,10 +54,18 @@ class _TabCompanyViewState extends State<TabCompanyView> {
   final int maxRubrics = 3;
 
   Orgs get company => widget.company;
+  String newMuc = '';
+  UserSettingsModel? user;
+  late Timer updateTimer;
 
   @override
   void initState() {
     super.initState();
+    Future.delayed(Duration.zero, () async {
+      updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+        await checkNewGroup();
+      });
+    });
   }
 
   @override
@@ -58,13 +76,57 @@ class _TabCompanyViewState extends State<TabCompanyView> {
   }
 
   @override
-  void deactivate() {
-    super.deactivate();
+  void dispose() {
+    updateTimer.cancel();
+    super.dispose();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  Future<void> checkNewGroup() async {
+    SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+    bool? addMUCResult = prefs.getBool(BGTasksModel.addRosterPrefKey);
+    if (addMUCResult != null) {
+      if (addMUCResult) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Группа $newMuc добавлена'),
+            ),
+          );
+        }
+        Future.delayed(Duration.zero, () async {
+
+          String newMucJid = '$newMuc${JabberManager.conferenceString}';
+          // запросина на добавление на сервере всем представителям компании этот чат
+          if (user != null) {
+            String credentialsHash = user!.credentialsHash ?? '';
+            String jid = user!.jid ?? '';
+            requestCompanyChat(jid, credentialsHash, newMucJid);
+          }
+          Navigator.pushNamed(context, GroupChatScreen.id, arguments: {
+            sipHelper,
+            xmppHelper,
+            ChatUser(
+              id: newMucJid,
+              jid: newMucJid,
+              name: widget.company.name,
+              phone: '-',
+            ),
+          });
+
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red,
+              content: Text('Группа $newMuc не найдена'),
+            ),
+          );
+        }
+      }
+      await prefs.remove(BGTasksModel.addRosterPrefKey);
+    }
   }
 
   StarRatingWidget buildRating() {
@@ -117,7 +179,7 @@ class _TabCompanyViewState extends State<TabCompanyView> {
           Text(
             phoneMaskHelper(phone.digits ?? ''),
             style: const TextStyle(
-              fontSize: 22.0,
+              fontSize: 21.0,
             ),
           ),
           RoundedButtonWidget(
@@ -151,7 +213,16 @@ class _TabCompanyViewState extends State<TabCompanyView> {
     if (company.branchesArr.isEmpty) {
       return Column();
     }
-    final branch = company.branchesArr[0];
+    Branches? branch;
+    for (Branches item in company.branchesArr) {
+      if (item.mapAddress != null) {
+        branch = item;
+        break;
+      }
+    }
+    if (branch == null) {
+      return Column();
+    }
     final branchesLen = company.branchesArr.length;
 
     return GestureDetector(
@@ -182,9 +253,7 @@ class _TabCompanyViewState extends State<TabCompanyView> {
                     size: 40.0,
                     color: addressIconColor,
                   ),
-                  title: branch.mapAddress != null
-                      ? Text(branch.mapAddress.toString())
-                      : const Text(''),
+                  title: Text(branch.mapAddress.toString()),
                   subtitle: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,6 +342,71 @@ class _TabCompanyViewState extends State<TabCompanyView> {
     );
   }
 
+  Widget buildChat() {
+    /* Виджет для чата с компанией
+       и каналом - подписка на новости
+    */
+    return RoundedButtonWidget(
+      text: const Text(
+        'Написать в компанию',
+        style: TextStyle(
+          color: Colors.white,
+        ),
+      ),
+      borderRadius: 8.0,
+      color: tealColor,
+      minWidth: 200.0,
+      onPressed: () async {
+        await showLoading();
+        // По принципу добавления группы
+        user = await UserSettingsModel().getUser();
+        if (user != null && user!.phone != null && user!.phone != '') {
+          String myPhone = user!.phone ?? '';
+          newMuc = 'company_${widget.company.id}_$myPhone';
+          SharedPreferences prefs = await SharedPreferencesManager
+              .getSharedPreferences();
+          await prefs.remove(BGTasksModel.addRosterPrefKey);
+          BGTasksModel.addMUCTask({
+            'group': newMuc,
+          });
+        }
+      },
+    );
+  }
+
+  Widget buildSubscribeChannel() {
+    /* Виджет для канала - подписка на новости
+    */
+    return RoundedButtonWidget(
+      text: const Text(
+        'Подписаться на новости',
+        style: TextStyle(
+          color: Colors.white,
+        ),
+      ),
+      borderRadius: 8.0,
+      color: tealColor,
+      minWidth: 200.0,
+      onPressed: () async {
+        await showLoading();
+        newMuc = 'channel_${widget.company.id}';
+        // По принципу добавления группы
+        user = await UserSettingsModel().getUser();
+        if (user != null) {
+          SharedPreferences prefs = await SharedPreferencesManager
+              .getSharedPreferences();
+          await prefs.remove(BGTasksModel.addRosterPrefKey);
+          BGTasksModel.addMUCTask({
+            'group': newMuc,
+          });
+        }
+        // запросина на добавление на сервере всем представителям компании этот чат
+        //String credentialsHash = xmppHelper?.credentialsHash() ?? '';
+        //requestCompanyChat(xmppHelper!.getJid(), credentialsHash, newMucJid);
+      },
+    );
+  }
+
   Widget buildCompanyCard() {
     return Column(
       children: [
@@ -321,6 +455,10 @@ class _TabCompanyViewState extends State<TabCompanyView> {
         SIZED_BOX_H06,
         buildFirstPhone(),
         buildFirstAddress(),
+        buildChat(),
+        SIZED_BOX_H20,
+        buildSubscribeChannel(),
+        SIZED_BOX_H20,
         //buildBranchesRows(),
         /*
         Padding(

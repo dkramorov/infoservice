@@ -26,6 +26,8 @@ import org.jivesoftware.smackx.chatstates.ChatState;
 import org.jivesoftware.smackx.chatstates.packet.ChatStateExtension;
 import org.jivesoftware.smackx.iqlast.LastActivityManager;
 import org.jivesoftware.smackx.iqlast.packet.LastActivity;
+import org.jivesoftware.smackx.iqprivate.PrivateDataManager;
+import org.jivesoftware.smackx.iqprivate.packet.DefaultPrivateData;
 import org.jivesoftware.smackx.httpfileupload.HttpFileUploadManager;
 import org.jivesoftware.smackx.httpfileupload.element.Slot;
 import org.jivesoftware.smackx.muc.Affiliate;
@@ -83,6 +85,7 @@ public class FlutterXmppConnection implements ConnectionListener {
     private static String mServiceName = "";
     private static XMPPTCPConnection mConnection;
     private static MultiUserChatManager multiUserChatManager;
+    private static PrivateDataManager privateDataManager;
     private static boolean mRequireSSLConnection, mAutoDeliveryReceipt, mAutomaticReconnection = true, mUseStreamManagement = true;
     private static Context mApplicationContext;
     private BroadcastReceiver uiThreadMessageReceiver;//Receives messages from the ui thread.
@@ -368,7 +371,8 @@ public class FlutterXmppConnection implements ConnectionListener {
         Utils.printLog("Receiving VCard for " + userJid);
         VCard vCard = new VCard();
         try {
-            EntityBareJid jid = JidCreate.entityBareFrom(mUsername + "@" + mHost);
+            //EntityBareJid jid = JidCreate.entityBareFrom(mUsername + "@" + mHost);
+            EntityBareJid jid = JidCreate.entityBareFrom(userJid);
             VCardManager vCardManager = VCardManager.getInstanceFor(mConnection);
             vCard = vCardManager.loadVCard(jid);
             result.put("FN", vCard.getField("FN"));
@@ -583,7 +587,64 @@ public class FlutterXmppConnection implements ConnectionListener {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
+    public static Map<String, Map<String, String>> getPrivateStorage(String storageCategory, String storageName) {
+        /* Личное хранилище - Чтение
+           SENT
+             <iq id='Emly6-35' type='get'>
+               <query xmlns='jabber:iq:private'>
+                 <chats xmlns='chats:new_messages'/>
+               </query>
+             </iq>
+           RECV
+             <iq xml:lang='en' to='89016598623@chat.masterme.ru/57827693-950f-49d8-9358-99b5162ba556' from='89016598623@chat.masterme.ru' type='result' id='Emly6-35'>
+               <query xmlns='jabber:iq:private'>
+                 <chats xmlns='chats:new_messages'>
+                   <chat_id_1>value_long_long_text and etc...</chat_id_1>
+                 </chats>
+               </query>
+             </iq>
+        */
+        Map<String, Map<String, String>> privateStorage = new HashMap<String, Map<String, String>>();
+        try {
+            DefaultPrivateData data = (DefaultPrivateData) privateDataManager.getPrivateData(storageCategory, storageCategory + ":" + storageName);
+            String namespace = data.getNamespace();
+            privateStorage.put(namespace, new HashMap<String, String>());
+            Set<String> names = data.getNames();
+            for (String name: names) {
+                privateStorage.get(namespace).put(name, data.getValue(name));
+            }
+        }
+        catch (Exception e) {
+            Utils.printLog("Error in getPrivateStorage " + e.toString());
+        }
+        return privateStorage;
+    }
+
+    public static void setPrivateStorage(String category, String name, Map<String, String> dict) {
+        /* Личное хранилище - Запись
+           SENT
+             <iq id='Emly6-33' type='set'>
+               <query xmlns='jabber:iq:private'>
+                 <chats xmlns="chats:new_messages">
+                   <chat_id_1>value_long_long_text and etc...</chat_id_1>
+                 </chats>
+               </query>
+             </iq>
+           RECV
+             <iq xml:lang='en' to='89016598623@chat.masterme.ru/57827693-950f-49d8-9358-99b5162ba556' from='89016598623@chat.masterme.ru' type='result' id='Emly6-33'/>
+        */
+        try {
+            DefaultPrivateData data = new DefaultPrivateData(category, category + ":" + name);
+            for (String dictKey: dict.keySet()) {
+                data.setValue(dictKey, dict.get(dictKey));
+            }
+            privateDataManager.setPrivateData(data);
+        }
+        catch (Exception e) {
+            Utils.printLog("Error in setPrivateStorage " + e.toString());
+        }
     }
 
     public void connect() throws IOException, XMPPException, SmackException {
@@ -600,7 +661,7 @@ public class FlutterXmppConnection implements ConnectionListener {
             conf.setHost(mHost);
         } else {
 
-            Utils.printLog(" not valid host: ");
+            Utils.printLog(" connecting via host: " + mHost);
             conf.setHost(mHost);
         }
 
@@ -631,9 +692,8 @@ public class FlutterXmppConnection implements ConnectionListener {
         }
 
         Utils.printLog(" connect 1 mServiceName: " + mServiceName + " mHost: " + mHost + " mPort: " + Constants.PORT + " mUsername: " + mUsername + " mPassword: " + mPassword + " mResource:" + mResource);
+
         //Set up the ui thread broadcast message receiver.
-
-
         try {
 
             mConnection = new XMPPTCPConnection(conf.build());
@@ -787,6 +847,7 @@ public class FlutterXmppConnection implements ConnectionListener {
         Utils.printLog(" Flutter Authenticated Successfully: ");
 
         multiUserChatManager = MultiUserChatManager.getInstanceFor(connection);
+        privateDataManager = PrivateDataManager.getInstanceFor(connection);
         FlutterXmppConnectionService.sConnectionState = ConnectionState.AUTHENTICATED;
 //        showContactListActivityWhenAuthenticated();
 
@@ -800,7 +861,6 @@ public class FlutterXmppConnection implements ConnectionListener {
         intent.putExtra(Constants.BUNDLE_MESSAGE_PARAMS, Constants.AUTHENTICATED);
         intent.putExtra(Constants.BUNDLE_MESSAGE_TYPE, Constants.AUTHENTICATED);
         mApplicationContext.sendBroadcast(intent);
-
     }
 
     @Override

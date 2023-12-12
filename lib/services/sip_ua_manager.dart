@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:infoservice/models/user_settings_model.dart';
 
 import 'package:sip_ua/sip_ua.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../a_notifications/telegram_bot.dart';
+import '../helpers/log.dart';
 import '../helpers/phone_mask.dart';
 import '../models/call_history_model.dart';
 import '../settings.dart';
@@ -17,21 +19,16 @@ import '../settings.dart';
 class SIPUAListener implements SipUaHelperListener {
   final SIPUAManager helper;
   static AppLifecycleState? appState;
-  static bool enabled = true; // на время отладки можно отключать
   Call? curCall; // Пишем при callStateChanged для входящего на IOS
-
   SIPUAListener(this.helper) {
-    if (!enabled) {
-      print('--- SIPUAListener DISABLED ---');
-      return;
-    }
     helper.addSipUaHelperListener(this);
     listenCallKit();
   }
 
   @override
   void callStateChanged(Call call, CallState callState) {
-    print('SIPUAListener: callStateChanged to ${callState.state.toString()}, ${DateTime.now().toIso8601String()}');
+    print(
+        'SIPUAListener: callStateChanged to ${callState.state.toString()}, ${DateTime.now().toIso8601String()}');
     /* TODO: здесь надо принимать звонок с колкита? */
     switch (callState.state) {
       case CallStateEnum.PROGRESS:
@@ -54,7 +51,8 @@ class SIPUAListener implements SipUaHelperListener {
 
   @override
   void registrationStateChanged(RegistrationState state) {
-    print('SIPUAListener: registrationStateChanged to ${state.state.toString()}');
+    print(
+        'SIPUAListener: registrationStateChanged to ${state.state.toString()}');
   }
 
   @override
@@ -69,7 +67,7 @@ class SIPUAListener implements SipUaHelperListener {
     helper.stateCallKitUpdated = DateTime.now().millisecondsSinceEpoch;
   }
 
-  void iosIncomingCallAccept(){
+  void iosIncomingCallAccept() {
     Timer.periodic(const Duration(seconds: 1), (timer) {
       print('${timer.tick}');
       if ((helper.registered ?? false) && curCall != null) {
@@ -80,8 +78,8 @@ class SIPUAListener implements SipUaHelperListener {
         navigator.mediaDevices
             .getUserMedia(mediaConstraints)
             .then((MediaStream mediaStream) {
-          curCall!.answer(helper.buildCallOptions(true),
-              mediaStream: mediaStream);
+          curCall!
+              .answer(helper.buildCallOptions(true), mediaStream: mediaStream);
         });
         timer.cancel();
       } else if (!(helper.registered ?? false)) {
@@ -168,17 +166,22 @@ class SIPUAListener implements SipUaHelperListener {
 
   Future<void> call2History(String dest,
       {int? companyId,
+      String name = '',
       String direction = 'outgoing',
       bool isSip = false}) async {
-    CallHistoryModel historyRow = CallHistoryModel(
-      login: helper.getLogin(),
-      time: DateTime.now().toIso8601String(),
-      dest: dest,
-      action: direction,
-      companyId: companyId ?? 0,
-      isSip: isSip ? 1 : 0,
-    );
-    await historyRow.insert2Db();
+    UserSettingsModel? userSettings = await UserSettingsModel().getUser();
+    if (userSettings != null) {
+      CallHistoryModel historyRow = CallHistoryModel(
+        login: userSettings.phone,
+        name: name,
+        time: DateTime.now().toIso8601String(),
+        dest: dest,
+        action: direction,
+        companyId: companyId ?? 0,
+        isSip: isSip ? 1 : 0,
+      );
+      await historyRow.insert2Db();
+    }
   }
 
   @override
@@ -188,9 +191,10 @@ class SIPUAListener implements SipUaHelperListener {
 }
 
 class SIPUAManager extends SIPUAHelper {
+  static const String tag = 'SIPUAManager';
   late SIPUAListener listener;
-  late SharedPreferences preferences;
   late Timer mainTimer;
+  static bool enabled = true; // на время отладки можно отключать
   int checkRegisterTimer = 5;
   int updateTokenTimer = 1;
   bool stopFlag = false;
@@ -200,8 +204,8 @@ class SIPUAManager extends SIPUAHelper {
   int stateCallKitUpdated = 0;
   String stateCallKit = '';
 
-  String getLogin() {
-    return preferences.getString('auth_user') ?? '';
+  bool get isRegistered {
+    return registered ?? false;
   }
 
   void setStopFlag(bool flag) {
@@ -209,11 +213,13 @@ class SIPUAManager extends SIPUAHelper {
   }
 
   SIPUAManager() {
+    if (!enabled) {
+      Log.d(tag, '--- SIPUAManager DISABLED ---');
+      return;
+    }
     listener = SIPUAListener(this);
-    loadSettings().then((prefs) {
-      doRegister();
-      startMainTimer();
-    });
+    doRegister();
+    startMainTimer();
   }
 
   void startMainTimer() {
@@ -222,30 +228,12 @@ class SIPUAManager extends SIPUAHelper {
       checkRegisterTimer -= 1;
       if (checkRegisterTimer < 0) {
         checkRegisterTimer = 10;
-        doprint('SIP: is registered: ${registered!}, stopFlag $stopFlag');
+        Log.d(tag, 'SIP: is registered: $isRegistered, stopFlag $stopFlag');
         if (stopFlag) {
           return;
         }
-        if (registered! == false) {
+        if (!isRegistered) {
           doRegister();
-        } else if (registered!) {
-          // Отправка токена уже происходит в JabberManager таймере
-          // Пока отключаем отправку токена по сип-регистрации
-          /*
-          updateTokenTimer -= 1;
-          if (updateTokenTimer < 0) {
-            updateTokenTimer = 600;
-            sendToken(preferences.getString('auth_user') ?? '', fcmToken,
-                    apnsToken: apnsToken)
-                .then((sent) {
-              if (sent) {
-                updateTokenTimer = 3600;
-              } else {
-                updateTokenTimer = 10;
-              }
-            });
-          }
-          */
         }
       }
     });
@@ -253,66 +241,21 @@ class SIPUAManager extends SIPUAHelper {
 
   /* Регистрация на сип сервере */
   void doRegister() {
-    if (registered! == true) {
+    if (isRegistered) {
       return;
     }
-    if ((preferences.getString('password') != null) &&
-        (preferences.getString('auth_user') != null)) {
-      doprint('try register');
-      doprint(preferences.getString('auth_user')!);
-      doprint(preferences.getString('password')!);
-
-      final String authUser = preferences.getString('auth_user') ?? '';
-      saveSettings(
-        webSocketUrl: SIP_WSS,
-        extraHeaders: {},
-        authorizationUser: authUser,
-        password: preferences.getString('password')!,
-        displayName: authUser,
-      );
-    }
-  }
-
-  /* Debug print */
-  void doprint(String msg) {
-    print(msg);
-  }
-
-  /* sha256 на логин + пароль
-     для различных операций, требующих авторизации
-  */
-  String credentialsHash() {
-    String login = cleanPhone(preferences.getString('auth_user') ?? '');
-    String passwd = preferences.getString('password') ?? '';
-    List<int> credentials = utf8.encode(login + passwd);
-    return sha256.convert(credentials).toString();
-  }
-
-  Future<SharedPreferences> loadSettings() async {
-    preferences = await SharedPreferences.getInstance();
-    String? authUser = preferences.getString('auth_user');
-    doprint('password ${preferences.getString('password')}');
-    doprint('auth_user $authUser');
-    if (authUser != null) {
-      TelegramBot.userPhone = authUser;
-    }
-    return preferences;
-  }
-
-  void changeSettings(Map<String, dynamic> userData) {
-    setStopFlag(true);
-    stop();
-    doprint('sip changeSettings: $userData');
-    preferences.setString('password', userData['passwd'] ?? '');
-    preferences.setString('auth_user', userData['phone'] ?? '');
-
-    saveSettings(
-      webSocketUrl: SIP_WSS,
-      extraHeaders: {},
-      authorizationUser: userData['phone'] ?? '',
-      password: userData['passwd'] ?? '',
-      displayName: userData['name'] ?? '',
-    );
+    UserSettingsModel().getUser().then((userSettings) {
+      if (userSettings != null) {
+        Log.d(tag, 'try register (${userSettings.phone}/${userSettings.passwd}...');
+        saveSettings(
+          webSocketUrl: SIP_WSS,
+          extraHeaders: {},
+          authorizationUser: userSettings.phone ?? '',
+          password: userSettings.passwd ?? '',
+          displayName: userSettings.phone ?? '',
+        );
+      }
+    });
   }
 
   void saveSettings({
@@ -329,7 +272,7 @@ class SIPUAManager extends SIPUAHelper {
     settings.webSocketSettings.allowBadCertificate = false;
 
     // Телефон очищаем от всех символов
-    settings.authorizationUser = cleanPhone(authorizationUser);
+    settings.authorizationUser = authorizationUser;
 
     settings.uri = '${settings.authorizationUser}@$SIP_DOMAIN';
     settings.password = password;

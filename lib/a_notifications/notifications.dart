@@ -36,7 +36,11 @@ Future<void> createSimpleNotification() async {
 
 Future<void> createChatNotification(Map<String, String> data) async {
   String title = 'Новое сообщение';
-  String body = 'Сообщение от ${data['sender']}';
+  String displayName = data['sender'] ?? '';
+  if (data['displayName'] != null && data['displayName'] != '') {
+    displayName = data['displayName']!;
+  }
+  String body = 'Сообщение от $displayName';
   if (data['body'] != null && data['body'] != '') {
     title = body;
     body = data['body']!;
@@ -63,9 +67,9 @@ Future<void> createChatNotification(Map<String, String> data) async {
   );
 }
 
-/* Отправка push-data */
 Future<void> sendPush(String credentialsHash, String myPhone, String toPhone,
-    {String action = 'chat', String text = '', bool only_data = false}) async {
+    {String action = 'chat', String text = '', bool onlyData = false}) async {
+  /* Отправка push-data */
   final uri = Uri.parse('https://$JABBER_SERVER$JABBER_NOTIFY_ENDPOINT');
   final data = <String, dynamic>{
     'additional_data': {
@@ -79,23 +83,56 @@ Future<void> sendPush(String credentialsHash, String myPhone, String toPhone,
   if (text != '') {
     data['body'] = text;
   }
-  if (only_data) {
+  if (onlyData) {
     data['only_data'] = true;
   }
-  Log.i('sendCallPush', 'params ${data.toString()}');
+  Log.i('sendPush', 'params ${data.toString()}, url $uri');
   var response = await http.post(
     uri,
     body: jsonEncode(data),
+  ).timeout(
+    const Duration(seconds: 5),
+    onTimeout: () {
+      Log.i('sendPush',
+          'notification TIMEOUT');
+      return http.Response('Error', 408); // Request Timeout response status code
+    },
   );
-  Log.i('sendCallPush',
+  Log.i('sendPush',
       'notification response ${response.statusCode}, ${response.body.toString()}');
-  try {
-    var decoded = json.decode(response.body);
-    //await TelegramBot().sendNotify(
-    //    'Notification msg: ${response.statusCode}=>${const JsonEncoder.withIndent('  ').convert(decoded)}');
-  } catch (ex) {
-    //await TelegramBot().sendNotify(
-    //    'Notification msg: ${response.statusCode}=>${response.body.toString()}');
-    print(ex);
+}
+
+Future<void> sendGroupPush(String credentialsHash, String myPhone, String toGroupJid,
+    {String text = '', bool onlyData = false}) async {
+  /* Отправка push-data батчем */
+  final uri = Uri.parse('https://$JABBER_SERVER$JABBER_NOTIFY_BATCH_ENDPOINT');
+  final data = <String, dynamic>{
+    'additional_data': {
+      'action': 'chat',
+    },
+    'name': myPhone,
+    'toGroupJid': toGroupJid,
+    'fromJID': cleanPhone(myPhone),
+    'credentials': credentialsHash,
+  };
+  if (text != '') {
+    data['body'] = text;
   }
+  if (onlyData) {
+    data['only_data'] = true;
+  }
+  Log.i('sendGroupPush', 'params ${data.toString()}');
+  var response = await http.post(
+    uri,
+    body: jsonEncode(data),
+  ).timeout(
+    const Duration(seconds: 10),
+    onTimeout: () {
+      Log.i('sendGroupPush',
+          'notification TIMEOUT');
+      return http.Response('Error', 408); // Request Timeout response status code
+    },
+  );
+  Log.i('sendGroupPush',
+      'notification response ${response.statusCode}, ${response.body.toString()}');
 }

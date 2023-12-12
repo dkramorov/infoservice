@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /* Предупреждение, что недостаточно прав */
@@ -29,12 +31,14 @@ Future<bool> permsCheck(
   final permStatus = await permission.status;
   if (!permStatus.isGranted) {
     final isIOS = Platform.isIOS || Platform.isMacOS;
-    if (await permStatus.isPermanentlyDenied ||
+    if (permStatus.isPermanentlyDenied ||
         (isIOS && permStatus.isDenied)) {
       // The user opted to never again see the permission request dialog for this
       // app. The only way to change the permission's status now is to let the
       // user manually enable it in the system settings.
-      permissionsErrorDialog(permDesc, context);
+      Future.delayed(Duration.zero, () {
+        permissionsErrorDialog(permDesc, context);
+      });
     } else {
       await [
         permission,
@@ -73,4 +77,55 @@ Future<String?> openInfoDialog(BuildContext context, Function? callback,
       ],
     ),
   );
+}
+
+Future<void> launchInWebViewOrVC(String url, BuildContext context) async {
+   ImageProvider provider = FileImage(
+    File(url),
+  );
+  if (url.startsWith('http')) {
+    provider = NetworkImage(url);
+  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => HeroPhotoViewRouteWrapper(
+        imageProvider: provider,
+      ),
+    ),
+  );
+}
+
+Future<void> showLoading(
+    {int removeAfterSec = 3,
+    String msg = 'Пожалуйста, подождите...',
+    String type = ''}) async {
+  Function func = EasyLoading.show; // Есть еще Progress
+  switch (type) {
+    case 'success':
+      func = EasyLoading.showSuccess;
+      break;
+    case 'error':
+      func = EasyLoading.showError;
+      break;
+    case 'info':
+      func = EasyLoading.showInfo;
+      break;
+    case 'toast':
+      func = EasyLoading.showToast;
+      break;
+    default:
+      func = EasyLoading.show;
+  }
+  await func(
+    status: msg,
+    maskType: EasyLoadingMaskType.black,
+  );
+  Future.delayed(Duration(seconds: removeAfterSec), () async {
+    await dropLoading();
+  });
+}
+
+Future<void> dropLoading() async {
+  await EasyLoading.dismiss();
 }

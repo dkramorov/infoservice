@@ -27,7 +27,13 @@ class DefaultAvatar extends StatelessWidget {
 
   /// Get the initials of the user
   String getInitials() {
-    return (user.name ?? user.id)[0];
+    if (user.name != null && user.name!.isNotEmpty) {
+      return user.name![0];
+    }
+    if (user.id.isNotEmpty) {
+      return user.id[0];
+    }
+    return 'A';
   }
 
   @override

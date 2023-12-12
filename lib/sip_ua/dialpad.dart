@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:infoservice/helpers/model_utils.dart';
 import 'package:infoservice/models/dialpad_model.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sip_ua/sip_ua.dart';
 
 import '../a_notifications/notifications.dart';
 import '../helpers/network.dart';
+import '../models/user_settings_model.dart';
 import '../pages/authorization.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
@@ -101,11 +104,15 @@ class _MyDialPadWidget extends State<DialPadWidget>
     if (isSip) {
       to = 'sip:app_$dest@$SIP_DOMAIN';
       Future.delayed(const Duration(seconds: 2), () async {
-        await sendCallPush(
-            dest,
-            _preferences.getString('auth_user') ?? '',
-            _preferences.getString('display_name') ?? '',
-            sipHelper?.credentialsHash() ?? '');
+        UserSettingsModel? user = await UserSettingsModel().getUser();
+        if (user != null) {
+          await sendCallPush(
+              dest,
+              user.phone ?? '',
+              user.name ?? '',
+              user.credentialsHash ?? '',
+          );
+        }
       });
     }
 
@@ -125,8 +132,9 @@ class _MyDialPadWidget extends State<DialPadWidget>
       mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     }
     // Втыкаем в историю исходящий
-    sipHelper?.listener
-        .call2History(dest, companyId: dialpadModel?.company?.id, isSip: isSip);
+    String name = await getRosterNameByPhone(xmppHelper, dest);
+    sipHelper?.listener.call2History(dest,
+        name: name, companyId: dialpadModel?.company?.id, isSip: isSip);
 
     sipHelper!.call(to, voiceonly: voiceonly, mediaStream: mediaStream);
     _preferences.setString('dest', dest);

@@ -76,4 +76,21 @@ class DashChat extends StatelessWidget {
       ],
     );
   }
+
+  static Widget buildReadMessageStatus(
+      MessageOptions messageOptions, bool isOwnMessage, MessageStatus status) {
+    if (messageOptions.readStatusIcon != null &&
+        messageOptions.unreadStatusIcon != null &&
+        isOwnMessage) {
+      return SizedBox(
+          width: 16,
+          height: 16,
+          child: Center(
+            child: status == MessageStatus.received
+                ? messageOptions.readStatusIcon
+                : messageOptions.unreadStatusIcon,
+          ));
+    }
+    return Container();
+  }
 }

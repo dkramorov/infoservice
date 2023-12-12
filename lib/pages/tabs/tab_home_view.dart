@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/companies/catalogue.dart';
 import '../../fonts/funtya.dart';
 import '../../helpers/log.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/shared_preferences_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../services/update_manager.dart';
 import '../../settings.dart';
@@ -49,15 +51,33 @@ class _TabHomeViewState extends State<TabHomeView> {
 
   bool isRubricsSorted = false;
 
+  late Timer updateTimer;
+
   @override
   void initState() {
     super.initState();
     loadRubrics();
+    // Из фона не приезджает stream?
     updateSubscription =
         UpdateManager.updateStream?.updateSection.listen((section) {
       print('UpdateManager.updateStream.updateSection section $section');
       if (section == UpdateManager.catalogueLoadedAction) {
         loadRubrics();
+      }
+    });
+
+    updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+      SharedPreferences preferences =
+          await SharedPreferencesManager.getSharedPreferences();
+      bool catalogueLoadedAction =
+          preferences.getBool(UpdateManager.catalogueLoadedAction) ?? false;
+      if (catalogueLoadedAction) {
+        print(
+            'UpdateManager.updateStream.updateSection section'
+            ' ${UpdateManager.catalogueLoadedAction}');
+        preferences.setBool(UpdateManager.catalogueLoadedAction, false);
+        loadRubrics();
+        updateTimer.cancel();
       }
     });
   }
@@ -72,6 +92,7 @@ class _TabHomeViewState extends State<TabHomeView> {
   @override
   void dispose() {
     updateSubscription?.cancel();
+    updateTimer.cancel();
     super.dispose();
   }
 

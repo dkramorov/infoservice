@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:infoservice/widgets/chat/msg_counter.dart';
 
 import '../../settings.dart';
 import 'online_indicator.dart';
@@ -11,6 +12,7 @@ class Avatar extends StatelessWidget {
   final String imgPath;
   final bool isOnline;
   final bool showIndicator;
+  final int showCounter;
 
   const Avatar({
     Key? key,
@@ -19,6 +21,7 @@ class Avatar extends StatelessWidget {
     this.imgPath = DEFAULT_AVATAR,
     this.isOnline = false,
     this.showIndicator = false,
+    this.showCounter = 0,
   }) : super(key: key);
 
   ImageProvider getImageProvider(path) {
@@ -64,6 +67,17 @@ class Avatar extends StatelessWidget {
               ),
             ),
           ),
+          showCounter > 0
+              ? Positioned(
+                  left: 2,
+                  top: 2,
+                  child: MsgCounter(
+                    width: 0.4 * width,
+                    height: 0.4 * height,
+                    count: showCounter,
+                  ),
+                )
+              : Container(),
           showIndicator
               ? Positioned(
                   right: 2,

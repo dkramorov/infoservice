@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:infoservice/services/shared_preferences_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/companies/addresses.dart';
@@ -19,7 +20,9 @@ import '../settings.dart';
 
 class CompaniesUpdateVersion {
   static const String TAG = 'CompaniesUpateVersion';
-  static bool DEBUG = false; // отладочные сообщения по обновлению
+  // отладочные сообщения по обновлению,
+  // при отладке постоянно скачивается новый каталог
+  static bool DEBUG = false;
   static const String CAT_VERSION_KEY = 'catalogue_version';
   final int version;
 
@@ -129,7 +132,9 @@ class UpdateManager {
   static SharedPreferences? preferences;
   static bool enabled = true; // на время отладки можно отключать
 
-  static const int defaultUpdateInterval = 600;
+  static const int defaultUpdateInterval = 3600;
+  // TODO: вернуть обратно на 3600
+  //static const int defaultUpdateInterval = 20;
   int intervalUpdateCheck = 1;
 
   static bool addressesLoaded = false;
@@ -301,7 +306,7 @@ class UpdateManager {
       return;
     }
     updateTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) async {
-      preferences ??= await SharedPreferences.getInstance();
+      preferences = await SharedPreferencesManager.getSharedPreferences();
       intervalUpdateCheck -= 1;
       if (CompaniesUpdateVersion.DEBUG) {
         Log.d(TAG, 'next update check in $intervalUpdateCheck');
@@ -314,7 +319,7 @@ class UpdateManager {
           int curVersion =
               preferences?.getInt(CompaniesUpdateVersion.CAT_VERSION_KEY) ?? 0;
 
-          // Всегда обноляем
+          // Всегда обновляем
           if (CompaniesUpdateVersion.DEBUG) {
             curVersion = 0;
           }
@@ -406,6 +411,10 @@ class UpdateManager {
       started = now;
       catalogueLoaded = true;
       updateStream?.sectionChanged(catalogueLoadedAction);
+
+      SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+      await prefs.setBool(catalogueLoadedAction, true);
+
       // Update key for next step
       key = 'Cats';
     }
@@ -464,6 +473,10 @@ class UpdateManager {
       started = now;
       orgsLoaded = true;
       updateStream?.sectionChanged(orgsLoadedAction);
+
+      SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
+      await prefs.setBool(orgsLoadedAction, true);
+
       // Update key for next step
       key = 'Branches';
     }
