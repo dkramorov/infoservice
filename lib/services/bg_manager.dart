@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 import 'dart:ui';
 import 'dart:io';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 
 import 'package:flutter/material.dart';
@@ -82,10 +80,7 @@ void onStart(ServiceInstance service) async {
 
   // Принудительное удаление пользователя (тест)
   // await UserSettingsModel().dropAllRows();
-  if (Platform.isAndroid) {
-    await AndroidAlarmManager.initialize();
-    await AndroidAlarmManager.periodic(const Duration(minutes: 1), 0, printHello);
-  }
+
   Future.delayed(Duration.zero, () async {
     try {
       // Предварительно удаляем при старте сервиса все задачи
@@ -123,13 +118,6 @@ void onStart(ServiceInstance service) async {
       });
     }
   });
-}
-
-@pragma('vm:entry-point')
-void printHello() {
-  final DateTime now = DateTime.now();
-  final int isolateId = Isolate.current.hashCode;
-  print("[$now] Hello, world! isolate=$isolateId function='$printHello'");
 }
 
 Future<void> backgroundJob() async {
@@ -189,8 +177,11 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
       await ChatMessageModel().dropAllRows();
       await ContactModel().dropAllRows();
       JabberManager().setStopFlag(true);
-      await JabberManager().stop();
+      // На йосе здесь await не вернет результат (видимо слушателя надо проверить)
+      JabberManager().stop();
+      Log.d(tag, '--- JabberManager stopped');
       await BGTasksModel.createCheckRegTask();
+      Log.d(tag, '--- Reg task created');
       break;
 
     case BGTasksModel.checkRegUserTaskKey:

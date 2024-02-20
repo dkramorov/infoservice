@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../db/settings_db.dart';
 import '../db/tables.dart';
+import '../helpers/network.dart';
 import 'abstract_model.dart';
 
 
@@ -134,6 +135,7 @@ class BGTasksModel extends AbstractModel {
   static Future<BGTasksModel> createRegisterTask(Map<String, dynamic> userData) async {
     /* Создаем задачу на регистрацию в xmpp
     */
+    await sendAnalyticsEvent('login', userData);
     return await createTask(BGTasksModel.registerUserTaskKey, userData);
   }
 

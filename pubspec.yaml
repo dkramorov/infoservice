@@ -4,7 +4,7 @@ description: Social service
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.107+107
+version: 1.0.111+111
 
 environment:
   # sdk: '>=2.17.0 <3.0.0' # flutter 3.0.0
@@ -19,6 +19,7 @@ dependencies:
   shared_preferences: ^2.0.15
   firebase_core: ^1.22.0
   firebase_messaging: 13.0.1
+  firebase_analytics: 9.3.4
   awesome_notifications: ^0.6.21
   #xmpp_plugin: ^2.2.1
   xmpp_plugin:
@@ -73,7 +74,7 @@ dependencies:
   sentry_flutter: ^7.9.0
   flutter_easyloading: ^3.0.5
   flutter_app_badger: ^1.5.0
-  android_alarm_manager_plus: ^2.1.4
+  #android_alarm_manager_plus: ^2.1.4
 
 dev_dependencies:
   flutter_test:

@@ -2,17 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:infoservice/models/user_settings_model.dart';
-
+import 'package:logger/logger.dart';
 import 'package:sip_ua/sip_ua.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../a_notifications/telegram_bot.dart';
 import '../helpers/log.dart';
-import '../helpers/phone_mask.dart';
 import '../models/call_history_model.dart';
 import '../settings.dart';
 
@@ -217,6 +213,7 @@ class SIPUAManager extends SIPUAHelper {
       Log.d(tag, '--- SIPUAManager DISABLED ---');
       return;
     }
+    loggingLevel = Level.error;
     listener = SIPUAListener(this);
     doRegister();
     startMainTimer();

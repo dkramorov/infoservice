@@ -19,6 +19,8 @@ import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../services/update_manager.dart';
 import '../../settings.dart';
+import '../../widgets/chat/avatar_widget.dart';
+import '../../widgets/chat/online_indicator.dart';
 import '../../widgets/my_elevated_button_widget.dart';
 import '../../widgets/rounded_button_widget.dart';
 import '../authorization.dart';
@@ -52,6 +54,7 @@ class _TabProfileViewState extends State<TabProfileView> {
   UserSettingsModel? userSettings;
   bool isRegistered = false;
   bool _editModeDisabled = true;
+  bool hasInternet = false;
   String photo = DEFAULT_AVATAR;
 
   String name = '';
@@ -78,6 +81,12 @@ class _TabProfileViewState extends State<TabProfileView> {
         }
       }
     }
+
+    SharedPreferences prefs =
+        await SharedPreferencesManager.getSharedPreferences();
+    setState(() {
+      hasInternet = prefs.getBool('checkInternetConnection') ?? false;
+    });
   }
 
   @override
@@ -246,6 +255,11 @@ class _TabProfileViewState extends State<TabProfileView> {
                             Icons.phone_iphone,
                             color: Colors.black54,
                             size: 24.0,
+                          ),
+                          OnlineIndicator(
+                            width: 0.26 * 50,
+                            height: 0.26 * 50,
+                            isOnline: hasInternet,
                           ),
                           Padding(
                             padding: const EdgeInsets.only(left: 25.0),
@@ -886,12 +900,25 @@ class _TabProfileViewState extends State<TabProfileView> {
     return Center(
       child: userSettings != null
           ? buildView()
-          : RoundedButtonWidget(
-              text: const Text('Вход / Регистрация'),
-              minWidth: 200.0,
-              onPressed: () {
-                Navigator.pushNamed(context, AuthScreenWidget.id);
-              },
+          : Stack(
+              children: [
+                RoundedButtonWidget(
+                  text: const Text('Вход / Регистрация'),
+                  minWidth: 200.0,
+                  onPressed: () {
+                    Navigator.pushNamed(context, AuthScreenWidget.id);
+                  },
+                ),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  child: OnlineIndicator(
+                    width: 0.26 * 50,
+                    height: 0.26 * 50,
+                    isOnline: hasInternet,
+                  ),
+                ),
+              ],
             ),
     );
   }

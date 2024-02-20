@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:http/http.dart' as http;
 import 'package:infoservice/helpers/phone_mask.dart';
 import 'package:path_provider/path_provider.dart';
@@ -80,19 +81,19 @@ Future<bool> checkInternetConnection() async {
   final uri = Uri.https(JABBER_SERVER, '/my_ip/');
   try {
     final resp = await http.post(uri).timeout(
-      const Duration(seconds: 1),
+      const Duration(seconds: 3),
       onTimeout: () {
         return http.Response(
             'Error', 408); // Request Timeout response status code
         // throw Exception('duration timeout');
       },
     );
-    Log.i('jabber server response', '${resp.statusCode}');
+    Log.i('checkInternetConnection', 'resp: ${resp.statusCode}');
     if (resp.statusCode == 200) {
       return true;
     }
   } catch (ex) {
-    Log.i('no internet', '$ex');
+    Log.i('checkInternetConnection', 'ERROR: $ex');
   }
   return false;
 }
@@ -281,4 +282,22 @@ Future<void> requestCompanyChat(
   } catch (ex) {
     Log.e('requestCompanyChat', 'response ${response.statusCode}: $ex');
   }
+}
+
+Future<void> sendAnalyticsEvent(String eventName, Map<String, dynamic> parameters) async {
+  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  Map<String, dynamic> newParams = {};
+  // Не все параметры хотим давать в аналитику
+  parameters.forEach((key, value) {
+    if (key == 'passwd') {
+      return;
+    }
+    newParams[key] = value;
+  });
+
+  await analytics.logEvent(
+    name: eventName,
+    parameters: newParams,
+  );
+  Log.i('sendAnalyticsEvent', '$eventName, ${newParams.toString()}');
 }

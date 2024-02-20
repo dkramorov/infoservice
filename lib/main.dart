@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:infoservice/models/bg_tasks_model.dart';
 import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/pages/authorization.dart';
 import 'package:infoservice/pages/chat/add2roster.dart';
@@ -175,43 +174,40 @@ void main() async {
       print('FirebaseMessaging onMessageOpenedApp!');
       print('Message data: ${message.data}');
       //generateChatNotification(message.data);
-
-
-        if (message.data['action'] == 'chat') {
-          String sender = message.data['sender'] ?? '';
-          String phone = cleanPhone(sender);
-          String jid = JabberManager().toJid(sender);
-          String name = phoneMaskHelper(sender);
-          String screenId = ChatScreen.id;
-          String group = message.data['group'] ?? '';
-          if (group != '') {
-            screenId = GroupChatScreen.id;
-            sender = group;
-            phone = group;
-            jid = group;
-            name = group.split('@')[0];
-          }
-
-          print(NavigationManager.instance.navigationKey.currentContext);
-          if (NavigationManager.instance.navigationKey.currentContext != null) {
-            BuildContext ctx = NavigationManager.instance.navigationKey.currentContext!;
-            const SIPUAManager? sipHelper = null;
-            const JabberManager? xmppHelper = null;
-            Navigator.popUntil(ctx, (route) => (route.isFirst));
-            Navigator.pushNamed(ctx, screenId, arguments: {
-              sipHelper,
-              xmppHelper,
-              ChatUser(
-                id: phone,
-                jid: jid,
-                phone: sender,
-                name: name,
-                customProperties: {'fromPush': true},
-              ),
-            });
-          }
+      if (message.data['action'] == 'chat') {
+        String sender = message.data['sender'] ?? '';
+        String phone = cleanPhone(sender);
+        String jid = JabberManager().toJid(sender);
+        String name = phoneMaskHelper(sender);
+        String screenId = ChatScreen.id;
+        String group = message.data['group'] ?? '';
+        if (group != '') {
+          screenId = GroupChatScreen.id;
+          sender = group;
+          phone = group;
+          jid = group;
+          name = group.split('@')[0];
         }
 
+        print(NavigationManager.instance.navigationKey.currentContext);
+        if (NavigationManager.instance.navigationKey.currentContext != null) {
+          BuildContext ctx = NavigationManager.instance.navigationKey.currentContext!;
+          const SIPUAManager? sipHelper = null;
+          const JabberManager? xmppHelper = null;
+          Navigator.popUntil(ctx, (route) => (route.isFirst));
+          Navigator.pushNamed(ctx, screenId, arguments: {
+            sipHelper,
+            xmppHelper,
+            ChatUser(
+              id: phone,
+              jid: jid,
+              phone: sender,
+              name: name,
+              customProperties: {'fromPush': true},
+            ),
+          });
+        }
+      }
     });
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('FirebaseMessaging onMessage! Message data: ${message.data}');
@@ -336,11 +332,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         print('-----> resumed');
         if (_xmppHelper != null) {
-          _xmppHelper!.doRegister();
+          //_xmppHelper!.doRegister();
         }
+        /*
         initializeService().then((success) {
           BGTasksModel.createLoginUserTask();
         });
+        */
         break;
     }
   }

@@ -405,6 +405,7 @@ class _ChatScreenState extends State<ChatScreen> {
       Log.d(tag, 'showUnreadMessagesWidget not ready, messages index error');
       return;
     }
+    newMessagesCount -= 1;
     ChatMessage message = messages[newMessagesCount];
     messages.insert(
         newMessagesCount,

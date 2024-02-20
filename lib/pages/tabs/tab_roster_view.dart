@@ -52,7 +52,7 @@ class _TabRosterViewState extends State<TabRosterView> {
   bool contactsUpdated = false;
   bool storageDialogShowed = false;
   bool storageGranted = false;
-  late Timer updateTimer;
+  Timer? updateTimer;
 
   @override
   void setState(fn) {
@@ -63,7 +63,9 @@ class _TabRosterViewState extends State<TabRosterView> {
 
   @override
   void dispose() {
-    updateTimer.cancel();
+    if (updateTimer != null) {
+      updateTimer!.cancel();
+    }
     super.dispose();
   }
 
@@ -99,7 +101,7 @@ class _TabRosterViewState extends State<TabRosterView> {
         contactsUpdated = false;
       }
       // Объекты будут разными, проверяем по identical
-      if (!userSettings.isEqual(user ?? UserSettingsModel())) {
+      if (mounted && !userSettings.isEqual(user ?? UserSettingsModel())) {
         setState(() {
           user = userSettings;
         });
