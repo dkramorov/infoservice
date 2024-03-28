@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:infoservice/widgets/terms_widget.dart';
 
 import '../../settings.dart';
+import '../helpers/dialogs.dart';
 import '../pages/register/reg_wizard_screen.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
@@ -14,10 +15,12 @@ class RegLinksWidget extends StatelessWidget {
 
   void regProcess(BuildContext context, String type) {
     Future.delayed(Duration.zero, () async {
-      final result = await Navigator.of(context).pushNamed(
+      Widget? result = await Navigator.of(context).pushNamed(
           RegWizardScreenWidget.id,
           arguments: [_sipHelper, _xmppHelper]);
-      if (result == 1) {
+
+      if (result != null && (result as Text).data == 'userConfirmed') {
+        showLoading(removeAfterSec: 8);
         //UserChatModel user = await logic.userFromDb();
         //Log.d(TAG, 'authorization with ${user.login}, ${user.passwd}');
         //if (user != null) {

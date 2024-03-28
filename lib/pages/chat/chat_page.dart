@@ -298,7 +298,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<List<ChatMessageModel>> initMamMessages() async {
     messages = [];
-    Log.d(tag, 'INIT MAM MESSAGES');
+    Log.d(tag, 'INIT MAM MESSAGES, ${me.jid} => ${friend.jid}');
     return await ChatMessageModel()
         .getMessages(me.jid ?? '', friend.jid ?? '', limit: 50, offset: 0);
   }
@@ -332,7 +332,7 @@ class _ChatScreenState extends State<ChatScreen> {
     times = getMinMaxMessageTime();
     await showUnreadMessagesWidget();
 
-    Future.delayed(const Duration(seconds: 3), () async {
+    Future.delayed(const Duration(seconds: 2), () async {
       await markMessagesAsRead(force: true);
     });
 
@@ -401,11 +401,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     RosterModel rosterModel = rosterModels[0];
     int newMessagesCount = rosterModel.newMessagesCount ?? 0;
-    if (newMessagesCount == 0 || newMessagesCount > messages.length) {
-      Log.d(tag, 'showUnreadMessagesWidget not ready, messages index error');
+
+    newMessagesCount -= 1;
+    if (newMessagesCount <= 0 || newMessagesCount > messages.length) {
+      Log.d(tag, 'showUnreadMessagesWidget not needed');
       return;
     }
-    newMessagesCount -= 1;
+
     ChatMessage message = messages[newMessagesCount];
     messages.insert(
         newMessagesCount,
@@ -434,7 +436,8 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ));
-    Future.delayed(const Duration(seconds: 6), () {
+
+    Future.delayed(const Duration(seconds: 4), () {
       int ind = -999;
       for (int i = 0; i < messages.length; i++) {
         if (messages[i].customProperties!['id'] == '-999') {

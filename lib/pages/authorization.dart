@@ -50,6 +50,11 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
           login = user.phone ?? '';
         });
       }
+      Future.delayed(Duration.zero, () async {
+        if (isRegistered) {
+          Navigator.popUntil(context, (route) => (route.isFirst));
+        }
+      });
     } else {
       if (login != '') {
         setState(() {

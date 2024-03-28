@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:io' show Platform;
+import 'package:appmetrica_plugin/appmetrica_plugin.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:firebase_core/firebase_core.dart';

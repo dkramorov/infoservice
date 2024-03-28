@@ -155,6 +155,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
               setStateCallback: setStateCallback,
               company: company!,
             ),
+            /*
             TabChatView(
               sipHelper,
               xmppHelper,
@@ -162,6 +163,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
               setStateCallback: setStateCallback,
               company: company!,
             ),
+            */
           ],
         ),
       ),
@@ -227,6 +229,7 @@ class NavigationData {
       'tooltip': 'Телефоны',
       'title': 'Телефоны',
     },
+    /*
     {
       'icon': Icons.chat_rounded,
       'index': 3,
@@ -234,5 +237,6 @@ class NavigationData {
       'tooltip': 'Чат',
       'title': 'Чат',
     },
+    */
   ];
 }

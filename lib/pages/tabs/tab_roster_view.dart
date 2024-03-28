@@ -7,6 +7,7 @@ import 'package:infoservice/widgets/rounded_button_widget.dart';
 
 import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
+import '../../models/companies/orgs.dart';
 import '../../models/roster_model.dart';
 import '../../models/user_chat_model.dart';
 import '../../models/user_settings_model.dart';
@@ -125,8 +126,20 @@ class _TabRosterViewState extends State<TabRosterView> {
     String myJid = user?.jid ?? '';
     myRoster = await RosterModel().getByOwner(myJid);
     for (RosterModel r in myRoster) {
-      if (r.name != null && r.jid!.startsWith(r.name!)) {
-        await JabberManager.checkMucCompany(r);
+      String rJid = r.jid ?? '';
+      if (r.name != null){
+        if (rJid.startsWith(r.name!)) {
+          await JabberManager.checkMucCompany(r);
+        }
+      } else {
+        /*
+        // Проверка по названию комании
+        String phone = cleanPhone(rJid);
+        Orgs? org = await Orgs().getOrgByChat(phone);
+        if (org != null && org.name != null && org.name != '') {
+          r.name = org.name;
+        }
+        */
       }
     }
     myRoster.sort(
@@ -157,6 +170,7 @@ class _TabRosterViewState extends State<TabRosterView> {
     if (granted) {
       contactsUpdated = true;
       await BGTasksModel.getContactsFromPhoneTask();
+      //await JabberManager.updateChatsWithCompanyNames();
     } else {
       await checkContactsPermission();
     }

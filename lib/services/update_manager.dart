@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:appmetrica_plugin/appmetrica_plugin.dart';
 import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:infoservice/services/shared_preferences_manager.dart';
@@ -17,6 +18,7 @@ import '../models/companies/phones.dart';
 import '../helpers/log.dart';
 import '../helpers/network.dart';
 import '../settings.dart';
+import 'jabber_manager.dart';
 
 class CompaniesUpdateVersion {
   static const String TAG = 'CompaniesUpateVersion';
@@ -566,7 +568,12 @@ class UpdateManager {
       updateStream?.sectionChanged(addressesLoadedAction);
     }
     now = DateTime.now().millisecondsSinceEpoch;
-    print('total elapsed ${now - veryStarted}');
+    int elapsed = now - veryStarted;
+    print('total elapsed $elapsed');
+    await JabberManager.updateChatsWithCompanyNames();
+
+    await AppMetrica.reportEvent('db updated for ${JabberManager.user?.phone}'
+        ' for $elapsed seconds');
   }
 
   Future<void> dropCatalogue() async {

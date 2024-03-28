@@ -929,14 +929,21 @@ class JabberManager implements DataChangeEvents {
     List<RosterModel> rosterModels = await RosterModel().getBy(myJid, jid: jid);
     if (rosterModels.isEmpty) {
       RosterModel rosterModel = RosterModel(jid: jid, ownerJid: myJid);
+      phone = cleanPhone(phone);
       ContactModel? contact =
-          await ContactModel().getByPhone(cleanPhone(phone));
+          await ContactModel().getByPhone(phone);
       if (contact != null) {
         rosterModel.name = contact.displayName;
+      } else {
+        // Проверка по названию комании
+        Orgs? org = await Orgs().getOrgByChat(phone);
+        if (org != null && org.name != null && org.name != '') {
+          rosterModel.name = org.name;
+        }
       }
       String rosterJid = rosterModel.jid ?? '';
       if (!pendingRosterRows.contains(rosterJid) && rosterJid != '') {
-        pendingRosterRows.add(rosterModel.jid ?? '');
+        pendingRosterRows.add(rosterJid);
         await rosterModel.insert2Db();
         await UserSettingsModel().updateRosterVersion();
         if (remoteAdd) {
@@ -1214,4 +1221,26 @@ class JabberManager implements DataChangeEvents {
       String toJid, String msgId, String receiptID) async {
     await flutterXmpp?.sendDelieveryReceipt(toJid, msgId, receiptID);
   }
+
+  static Future<void> updateChatsWithCompanyNames() async {
+    // Обновление ростера по загруженным компаниям
+    if (JabberManager.user == null) {
+      return;
+    }
+    String jid = JabberManager.user!.jid ?? '';
+    List<RosterModel> roster = await RosterModel().getByOwner(jid);
+    for (int i = 0; i < roster.length; i++) {
+      RosterModel item = roster[i];
+      String itemJid = item.jid!;
+      Orgs? org = await Orgs().getOrgByChat(cleanPhone(itemJid));
+      if (org != null && org.name != null && org.name != '') {
+        item.name = org.name;
+        await item.updatePartial(item.id, {
+          'name': org.name,
+        });
+        await UserSettingsModel().updateRosterVersion();
+      }
+    }
+  }
+
 }

@@ -231,96 +231,99 @@ class AbstractCompaniesModel {
 
 /* SQL запросы для базы по фирмам
 */
+String orgsIndexChat = 'CREATE INDEX IF NOT EXISTS fk_orgs_chat ON orgs (chat)';
 List<String> companiesSQLHelper() {
   List<String> queries = [];
-  String catalogueQuery = 'create table if not exists catalogue(' +
-      'id integer primary key autoincrement not null,' +
-      ' name text,' +
-      ' count integer,' +
-      ' icon text,' +
-      ' img text,' +
-      ' position int,' +
-      ' searchTerms text' +
+  String catalogueQuery = 'create table if not exists catalogue('
+      'id integer primary key autoincrement not null,'
+      ' name text,'
+      ' count integer,'
+      ' icon text,'
+      ' img text,'
+      ' position int,'
+      ' searchTerms text'
       ')';
   queries.add(catalogueQuery);
-  String catsQuery = 'create table if not exists cats(' +
-      'id integer primary key autoincrement not null,' +
-      ' catId integer,' +
-      ' clientId integer' +
+  String catsQuery = 'create table if not exists cats('
+      'id integer primary key autoincrement not null,'
+      ' catId integer,'
+      ' clientId integer'
       ')';
   queries.add(catsQuery);
-  String catContposQuery = 'create table if not exists cat_contpos(' +
-      'id integer primary key autoincrement not null,' +
-      ' catId integer,' +
-      ' clientId integer,' +
-      ' position integer' +
+  String catContposQuery = 'create table if not exists cat_contpos('
+      'id integer primary key autoincrement not null,'
+      ' catId integer,'
+      ' clientId integer,'
+      ' position integer'
       ')';
   queries.add(catContposQuery);
-  String addressesQuery = 'create table if not exists addresses(' +
-      'id integer primary key autoincrement not null,' +
-      ' postalCode text,' +
-      ' country text,' +
-      ' state text,' +
-      ' county text,' +
-      ' city text,' +
-      ' district text,' +
-      ' subdistrict text,' +
-      ' street text,' +
-      ' houseNumber text,' +
-      ' addressLines text,' +
-      ' additionalData text,' +
-      ' latitude decimal(30, 25),' +
-      ' longitude decimal(30, 25),' +
-      ' place text,' +
-      ' branchesCount integer,' +
-      ' searchTerms text' +
+  String addressesQuery = 'create table if not exists addresses('
+      'id integer primary key autoincrement not null,'
+      ' postalCode text,'
+      ' country text,'
+      ' state text,'
+      ' county text,'
+      ' city text,'
+      ' district text,'
+      ' subdistrict text,'
+      ' street text,'
+      ' houseNumber text,'
+      ' addressLines text,'
+      ' additionalData text,'
+      ' latitude decimal(30, 25),'
+      ' longitude decimal(30, 25),'
+      ' place text,'
+      ' branchesCount integer,'
+      ' searchTerms text'
       ')';
   queries.add(addressesQuery);
-  String orgsQuery = 'create table if not exists orgs(' +
-      'id integer primary key autoincrement not null,' +
-      ' name text,' +
-      ' logo text,' +
-      ' img text,' +
-      ' resume text,' +
-      ' branches integer,' +
-      ' phones integer,' +
-      ' reg integer,' +
-      ' rating decimal(2,1),' +
-      ' searchTerms text' +
+  String orgsQuery = 'create table if not exists orgs('
+      'id integer primary key autoincrement not null,'
+      ' name text,'
+      ' logo text,'
+      ' img text,'
+      ' resume text,'
+      ' branches integer,'
+      ' phones integer,'
+      ' reg integer,'
+      ' rating decimal(2,1),'
+      ' chat text,'
+      ' searchTerms text'
       ')';
   queries.add(orgsQuery);
-  String branchesQuery = 'create table if not exists branches(' +
-      'id integer primary key autoincrement not null,' +
-      ' client integer,' +
-      ' name text,' +
-      ' address integer,' +
-      ' addressAdd text,' +
-      ' site text,' +
-      ' email text,' +
-      ' wtime text,' +
-      ' reg integer,' +
-      ' position integer,' +
-      ' searchTerms text' +
+  queries.add(orgsIndexChat);
+  String branchesQuery = 'create table if not exists branches('
+      'id integer primary key autoincrement not null,'
+      ' client integer,'
+      ' name text,'
+      ' address integer,'
+      ' addressAdd text,'
+      ' site text,'
+      ' email text,'
+      ' wtime text,'
+      ' reg integer,'
+      ' position integer,'
+      ' searchTerms text'
       ')';
   queries.add(branchesQuery);
-  String phonesQuery = 'create table if not exists phones(' +
-      'id integer primary key autoincrement not null,' +
-      ' client integer,' +
-      ' branch integer,' +
-      ' prefix integer,' +
-      ' number text,' +
-      ' digits text,' +
-      ' whata integer,' +
-      ' comment text,' +
-      ' position integer,' +
-      ' searchTerms text' +
+  String phonesQuery = 'create table if not exists phones('
+      'id integer primary key autoincrement not null,'
+      ' client integer,'
+      ' branch integer,'
+      ' prefix integer,'
+      ' number text,'
+      ' digits text,'
+      ' whata integer,'
+      ' comment text,'
+      ' position integer,'
+      ' searchTerms text'
       ')';
   queries.add(phonesQuery);
   return queries;
 }
 
 Future<Database> openCompaniesDB() async {
-  const int dbVersion = 2; // Версия базы данных
+  const int dbVersion = 5; // Версия базы данных
   const dbName = 'companiesDB.db';
   if (DBCompaniesInstance.instance != null) {
     return DBCompaniesInstance.instance!;
@@ -349,10 +352,17 @@ Future<Database> openCompaniesDB() async {
     onUpgrade: (db, oldVersion, newVersion) {
       Log.i('--- DB UPGRADE ---', '$oldVersion=>$newVersion');
       createTables(db);
-      if (oldVersion == 1 && newVersion == 2) {
+      if (oldVersion <= 1) {
         const String alterCatalogueAddImg = 'ALTER TABLE catalogue add img TEXT';
         Log.d('ALTER TABLE', alterCatalogueAddImg);
         db.execute(alterCatalogueAddImg);
+      } else if (oldVersion <= 2) {
+        const String alterOrgsAddChat = 'ALTER TABLE orgs add chat TEXT';
+        Log.d('ALTER TABLE', alterOrgsAddChat);
+        db.execute(alterOrgsAddChat);
+      } else if (oldVersion <= 4) {
+        Log.d('CREATE INDEX', orgsIndexChat);
+        db.execute(orgsIndexChat);
       }
     },
     // Set the version. This executes the onCreate function and provides a

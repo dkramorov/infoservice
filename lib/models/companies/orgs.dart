@@ -23,6 +23,7 @@ class Orgs extends AbstractModel {
   String? img;
   String? searchTerms;
   int? reg;
+  String? chat;
 
   List<Cats> catsArr = [];
   List<Catalogue> rubricsArr = [];
@@ -65,6 +66,7 @@ class Orgs extends AbstractModel {
       'img': img,
       'searchTerms': searchTerms,
       'reg': reg,
+      'chat': chat,
     };
   }
 
@@ -79,17 +81,18 @@ class Orgs extends AbstractModel {
     this.img,
     this.searchTerms,
     this.reg,
+    this.chat,
   });
 
   Color get color => Colors.primaries[Random().nextInt(Colors.primaries.length)];
 
   @override
   String toString() {
-    return 'id: $id, rating: $rating, branches: $branches, ' +
-        'name: $name, resume: $resume, ' +
-        'phones: $phones, logo: $logo, img: $img, ' +
-        'searchTerms: $searchTerms, ' +
-        'reg: $reg';
+    return 'id: $id, rating: $rating, branches: $branches, '
+        'name: $name, resume: $resume, '
+        'phones: $phones, logo: $logo, img: $img, '
+        'searchTerms: $searchTerms, '
+        'reg: $reg, chat: $chat';
   }
 
   static List<Orgs> jsonFromList(List<dynamic> arr) {
@@ -112,6 +115,7 @@ class Orgs extends AbstractModel {
       img: json['img'] ?? '',
       searchTerms: json['search_terms'] ?? '',
       reg: (json['reg'] ?? 0) as int,
+      chat: json['chat'] ?? '',
     );
   }
 
@@ -128,6 +132,7 @@ class Orgs extends AbstractModel {
       img: dbItem['img'],
       searchTerms: dbItem['searchTerms'],
       reg: dbItem['reg'],
+      chat: dbItem['chat'],
     );
   }
 
@@ -153,6 +158,19 @@ class Orgs extends AbstractModel {
       tableName,
       where: 'id = ?',
       whereArgs: [orgId],
+    );
+    if (orgs.isEmpty) {
+      return null;
+    }
+    return toModel(orgs[0]);
+  }
+
+  Future<Orgs?> getOrgByChat(String phone) async {
+    final db = await openCompaniesDB();
+    final List<Map<String, dynamic>> orgs = await db.query(
+      tableName,
+      where: 'chat = ?',
+      whereArgs: [phone],
     );
     if (orgs.isEmpty) {
       return null;

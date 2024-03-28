@@ -23,6 +23,7 @@ import '../../widgets/companies/branch_row.dart';
 import '../../widgets/companies/company_logo.dart';
 import '../../widgets/companies/star_rating_widget.dart';
 import '../../widgets/rounded_button_widget.dart';
+import '../chat/chat_page.dart';
 import '../chat/group_chat_page.dart';
 
 class TabCompanyView extends StatefulWidget {
@@ -82,38 +83,57 @@ class _TabCompanyViewState extends State<TabCompanyView> {
   }
 
   Future<void> checkNewGroup() async {
-    SharedPreferences prefs = await SharedPreferencesManager.getSharedPreferences();
-    bool? addMUCResult = prefs.getBool(BGTasksModel.addRosterPrefKey);
-    if (addMUCResult != null) {
-      if (addMUCResult) {
+    SharedPreferences prefs =
+        await SharedPreferencesManager.getSharedPreferences();
+    bool? addResult = prefs.getBool(BGTasksModel.addRosterPrefKey);
+    bool isNotMuc = company.chat != null && company.chat != '';
+    if (addResult != null) {
+      if (addResult) {
         if (mounted) {
+          String msg = 'Группа $newMuc добавлена';
+          if (isNotMuc) {
+            msg = 'Чат ${company.chat} добавлен';
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.green,
-              content: Text('Группа $newMuc добавлена'),
+              content: Text(msg),
             ),
           );
         }
         Future.delayed(Duration.zero, () async {
-
-          String newMucJid = '$newMuc${JabberManager.conferenceString}';
-          // запросина на добавление на сервере всем представителям компании этот чат
-          if (user != null) {
-            String credentialsHash = user!.credentialsHash ?? '';
-            String jid = user!.jid ?? '';
-            requestCompanyChat(jid, credentialsHash, newMucJid);
+          if (isNotMuc) {
+            // Добавляется чат (интеграция)
+            Navigator.pushNamed(context, ChatScreen.id, arguments: {
+              sipHelper,
+              xmppHelper,
+              ChatUser(
+                id: company.chat!,
+                jid: '${company.chat}@$JABBER_SERVER',
+                name: company.name,
+                phone: company.chat,
+              ),
+            });
+          } else {
+            // Добавляется группа
+            String newMucJid = '$newMuc${JabberManager.conferenceString}';
+            // запросина на добавление на сервере всем представителям компании этот чат
+            if (user != null) {
+              String credentialsHash = user!.credentialsHash ?? '';
+              String jid = user!.jid ?? '';
+              requestCompanyChat(jid, credentialsHash, newMucJid);
+            }
+            Navigator.pushNamed(context, GroupChatScreen.id, arguments: {
+              sipHelper,
+              xmppHelper,
+              ChatUser(
+                id: newMucJid,
+                jid: newMucJid,
+                name: widget.company.name,
+                phone: '-',
+              ),
+            });
           }
-          Navigator.pushNamed(context, GroupChatScreen.id, arguments: {
-            sipHelper,
-            xmppHelper,
-            ChatUser(
-              id: newMucJid,
-              jid: newMucJid,
-              name: widget.company.name,
-              phone: '-',
-            ),
-          });
-
         });
       } else {
         if (mounted) {
@@ -344,7 +364,8 @@ class _TabCompanyViewState extends State<TabCompanyView> {
 
   Widget buildChat() {
     /* Виджет для чата с компанией
-       и каналом - подписка на новости
+       и каналом - подписка на новости,
+       если указан chat - то как правило это интеграция (например, битрикс)
     */
     return RoundedButtonWidget(
       text: const Text(
@@ -361,14 +382,25 @@ class _TabCompanyViewState extends State<TabCompanyView> {
         // По принципу добавления группы
         user = await UserSettingsModel().getUser();
         if (user != null && user!.phone != null && user!.phone != '') {
-          String myPhone = user!.phone ?? '';
-          newMuc = 'company_${widget.company.id}_$myPhone';
-          SharedPreferences prefs = await SharedPreferencesManager
-              .getSharedPreferences();
-          await prefs.remove(BGTasksModel.addRosterPrefKey);
-          BGTasksModel.addMUCTask({
-            'group': newMuc,
-          });
+          if (widget.company.chat != null && widget.company.chat != '') {
+            String companyChat = widget.company.chat!;
+            SharedPreferences prefs =
+                await SharedPreferencesManager.getSharedPreferences();
+            await prefs.remove(BGTasksModel.addRosterPrefKey);
+            String phone = cleanPhone(companyChat);
+            BGTasksModel.addRosterTask({
+              'login': phone,
+            });
+          } else {
+            String myPhone = user!.phone ?? '';
+            newMuc = 'company_${widget.company.id}_$myPhone';
+            SharedPreferences prefs = await SharedPreferencesManager
+                .getSharedPreferences();
+            await prefs.remove(BGTasksModel.addRosterPrefKey);
+            BGTasksModel.addMUCTask({
+              'group': newMuc,
+            });
+          }
         }
       },
     );
@@ -393,8 +425,8 @@ class _TabCompanyViewState extends State<TabCompanyView> {
         // По принципу добавления группы
         user = await UserSettingsModel().getUser();
         if (user != null) {
-          SharedPreferences prefs = await SharedPreferencesManager
-              .getSharedPreferences();
+          SharedPreferences prefs =
+              await SharedPreferencesManager.getSharedPreferences();
           await prefs.remove(BGTasksModel.addRosterPrefKey);
           BGTasksModel.addMUCTask({
             'group': newMuc,

@@ -86,7 +86,7 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
     Log.d(TAG, reg.toString());
     if (reg != null && reg.id != null) {
       widget.userData!['isSimpleReg'] =
-      (reg.isSimpleReg != null && reg.isSimpleReg == true);
+          (reg.isSimpleReg != null && reg.isSimpleReg == true);
       nextPageView();
     } else if (reg != null && reg.code == 429) {
       Future.delayed(Duration.zero, () {
@@ -94,7 +94,8 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
           context,
           null,
           'Попробуйте поздже',
-          reg.message ?? 'Мы уже отправили звонок на $_phone, если звонок не пришел, попробуйте через полчаса',
+          reg.message ??
+              'Мы уже отправили звонок на $_phone, если звонок не пришел, попробуйте через полчаса',
           'Понятно',
         );
       });
@@ -112,7 +113,9 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
     widget.setStateCallback!({
       'loading': false,
     });
-    submitted = false;
+    Future.delayed(const Duration(seconds: 1), () {
+      submitted = false;
+    });
   }
 
   @override
@@ -151,7 +154,11 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
                 ),
                 SIZED_BOX_H30,
                 Text(
-                  'Введите ваш номер телефона, вам поступит звонок и будет продиктован код подтверждения',
+                  'Введите ваш номер телефона, запросите код, '
+                  'вам поступит звонок, '
+                  'в звонке будет продиктован код подтверждения. '
+                  'Либо придет sms сообщение, '
+                  'в котором будет код подтверджения',
                   style: subtitleTextStyle?.copyWith(
                       color: const Color(0xFF95A0AF)),
                   textAlign: TextAlign.center,

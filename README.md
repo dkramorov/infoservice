@@ -42,3 +42,14 @@ just add and it does resolves your bug
 2) и прием в активном приложении
 3) Убрать ограничение на время разговора
 
+
+# Если на ios не собирается, но видимых причин для этого нет, то попробовать
+    Run flutter clean
+    Run flutter pub get
+    Remove xcode derived data
+    Remove Pods folder form project iOS folder.
+    Remove Podfile.lock file from project iOS folder.
+    Remove project.workspace file
+    Run again in iOS platform.
+Если опять не помогло
+runner->build setting->other linker flags, and delete bad_framework

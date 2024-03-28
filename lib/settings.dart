@@ -24,7 +24,7 @@ const String JABBER_COMPANY_ENDPOINT = '/companies/chat/';
 //const String JABBER_NOTIFY_ENDPOINT = '/jabber/notification/infoservice-f0261/';
 const String JABBER_NOTIFY_ENDPOINT = '/jabber/notification/mastermechat/';
 const String JABBER_NOTIFY_BATCH_ENDPOINT = '/jabber/notification_batch/mastermechat/';
-
+const String YANDEX_METRIKA_KEY = '7b18a104-24f3-4df5-a30a-68a1841f3e2b';
 const DB_SERVER = 'https://chat.masterme.ru';
 const DB_UPDATE_ENDPOINT = '/media/app_json/companies_db_helper.json';
 const DB_UPDATE_ARCHIVE_ENDPOINT = '/media/companies_db_helper.tar.gz';

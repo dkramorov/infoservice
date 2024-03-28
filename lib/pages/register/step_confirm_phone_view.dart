@@ -77,13 +77,16 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
         widget.userData!['isSimpleReg']);
     if (confirm != null && confirm.message != null && mounted) {
       if (confirm.code == RegistrationModel.CODE_PASSWD_CHANGED) {
-        await showDialog(confirm.getMessage(), userConfirmed);
+        await userConfirmed();
+        //await showDialog(confirm.getMessage(), userConfirmed);
       } else if (confirm.code == RegistrationModel.CODE_REGISTRATION_SUCCESS) {
-        await showDialog(confirm.getMessage(), userConfirmed);
+        await userConfirmed();
+        //await showDialog(confirm.getMessage(), userConfirmed);
       } else if (confirm.code == RegistrationModel.CODE_ERROR) {
         await showDialog(confirm.getMessage(), nextPageView);
       } else if (confirm.code == RegistrationModel.TOO_MANY_ATTEMPTS) {
-        await showDialog(confirm.getMessage(), nextPageView, title: 'Слишком много попыток');
+        await showDialog(confirm.getMessage(), nextPageView,
+            title: 'Слишком много попыток');
       }
     }
     widget.setStateCallback!({
@@ -108,7 +111,7 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
       'userConfirmed': true,
     });
     Future.delayed(Duration.zero, () {
-      Navigator.pop(context);
+      Navigator.pop(context, const Text('userConfirmed'));
     });
   }
 
@@ -181,8 +184,14 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
                 SIZED_BOX_H30,
                 Text(
                   widget.userData!['isSimpleReg'] == true
-                      ? 'Введите последние 4 цифры телефона, с которого вам только что поступил звонок, проверьте пропущенные звонки'
-                      : 'Введите проверочный код, который вы прослушали',
+                      ? 'Введите проверочный код, '
+                          'который вы прослушали если вам поступил звонок.'
+                          'Либо, если вам поступило sms сообщение, '
+                          'введите проверочный код из него'
+                      : 'Введите проверочный код, '
+                          'который вы прослушали если вам поступил звонок.'
+                          'Либо, если вам поступило sms сообщение, '
+                          'введите проверочный код из него',
                   style: subtitleTextStyle?.copyWith(
                       color: const Color(0xFF95A0AF), height: 1.5),
                   textAlign: TextAlign.center,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'dart:io';
+import 'package:appmetrica_plugin/appmetrica_plugin.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 
 import 'package:flutter/material.dart';
@@ -38,7 +39,6 @@ Future<void> initializeService() async {
       onBackground: onIosBackground,
     ),
   );
-
   service.startService();
 }
 
@@ -95,10 +95,12 @@ void onStart(ServiceInstance service) async {
       Log.e(tag, ex.toString());
     }
 
-    JabberManager().init();
+    await JabberManager().init();
 
     UpdateManager updateManager = UpdateManager();
     updateManager.init();
+
+    await AppMetrica.activate(const AppMetricaConfig(YANDEX_METRIKA_KEY));
   });
 
   Timer.periodic(const Duration(seconds: 1), (Timer t) async {
