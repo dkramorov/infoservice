@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:infoservice/models/user_settings_model.dart';
@@ -90,32 +91,27 @@ class SIPUAListener implements SipUaHelperListener {
 
   void listenCallKit() {
     FlutterCallkitIncoming.onEvent.listen((event) {
-      switch (event!.name) {
-        case CallEvent.ACTION_CALL_INCOMING:
-          // TODO: received an incoming call
+      switch (event!.event) {
+        case Event.actionCallIncoming:
+        // TODO: received an incoming call
           saveCallKitAction('ACTION_CALL_INCOMING');
-          break;
-        case CallEvent.ACTION_CALL_START:
-          // TODO: started an outgoing call
-          // TODO: show screen calling in Flutter
+        case Event.actionCallStart:
+        // TODO: started an outgoing call
+        // TODO: show screen calling in Flutter
           saveCallKitAction('ACTION_CALL_START');
-          break;
-        case CallEvent.ACTION_CALL_ACCEPT:
-          // TODO: accepted an incoming call
-          // TODO: show screen calling in Flutter
+        case Event.actionCallAccept:
+        // TODO: accepted an incoming call
+        // TODO: show screen calling in Flutter
           saveCallKitAction('ACTION_CALL_ACCEPT');
-
           if (Platform.isAndroid) {
           } else if (Platform.isIOS) {
             iosIncomingCallAccept();
           }
-          break;
-        case CallEvent.ACTION_CALL_DECLINE:
-          // TODO: declined an incoming call
+        case Event.actionCallDecline:
+        // TODO: declined an incoming call
           saveCallKitAction('ACTION_CALL_DECLINE');
-          break;
-        case CallEvent.ACTION_CALL_ENDED:
-          // TODO: ended an incoming/outgoing call
+        case Event.actionCallEnded:
+        // TODO: ended an incoming/outgoing call
           saveCallKitAction('ACTION_CALL_ENDED');
           if (Platform.isAndroid) {
           } else if (Platform.isIOS) {
@@ -123,39 +119,33 @@ class SIPUAListener implements SipUaHelperListener {
               curCall?.hangup();
             }
           }
-          break;
-        case CallEvent.ACTION_CALL_TIMEOUT:
-          // TODO: missed an incoming call
+        case Event.actionCallTimeout:
+        // TODO: missed an incoming call
           saveCallKitAction('ACTION_CALL_TIMEOUT');
-          break;
-        case CallEvent.ACTION_CALL_CALLBACK:
-          // TODO: only Android - click action `Call back` from missed call notification
+        case Event.actionCallCallback:
+        // TODO: only Android - click action `Call back` from missed call notification
           saveCallKitAction('ACTION_CALL_CALLBACK');
-          break;
-        case CallEvent.ACTION_CALL_TOGGLE_HOLD:
-          // TODO: only iOS
+        case Event.actionCallToggleHold:
+        // TODO: only iOS
           saveCallKitAction('ACTION_CALL_TOGGLE_HOLD');
-          break;
-        case CallEvent.ACTION_CALL_TOGGLE_MUTE:
-          // TODO: only iOS
+        case Event.actionCallToggleMute:
+        // TODO: only iOS
           saveCallKitAction('ACTION_CALL_TOGGLE_MUTE');
-          break;
-        case CallEvent.ACTION_CALL_TOGGLE_DMTF:
-          // TODO: only iOS
+        case Event.actionCallToggleDmtf:
+        // TODO: only iOS
           saveCallKitAction('ACTION_CALL_TOGGLE_DMTF');
-          break;
-        case CallEvent.ACTION_CALL_TOGGLE_GROUP:
-          // TODO: only iOS
+        case Event.actionCallToggleGroup:
+        // TODO: only iOS
           saveCallKitAction('ACTION_CALL_TOGGLE_GROUP');
-          break;
-        case CallEvent.ACTION_CALL_TOGGLE_AUDIO_SESSION:
-          // TODO: only iOS
+        case Event.actionCallToggleAudioSession:
+        // TODO: only iOS
           saveCallKitAction('ACTION_CALL_TOGGLE_AUDIO_SESSION');
-          break;
-        case CallEvent.ACTION_DID_UPDATE_DEVICE_PUSH_TOKEN_VOIP:
-          // TODO: only iOS
+        case Event.actionDidUpdateDevicePushTokenVoip:
+        // TODO: only iOS
           saveCallKitAction('ACTION_DID_UPDATE_DEVICE_PUSH_TOKEN_VOIP');
-          break;
+        case Event.actionCallCustom:
+        // TODO: received an incoming call
+          saveCallKitAction('ACTION_CALL_CUSTOM');
       }
     });
   }

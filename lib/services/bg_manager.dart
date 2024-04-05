@@ -96,11 +96,12 @@ void onStart(ServiceInstance service) async {
     }
 
     await JabberManager().init();
+    await AppMetrica.activate(const AppMetricaConfig(YANDEX_METRIKA_KEY));
+  });
 
+  Future.delayed(Duration.zero, () async {
     UpdateManager updateManager = UpdateManager();
     updateManager.init();
-
-    await AppMetrica.activate(const AppMetricaConfig(YANDEX_METRIKA_KEY));
   });
 
   Timer.periodic(const Duration(seconds: 1), (Timer t) async {

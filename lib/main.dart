@@ -5,10 +5,15 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
+import 'package:flutter_callkit_incoming/entities/android_params.dart';
+import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
+import 'package:flutter_callkit_incoming/entities/ios_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/pages/authorization.dart';
 import 'package:infoservice/pages/chat/add2roster.dart';
@@ -31,9 +36,20 @@ import 'package:uuid/uuid.dart';
 
 import 'a_notifications/notifications.dart';
 import 'helpers/phone_mask.dart';
+import 'notification_services/firebase_options.dart';
 
+final navigatorKey = NavigationManager.instance.navigationKey;
+late AndroidNotificationChannel channel;
+late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+bool isFlutterLocalNotificationsInitialized = false;
+
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  // https://developer.huawei.com/consumer/en/doc/HMSCore-References/topic-sub-api-0000001051066122
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await setupFlutterNotifications();
   print("Handling a background message: ${message.data.toString()}");
   final String action = message.data['action'];
   if (action == 'call') {
@@ -69,6 +85,7 @@ Future<void> generateChatNotification(Map<String, dynamic> data) async {
 }
 
 Future<void> showCallkitIncoming(String uuid, {String? from}) async {
+  /*
   var params = <String, dynamic>{
     'id': uuid,
     'nameCaller': from,
@@ -110,6 +127,46 @@ Future<void> showCallkitIncoming(String uuid, {String? from}) async {
       'ringtonePath': 'system_ringtone_default'
     }
   };
+  */
+  CallKitParams params = CallKitParams(
+      id: uuid,
+      nameCaller: from,
+      appName: '8800 help',
+      avatar: 'https://i.pravatar.cc/100',
+      handle: 'Бесплатный sip звонок',
+      // 0 - Audio Call, 1 - Video Call
+      type: 0, // callUpdate.hasVideo = data.type > 0 ? true : false
+      duration: 30000,
+      textAccept: 'Ответить',
+      textDecline: 'Отклонить',
+      // these do not exist for some reason. have to dive into this later
+      // textMissedCall: 'Пропущенный вызов',
+      // textCallback: 'Перезвонить',
+      extra: <String, dynamic>{'userId': '1a2b3c4d'},
+      headers: <String, dynamic>{'apiKey': 'Abc@123!', 'platform': 'flutter'},
+      android: const AndroidParams(
+          isCustomNotification: true,
+          isShowLogo: false,
+          // isShowCallback: false,
+          ringtonePath: 'system_ringtone_default',
+          backgroundColor: '#0955fa',
+          backgroundUrl: 'https://i.pravatar.cc/500',
+          actionColor: '#4CAF50'),
+      ios: const IOSParams(
+          iconName: 'CallKitLogo',
+          handleType: '',
+          supportsVideo: false,
+          maximumCallGroups: 2,
+          maximumCallsPerCallGroup: 1,
+          audioSessionMode: 'default',
+          audioSessionActive: true,
+          audioSessionPreferredSampleRate: 44100.0,
+          audioSessionPreferredIOBufferDuration: 0.005,
+          supportsDTMF: true,
+          supportsHolding: true,
+          supportsGrouping: false,
+          supportsUngrouping: false,
+          ringtonePath: 'system_ringtone_default'));
   await FlutterCallkitIncoming.showCallkitIncoming(params);
 }
 
@@ -118,6 +175,8 @@ typedef PageContentBuilder = Widget Function(
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   AwesomeNotifications().initialize(
     'resource://drawable/res_notification_app_icon',
@@ -136,13 +195,15 @@ void main() async {
     ],
     channelGroups: [
       NotificationChannelGroup(
-        channelGroupkey: 'basic_channel_group',
+        channelGroupKey: 'basic_channel_group',
         channelGroupName: 'Basic group',
       )
     ],
   );
-  Firebase.initializeApp().then((firebaseApp) {
-    /*
+  Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ).then((firebaseApp) async {
+
     if (Platform.isIOS) {
       FirebaseMessaging.instance.getAPNSToken().then((apnsToken) async {
         print('FirebaseMessaging APNS token: $apnsToken');
@@ -156,13 +217,25 @@ void main() async {
         });
       });
     }
-    */
+
+    // creating local notifications
+    await setupFlutterNotifications();
+
     FirebaseMessaging.instance.getToken().then((fcmToken) async {
       print('FirebaseMessaging token: $fcmToken');
       if (fcmToken != null) {
         JabberManager.fcmToken = fcmToken;
         SIPUAManager.fcmToken = fcmToken;
         await UserSettingsModel.updateToken(fcmToken);
+        final _ = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          sound: true,
+        );
       } else {
         String err = 'token not received for ${Platform.operatingSystem}';
         err += ' ${Platform.operatingSystemVersion}';
@@ -215,9 +288,9 @@ void main() async {
       if (message.notification != null) {
         print('Message also contained a notification: ${message.notification}');
       }
-      //generateChatNotification(message.data);
+      generateChatNotification(message.data);
     });
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
     FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) async {
       print('FirebaseMessaging token: $fcmToken');
       JabberManager.fcmToken = fcmToken;
@@ -330,6 +403,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       case AppLifecycleState.paused:
         print('-----> paused');
         break;
+      case AppLifecycleState.hidden:
+        print('-----> hidden');
+        break;
       case AppLifecycleState.resumed:
         print('-----> resumed');
         if (_xmppHelper != null) {
@@ -364,3 +440,52 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 }
 
+
+Future<void> setupFlutterNotifications() async {
+  if (isFlutterLocalNotificationsInitialized) {
+    return;
+  }
+
+  channel = const AndroidNotificationChannel(
+    'high_importance_channel',
+    'High Importance Notifications',
+    description: 'This channel is used for important notifications.',
+    importance: Importance.high,
+  );
+
+  flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  isFlutterLocalNotificationsInitialized = true;
+}
+
+void showFlutterNotification(RemoteMessage message) {
+  final notification = message.notification;
+  print('notification: ${notification?.toMap()}');
+  final android = message.notification?.android;
+  if (notification != null && android != null && !kIsWeb) {
+    flutterLocalNotificationsPlugin.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
+          icon: '@mipmap/notification_icon',
+        ),
+      ),
+    );
+  }
+}

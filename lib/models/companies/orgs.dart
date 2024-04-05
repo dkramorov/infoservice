@@ -197,7 +197,7 @@ class Orgs extends AbstractModel {
   }
 
   Future<List<Orgs>> searchOrgs(String query,
-      {int limit: 10, int offset: 0}) async {
+      {int limit = 10, int offset = 0}) async {
     final db = await openCompaniesDB();
 
     String pattern = 'searchTerms LIKE ?';

@@ -34,7 +34,7 @@ class _Add2RosterScreenState extends State<Add2RosterScreen> {
     initialPage: 0,
     keepPage: false,
   );
-  void setPageview(int index, {gotoInvisible: false}) {
+  void setPageview(int index, {gotoInvisible = false}) {
     if (!gotoInvisible) {
       setState(() {
         _pageIndex = index;

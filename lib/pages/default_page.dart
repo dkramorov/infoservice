@@ -13,6 +13,7 @@ import 'package:infoservice/sip_ua/callscreen.dart';
 import 'package:sip_ua/sip_ua.dart';
 
 import '../helpers/phone_mask.dart';
+import '../notification_services/awesome_notification_controller.dart';
 import '../services/jabber_manager.dart';
 import '../services/permissions_manager.dart';
 import '../services/sip_ua_manager.dart';
@@ -129,19 +130,17 @@ class _DefaultPageWidget extends State<DefaultPage>
   }
 
   /* Слушаем поток от AwesomeNotifications,
-     который получает созданные уведомления
-  */
-  void _listedNotificationCreatedStream() {
-    AwesomeNotifications().createdStream.listen((notification) {
-      print('AwesomeNotifications created stream event: $notification');
-    });
-  }
-
-  /* Слушаем поток от AwesomeNotifications,
   который получает действие пользователя на уведомление
   action.buttonKeyPressed будет содержать результат
   */
   void _listedNotificationActionStream() {
+    AwesomeNotifications().setListeners(
+      onNotificationCreatedMethod:
+      AwesomeNotificationController.onNotificationCreatedMethod,
+      onActionReceivedMethod:
+      AwesomeNotificationController.onActionReceivedMethod,
+    );
+    /*
     AwesomeNotifications().actionStream.listen((action) {
       print('AwesomeNotifications action stream event: $action');
 
@@ -185,6 +184,7 @@ class _DefaultPageWidget extends State<DefaultPage>
         */
       }
     });
+    */
   }
 
   @override

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.ConnectionListener;
@@ -761,8 +762,12 @@ public class FlutterXmppConnection implements ConnectionListener {
         filter.addAction(Constants.X_SEND_MESSAGE);
         filter.addAction(Constants.READ_MESSAGE);
         filter.addAction(Constants.GROUP_SEND_MESSAGE);
-        mApplicationContext.registerReceiver(uiThreadMessageReceiver, filter);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mApplicationContext.registerReceiver(uiThreadMessageReceiver, filter, mApplicationContext.RECEIVER_EXPORTED);
+        }else {
+            mApplicationContext.registerReceiver(uiThreadMessageReceiver, filter);
+        }
     }
 
     private void sendMessage(String body, String toJid, String msgId, boolean isDm, String time) {

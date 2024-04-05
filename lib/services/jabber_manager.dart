@@ -70,7 +70,10 @@ class JabberManager implements DataChangeEvents {
 
     Log.d(tag, '--- INIT ---');
     XmppConnection.addListener(this);
-    await startMainTimer();
+    if (!mainTimerStarted) {
+      mainTimerStarted = true;
+      startMainTimer();
+    }
     Log.d(tag, '--- INIT FINISHED ---');
   }
 
