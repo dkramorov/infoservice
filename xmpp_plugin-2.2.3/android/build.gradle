@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.1'
+        classpath 'com.android.tools.build:gradle:7.4.2'
     }
 }
 
@@ -22,13 +22,17 @@ rootProject.allprojects {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 33
-
     defaultConfig {
+        compileSdk 33
         minSdkVersion 16
-
         multiDexEnabled true
     }
+}
+
+configurations {
+    all*.exclude group: 'xpp3', module: 'xpp3'
+    all*.exclude group: 'net.sf.kxml', module: 'kxml2'
+    all*.exclude group: 'xmlpull', module: 'xmlpull'
 }
 
 ext {

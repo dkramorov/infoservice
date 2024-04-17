@@ -6,6 +6,7 @@ import android.util.Log;
 
 import org.jivesoftware.smack.StanzaListener;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.StandardExtensionElement;
 import org.jivesoftware.smack.packet.Stanza;
 import org.xrstudio.xmpp.flutter_xmpp.Utils.Constants;
 import org.xrstudio.xmpp.flutter_xmpp.Utils.Utils;
@@ -28,7 +29,17 @@ public class StanzaAckListener implements StanzaListener {
             Log.d("processStanza", "------>>" + ackMessage.toXML(null).toString());
             Utils.addLogInStorage(" Action: receiveStanzaAckFromServer, Content: " + ackMessage.toXML(null).toString());
 
-            //Bundle up the intent and send the broadcast.
+            String time = Constants.ZERO;
+            if (ackMessage.getExtension(Constants.URN_XMPP_TIME) != null) {
+                StandardExtensionElement timeElement = (StandardExtensionElement) ackMessage
+                        .getExtension(Constants.URN_XMPP_TIME);
+                if (timeElement != null && timeElement.getFirstElement(Constants.TS) != null) {
+                    time = timeElement.getFirstElement(Constants.TS).getText();
+                }
+            }
+
+            // Bundle up the intent and send the broadcast.
+            Log.d("Bundle up the intent and send the broadcast", "--------------");
             Intent intent = new Intent(Constants.RECEIVE_MESSAGE);
             intent.setPackage(mApplicationContext.getPackageName());
             intent.putExtra(Constants.BUNDLE_FROM_JID, ackMessage.getTo().toString());
@@ -36,6 +47,7 @@ public class StanzaAckListener implements StanzaListener {
             intent.putExtra(Constants.BUNDLE_MESSAGE_PARAMS, ackMessage.getStanzaId());
             intent.putExtra(Constants.BUNDLE_MESSAGE_TYPE, ackMessage.getType().toString());
             intent.putExtra(Constants.META_TEXT, Constants.ACK);
+            intent.putExtra(Constants.time, time);
             mApplicationContext.sendBroadcast(intent);
         }
 

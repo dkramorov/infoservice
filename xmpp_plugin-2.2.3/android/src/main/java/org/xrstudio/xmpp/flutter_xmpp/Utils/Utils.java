@@ -5,10 +5,17 @@ import android.content.Intent;
 import android.os.Environment;
 import android.util.Log;
 
+import org.jivesoftware.smack.packet.ExtensionElement;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.StandardExtensionElement;
+import org.jivesoftware.smack.util.PacketParserUtils;
 import org.jivesoftware.smackx.chatstates.ChatState;
 import org.jivesoftware.smackx.chatstates.packet.ChatStateExtension;
+import org.jivesoftware.smackx.delay.packet.DelayInformation;
+import org.jivesoftware.smackx.pubsub.EventElement;
+import org.jivesoftware.smackx.pubsub.ItemsExtension;
+import org.jivesoftware.smackx.pubsub.PayloadItem;
+import org.jivesoftware.smackx.pubsub.SimplePayload;
 import org.jivesoftware.smackx.receipts.DeliveryReceipt;
 import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
@@ -25,6 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class Utils {
@@ -154,9 +162,10 @@ public class Utils {
     }
 
     public static void broadcastMessageToFlutter(Context mApplicationContext, Message message) {
-
+        Log.d("broadcastMessageToFlutter", "--------------");
         Utils.addLogInStorage(" Action: receiveMessageFromServer, Content: " + message.toXML(null).toString());
 
+        message = parseEventStanzaMessage(message);
         String META_TEXT = Constants.MESSAGE;
         String body = message.getBody();
         String from = message.getFrom().toString();
@@ -198,8 +207,17 @@ public class Utils {
 
         String mediaURL = "";
 
+        String delayTime = Constants.ZERO;
+        if (message.hasExtension(Constants.URN_XMPP_RECEIPTS)) {
+            DelayInformation DelayTimeElement = (DelayInformation) message.getExtension(Constants.URN_XMPP_DELAY);
+            if (DelayTimeElement != null && DelayTimeElement.getStamp() != null) {
+                delayTime = DelayTimeElement.getStamp().toString();
+            }
+        }
+
         if (!from.equals(FlutterXmppConnection.mUsername)) {
-            //Bundle up the intent and send the broadcast.
+            Log.d("Bundle up the intent and send the broadcast", "--------------");
+            // Bundle up the intent and send the broadcast.
             Intent intent = new Intent(Constants.RECEIVE_MESSAGE);
             intent.setPackage(mApplicationContext.getPackageName());
             intent.putExtra(Constants.BUNDLE_FROM_JID, from);
@@ -212,6 +230,7 @@ public class Utils {
             intent.putExtra(Constants.CUSTOM_TEXT, customText);
             intent.putExtra(Constants.META_TEXT, META_TEXT);
             intent.putExtra(Constants.time, time);
+            intent.putExtra(Constants.DELAY_TIME, delayTime);
             if (chatState != null) {
                 intent.putExtra(Constants.CHATSTATE_TYPE, chatState.toString().toLowerCase());
             }
@@ -220,12 +239,34 @@ public class Utils {
         }
     }
 
+    private static Message parseEventStanzaMessage(Message message) {
+        try {
+            EventElement eventElement = message.getExtension(Constants.event, Constants.eventPubSubNameSpace);
+            if (eventElement != null) {
+                List<ExtensionElement> itemExtensions = eventElement.getExtensions();
+                for (int i = 0; i < itemExtensions.size(); i++) {
+                    ItemsExtension itemsExtension = (ItemsExtension) itemExtensions.get(i);
+                    List<?> items = itemsExtension.getItems();
+                    for (int j = 0; j < items.size(); j++) {
+                        PayloadItem<?> it = (PayloadItem<?>) items.get(j);
+                        SimplePayload payloadElement = (SimplePayload) it.getPayload();
+                        String xmlStanza = (String) payloadElement.toXML(null);
+                        message = (Message) PacketParserUtils.parseStanza(xmlStanza);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return message;
+    }
+
     public static void sendBroadcast() {
 
     }
 
     public static void broadcastSuccessMessageToFlutter(Context mApplicationContext, SuccessState successState, String jid) {
-
+        Log.d("broadcastSuccessMessageToFlutter", "--------------");
         //Bundle up the intent and send the broadcast.
         Intent intent = new Intent(Constants.SUCCESS_MESSAGE);
         intent.setPackage(mApplicationContext.getPackageName());
@@ -235,7 +276,7 @@ public class Utils {
     }
 
     public static void broadcastErrorMessageToFlutter(Context mApplicationContext, ErrorState errorState, String exception, String jid) {
-
+        Log.d("broadcastErrorMessageToFlutter", "--------------");
         Intent intent = new Intent(Constants.ERROR_MESSAGE);
         intent.setPackage(mApplicationContext.getPackageName());
         intent.putExtra(Constants.FROM, jid);
@@ -245,7 +286,7 @@ public class Utils {
     }
 
     public static void broadcastConnectionMessageToFlutter(Context mApplicationContext, ConnectionState connectionState, String errorMessage) {
-
+        Log.d("broadcastConnectionMessageToFlutter", "--------------");
         Intent intent = new Intent(Constants.CONNECTION_STATE_MESSAGE);
         intent.setPackage(mApplicationContext.getPackageName());
         intent.putExtra(Constants.BUNDLE_CONNECTION_TYPE, connectionState.toString());

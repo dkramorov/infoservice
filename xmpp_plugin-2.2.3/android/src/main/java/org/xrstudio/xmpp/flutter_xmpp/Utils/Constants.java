@@ -61,11 +61,13 @@ public class Constants {
     public static final String CONNECTED = "Connected";
     public static final String SYMBOL_FORWARD_SLASH = "/";
     public static final String DISCONNECTED = "Disconnected";
+    public static final String FAILED = "Failed";
     public static final String URN_XMPP_TIME = "urn:xmpp:time";
     public static final String AUTHENTICATED = "Authenticated";
     public static final String URN_XMPP_CUSTOM = "urn:xmpp:custom";
     public static final String DESC = "DESC";
-
+    public static final String event = "event";
+    public static final String eventPubSubNameSpace = "http://jabber.org/protocol/pubsub#event";
     // Params
     public static final String userJid = "userJid";
     public static final String requestBefore = "requestBefore";
@@ -182,4 +184,8 @@ public class Constants {
     public static final String ERROR = "error";
     public static final String CONNECTION_STATE_MESSAGE = "org.xrstudio.xmpp.flutter_xmpp.connectionstatemessage";
     public static final String CHANNEL_CONNECTION_EVENT_STREAM = "flutter_xmpp/connection_event_stream";
+
+    public static final String URN_XMPP_RECEIPTS = "urn:xmpp:receipts";
+    public static final String URN_XMPP_DELAY = "urn:xmpp:delay";
+    public static final String DELAY_TIME = "delayTime";
 }

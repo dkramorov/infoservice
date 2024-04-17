@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:infoservice/models/chat_message_model.dart';
 import 'package:infoservice/models/companies/orgs.dart';
@@ -20,7 +19,6 @@ import 'package:uuid/uuid.dart';
 
 import 'package:xmpp_plugin/xmpp_plugin.dart';
 
-import '../a_notifications/telegram_bot.dart';
 import '../helpers/log.dart';
 import '../helpers/native_log_helper.dart';
 import '../helpers/network.dart';
@@ -53,6 +51,7 @@ class JabberManager implements DataChangeEvents {
   static UserSettingsModel? user;
 
   bool stopFlag = false;
+  bool stopMainTimer = false;
   bool mainTimerStarted = false;
   String connectionStatus = 'Disconnected';
   int connectedTime = 0;
@@ -64,7 +63,6 @@ class JabberManager implements DataChangeEvents {
   Future<void> init() async {
     if (!enabled) {
       Log.d(tag, '--- DISABLED ---');
-      loadSettings();
       return;
     }
 
@@ -122,8 +120,12 @@ class JabberManager implements DataChangeEvents {
     return false;
   }
 
-  /* Регистрация на сип сервере */
+  /* Регистрация на xmpp сервере */
   Future<void> doRegister() async {
+    if (stopMainTimer) {
+      Log.d(tag, 'ignore register trigger, because stopMainTimer is $stopMainTimer');
+      return;
+    }
     bool hasInternet = await checkInternetConnection();
     if (registered || !hasInternet) {
       return;
@@ -135,7 +137,7 @@ class JabberManager implements DataChangeEvents {
 
     if (appState == AppLifecycleState.paused ||
         appState == AppLifecycleState.detached) {
-      Log.d(tag, 'ignore register trigger because appState is $appState');
+      Log.d(tag, 'ignore register trigger, because appState is $appState');
       return;
     }
     user = await UserSettingsModel().getUser();
@@ -147,20 +149,6 @@ class JabberManager implements DataChangeEvents {
       user?.jid ?? '',
       user?.passwd ?? '',
     );
-  }
-
-  Future<SharedPreferences> loadSettings() async {
-    SharedPreferences prefs =
-        await SharedPreferencesManager.getSharedPreferences();
-    String? authUser = prefs.getString('auth_user');
-    Log.d(
-        tag,
-        'password ${prefs.getString('password')}'
-        'auth_user $authUser');
-    if (authUser != null) {
-      TelegramBot.userPhone = authUser;
-    }
-    return prefs;
   }
 
   Future<void> changeSettings(Map<String, dynamic> userData) async {
@@ -183,6 +171,14 @@ class JabberManager implements DataChangeEvents {
     counter += 1;
     Timer.periodic(const Duration(seconds: 1), (Timer t) async {
       t.cancel();
+
+      if (stopMainTimer) {
+        Log.i(tag, '--- stopMainTimer $stopMainTimer ---');
+        mainTimerStarted = false;
+        stopMainTimer = false;
+        return;
+      }
+
       bool hasInternet = await checkInternetConnection();
       SharedPreferences prefs =
           await SharedPreferencesManager.getSharedPreferences();

@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_callkit_incoming/entities/android_params.dart';
 import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
 import 'package:flutter_callkit_incoming/entities/ios_params.dart';
@@ -302,7 +303,7 @@ void main() async {
     });
   });
 
-  await initializeService();
+  final FlutterBackgroundService service = await initializeService();
   FlutterAppBadger.removeBadge();
 
   if (SENTRY_ENABLED) {
@@ -312,15 +313,20 @@ void main() async {
         'https://b2bc3c3c4bbd66293a359ff209559d41@o228487.ingest.sentry.io/4505793208254464';
         options.tracesSampleRate = 1.0;
       },
-      appRunner: () => runApp(const MyApp()),
+      appRunner: () => runApp(MyApp(service: service)),
     );
   } else {
-    runApp(const MyApp());
+    runApp(MyApp(service: service));
   }
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final FlutterBackgroundService? service;
+
+  const MyApp({
+    Key? key,
+    this.service,
+  }) : super(key: key);
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -396,21 +402,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.detached:
         print('-----> detached');
+        widget.service?.invoke('stopService');
         break;
       case AppLifecycleState.inactive:
         print('-----> inactive');
         break;
       case AppLifecycleState.paused:
         print('-----> paused');
+        widget.service?.invoke('lifecyclePaused');
         break;
       case AppLifecycleState.hidden:
         print('-----> hidden');
         break;
       case AppLifecycleState.resumed:
         print('-----> resumed');
-        if (_xmppHelper != null) {
-          //_xmppHelper!.doRegister();
-        }
+        widget.service?.invoke('lifecycleResumed');
         /*
         initializeService().then((success) {
           BGTasksModel.createLoginUserTask();

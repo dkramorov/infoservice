@@ -22,9 +22,8 @@ public class PresenceListenerAndFilter implements StanzaListener {
 
     @Override
     public void processStanza(Stanza packet) {
-
+        Log.d("processStanza", "--------------");
         Presence presence = (Presence) packet;
-
         String jid = presence.getFrom().toString();
         Presence.Type type = presence.getType();
         Presence.Mode mode = presence.getMode();
@@ -33,18 +32,13 @@ public class PresenceListenerAndFilter implements StanzaListener {
             MUCUser mucUser = MUCUser.from(presence);
 
             if (mucUser != null) {
-
                 if (mucUser.getStatus().contains(MUCUser.Status.ROOM_CREATED_201)) {
                     // Room was created by user
-
                     Utils.broadcastSuccessMessageToFlutter(mApplicationContext, SuccessState.GROUP_CREATED_SUCCESS, jid);
-
                     return;
                 } else if (mucUser.getStatus().contains(MUCUser.Status.PRESENCE_TO_SELF_110)) {
                     // User was joined the room
-
                     Utils.broadcastSuccessMessageToFlutter(mApplicationContext, SuccessState.GROUP_JOINED_SUCCESS, jid);
-
                     return;
                 }
             }
@@ -55,9 +49,6 @@ public class PresenceListenerAndFilter implements StanzaListener {
         intent.putExtra(Constants.BUNDLE_FROM_JID, jid);
         intent.putExtra(Constants.BUNDLE_PRESENCE_TYPE, type.toString().toLowerCase());
         intent.putExtra(Constants.BUNDLE_PRESENCE_MODE, mode.toString().toLowerCase());
-
         mApplicationContext.sendBroadcast(intent);
-
-
     }
 }

@@ -24,14 +24,15 @@ import '../settings.dart';
 import 'contacts_manager.dart';
 import 'jabber_manager.dart';
 
-Future<void> initializeService() async {
+Future<FlutterBackgroundService> initializeService() async {
   final service = FlutterBackgroundService();
 
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
       autoStart: true,
-      isForegroundMode: false,
+      isForegroundMode: true,
+      foregroundServiceNotificationId: 999,
     ),
     iosConfiguration: IosConfiguration(
       autoStart: true,
@@ -40,6 +41,7 @@ Future<void> initializeService() async {
     ),
   );
   service.startService();
+  return service;
 }
 
 // to ensure this is executed
@@ -62,20 +64,65 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   const String tag = 'BG_MANAGER';
-  DartPluginRegistrant.ensureInitialized();
+  const int stopServiceAfterPausedSec = 20;
+  Timer? lifecycleTimer;
+  //DartPluginRegistrant.ensureInitialized(); =>
+  /* flutter_background_service_android` threw an error: Exception:
+     This class should only be used in the main isolate (UI App).
+     The app may not function as expected until you remove this plugin from pubspec.yaml
+  */
+
+  Future<void> stopXMPP() async {
+    await JabberManager().stop();
+    await JabberManager.flutterXmpp?.stop();
+    await JabberManager.flutterXmpp?.potestua();
+    JabberManager().setStopFlag(true); // DEPRECATED?
+    JabberManager().stopMainTimer = true;
+    //JabberManager().dispose();
+    JabberManager().connectionStatus = 'Disconnected';
+  }
+
   // BackgroundService.java шлет нотификации updateNotificationInfo
   if (service is AndroidServiceInstance) {
     service.on('setAsForeground').listen((event) {
       service.setAsForegroundService();
+      print('--- service setAsForeground ---');
     });
-
     service.on('setAsBackground').listen((event) {
       service.setAsBackgroundService();
+      print('--- service setAsBackground ---');
     });
   }
 
-  service.on('stopService').listen((event) {
-    service.stopSelf();
+  service.on('lifecycleResumed').listen((event) async {
+    if (lifecycleTimer != null) {
+      lifecycleTimer?.cancel();
+      lifecycleTimer = null;
+    }
+    await JabberManager().init();
+  });
+
+  service.on('lifecyclePaused').listen((event) async {
+    // Если сервис в паузе больше 60 секунд, прекращаем суету
+    if (lifecycleTimer != null) {
+      lifecycleTimer?.cancel();
+      lifecycleTimer = null;
+    }
+    Timer.periodic(const Duration(seconds: 1), (Timer t) async {
+      lifecycleTimer = t;
+      if (t.tick > stopServiceAfterPausedSec) {
+        t.cancel();
+        print('+++ Stopping xmpp after paused time ${t.tick} +++');
+        await stopXMPP();
+        lifecycleTimer = null;
+      }
+    });
+  });
+
+  service.on('stopService').listen((event) async {
+    await stopXMPP();
+    await service.stopSelf();
+    print('--- service stopService ---');
   });
 
   // Принудительное удаление пользователя (тест)
