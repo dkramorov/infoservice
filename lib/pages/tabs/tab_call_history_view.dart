@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:infoservice/models/dialpad_model.dart';
 import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/sip_ua/dialpadscreen.dart';
@@ -11,6 +13,8 @@ import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
 import '../../widgets/companies/company_logo.dart';
+import '../app_asset_lib.dart';
+import '../themes.dart';
 
 class TabCallHistoryView extends StatefulWidget {
   final SIPUAManager? sipHelper;
@@ -36,7 +40,7 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
 
-  final DateFormat formatter = DateFormat('dd/MM HH:mm');
+  final DateFormat formatter = DateFormat('dd MMMM, HH:mm');
 
   List<CallHistoryModel> history = [];
 
@@ -95,7 +99,8 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
   }
 
   ListView buildHistory() {
-    final containerMsgTextWidth = MediaQuery.of(context).size.width * 0.5;
+    Size size = MediaQuery.sizeOf(context);
+    final containerMsgTextWidth = size.width * 0.55;
     return ListView.builder(
       itemCount: history.length,
       shrinkWrap: true,
@@ -128,6 +133,103 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
               });
             },
             child: Container(
+              width: size.width,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: buildIcon(item),
+                      /*Image.network(
+                        hist[index]["icon"],
+                        fit: BoxFit.cover,
+                      ),
+                      */
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: containerMsgTextWidth,
+                        child: Text(
+                          item.company != null ? item.company!.name ?? '' : phoneMaskHelper(item.dest ?? ''),
+                          //maxLines: 4,
+                          //overflow: TextOverflow.fade,
+                          //softWrap: false,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: w400,
+                            color: black,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          SvgPicture.asset(AssetLib.phoneFill),
+                          const SizedBox(width: 6),
+                          Text(
+                            phoneMaskHelper(item.dest ?? ''),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: w400,
+                              color: gray100,
+                            ),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          SvgPicture.asset(AssetLib.date),
+                          const SizedBox(width: 6),
+                          Text(
+                            formatter.format(DateTime.parse(item.time ?? '0')),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: w400,
+                              color: gray100,
+                            ),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          SvgPicture.asset(AssetLib.timeFill),
+                          const SizedBox(width: 6),
+                          Text(
+                            duration ?? '0',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: w400,
+                              color: gray100,
+                            ),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  SvgPicture.asset(AssetLib.smallArrow)
+                ],
+              ),
+            ),
+            /* /// Старый вариант
+            Container(
               margin: const EdgeInsets.only(bottom: 5),
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
@@ -203,6 +305,7 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
                 ),
               ),
             ),
+            */
           ),
         );
       },

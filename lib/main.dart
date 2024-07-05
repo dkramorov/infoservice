@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'dart:io' show Platform;
-import 'package:appmetrica_plugin/appmetrica_plugin.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -20,10 +19,13 @@ import 'package:infoservice/pages/authorization.dart';
 import 'package:infoservice/pages/chat/add2roster.dart';
 import 'package:infoservice/pages/chat/chat_page.dart';
 import 'package:infoservice/pages/chat/group_chat_page.dart';
+import 'package:infoservice/pages/companies/cats_listing_screen.dart';
 import 'package:infoservice/pages/companies/companies_listing_screen.dart';
 import 'package:infoservice/pages/companies/company_wizard_screen.dart';
 import 'package:infoservice/pages/default_page.dart';
-import 'package:infoservice/pages/new_pages/components/new_main.dart';
+import 'package:infoservice/pages/new_pages/pages/index.dart';
+import 'package:infoservice/pages/profile/about_page.dart';
+import 'package:infoservice/pages/profile/settings_page.dart';
 import 'package:infoservice/pages/register/reg_wizard_screen.dart';
 import 'package:infoservice/services/bg_manager.dart';
 import 'package:infoservice/services/jabber_manager.dart';
@@ -32,6 +34,7 @@ import 'package:infoservice/services/sip_ua_manager.dart';
 import 'package:infoservice/settings.dart';
 import 'package:infoservice/sip_ua/callscreen.dart';
 import 'package:infoservice/sip_ua/dialpadscreen.dart';
+import 'package:overlay_support/overlay_support.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -332,6 +335,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+// WidgetsBindingObserver, HuaweiServiceMixin
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final SIPUAManager _sipHelper = SIPUAManager();
   //final JabberManager _xmppHelper = JabberManager();
@@ -351,6 +355,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChatScreen(sipHelper, xmppHelper, arguments),
     GroupChatScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         GroupChatScreen(sipHelper, xmppHelper, arguments),
+    CatsListingScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        CatsListingScreen(sipHelper, xmppHelper, arguments),
     CompaniesListingScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         CompaniesListingScreen(sipHelper, xmppHelper, arguments),
     CompanyWizardScreen.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
@@ -359,10 +365,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         DialpadScreen(sipHelper, xmppHelper, arguments),
     CallScreenWidget.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         CallScreenWidget(sipHelper, xmppHelper, arguments),
-
+    AboutPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        AboutPage(sipHelper, xmppHelper, arguments),
+    SettingsPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        SettingsPage(sipHelper, xmppHelper),
     // Новые странички
+    /*
     NewMainPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         NewMainPage(sipHelper, xmppHelper, arguments),
+    Index.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        Index(sipHelper, xmppHelper, arguments),
+    */
   };
 
   Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
@@ -386,6 +399,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    //initHuaweiPlatformState();
   }
 
   @override
@@ -395,10 +409,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
     JabberManager.appState = state;
     SIPUAListener.appState = state;
+
     switch (state) {
       case AppLifecycleState.detached:
         print('-----> detached');
@@ -406,6 +421,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         break;
       case AppLifecycleState.inactive:
         print('-----> inactive');
+        widget.service?.invoke('lifecyclePaused');
         break;
       case AppLifecycleState.paused:
         print('-----> paused');
@@ -429,6 +445,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    return OverlaySupport.global(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: '8800.help',
+        navigatorKey: navigatorKey,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+          useMaterial3: true,
+          fontFamily: 'GolosText',
+          scaffoldBackgroundColor: Colors.white,
+        ),
+        initialRoute: DefaultPage.id,
+        onGenerateRoute: _onGenerateRoute,
+        builder: EasyLoading.init(),
+      ),
+    );
+    /*
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: '8800.help',
@@ -443,6 +476,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       onGenerateRoute: _onGenerateRoute,
       builder: EasyLoading.init(),
     );
+    */
   }
 }
 

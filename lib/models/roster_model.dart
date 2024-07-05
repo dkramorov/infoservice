@@ -15,7 +15,7 @@ class RosterModel extends AbstractModel {
 
   @override
   Future<Database> openDB() async {
-    return openChatDB();
+    return await openChatDB();
   }
 
   Key key = UniqueKey();
@@ -181,6 +181,7 @@ class RosterModel extends AbstractModel {
     */
     if (avatar != null && avatar != '') {
       // TODO: возвращать кэшированное изображение (пишется ссылка в базу)
+      return avatar!;
     }
     return DEFAULT_AVATAR;
   }

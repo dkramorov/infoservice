@@ -9,7 +9,7 @@ class DBChatInstance {
 }
 
 Future<Database> openChatDB() async {
-  const int dbVersion = 27; // Версия базы данных
+  const int dbVersion = 28; // Версия базы данных
   const String dbName = 'chatDB.db';
   if (DBChatInstance.instance != null) {
     return DBChatInstance.instance!;
@@ -219,21 +219,21 @@ Future<Database> openChatDB() async {
 
   const String dropTableChatMessageModel = 'DROP TABLE IF EXISTS $tableChatMessageModel';
 
-  void createTables(Database db) {
-    db.execute(createTableUserChatModel);
-    db.execute(createTableCallHistoryModel);
-    db.execute(createTableContactsModel);
-    db.execute(createTableRosterModel);
-    db.execute(createTableChatMessageModel);
-    db.execute(createTablePendingMessageModel);
+  Future<void> createTables(Database db) async {
+    await db.execute(createTableUserChatModel);
+    await db.execute(createTableCallHistoryModel);
+    await db.execute(createTableContactsModel);
+    await db.execute(createTableRosterModel);
+    await db.execute(createTableChatMessageModel);
+    await db.execute(createTablePendingMessageModel);
 
-    db.execute(createIndexChatMessageFromAndTo);
-    db.execute(createIndexChatMessageFrom);
-    db.execute(createIndexChatMessageTo);
-    db.execute(createIndexChatMessageTime);
-    db.execute(createIndexChatMessageMid);
-    db.execute(createIndexChatMessageIsReadSent);
-    db.execute(createIndexPendingMessageTime);
+    await db.execute(createIndexChatMessageFromAndTo);
+    await db.execute(createIndexChatMessageFrom);
+    await db.execute(createIndexChatMessageTo);
+    await db.execute(createIndexChatMessageTime);
+    await db.execute(createIndexChatMessageMid);
+    await db.execute(createIndexChatMessageIsReadSent);
+    await db.execute(createIndexPendingMessageTime);
   }
 
   const String alterTableChatMessageRenameMyJid2ToJid =
@@ -242,53 +242,53 @@ Future<Database> openChatDB() async {
   final Future<Database> database = openDatabase(
     join(await getDatabasesPath(), dbName),
 
-    onCreate: (db, version) {
-      createTables(db);
+    onCreate: (db, version) async {
+      await createTables(db);
     },
-    onUpgrade: (db, oldVersion, newVersion) {
+    onUpgrade: (db, oldVersion, newVersion) async {
       Log.i('--- DB UPGRADE ---', '$oldVersion=>$newVersion');
-      createTables(db);
-      if (oldVersion <= 3) {
-        db.execute(alterTableCallHistoryAddCompanyId);
+      await createTables(db);
+      if (oldVersion < 3) {
+        await db.execute(alterTableCallHistoryAddCompanyId);
       }
-      if (oldVersion <= 5) {
-        db.execute(createTableContactsModel);
+      if (oldVersion < 5) {
+        await db.execute(createTableContactsModel);
       }
-      if (oldVersion <= 6) {
-        db.execute(alterTableContactsAddUpdated);
+      if (oldVersion < 6) {
+        await db.execute(alterTableContactsAddUpdated);
       }
-      if (oldVersion <= 7) {
-        db.execute(alterTableContactsAddHasXMPP);
+      if (oldVersion < 7) {
+        await db.execute(alterTableContactsAddHasXMPP);
       }
-      if (oldVersion <= 10) {
-        db.execute(alterTableRosterAddLastMessageId);
+      if (oldVersion < 10) {
+        await db.execute(alterTableRosterAddLastMessageId);
       }
-      if (oldVersion <= 18) {
-        db.execute(alterTableChatMessageRenameMyJid2ToJid);
+      if (oldVersion < 18) {
+        await db.execute(alterTableChatMessageRenameMyJid2ToJid);
       }
-      if (oldVersion <= 20) {
-        db.execute(alterTableRosterAddLastReadMessageTime);
+      if (oldVersion < 20) {
+        await db.execute(alterTableRosterAddLastReadMessageTime);
       }
-      if (oldVersion <= 21) {
-        db.execute(dropTableChatMessageModel);
-        db.execute(createTableChatMessageModel);
-        db.execute(createIndexChatMessageFromAndTo);
-        db.execute(createIndexChatMessageFrom);
-        db.execute(createIndexChatMessageTo);
-        db.execute(createIndexChatMessageTime);
-        db.execute(createIndexChatMessageMid);
+      if (oldVersion < 21) {
+        await db.execute(dropTableChatMessageModel);
+        await db.execute(createTableChatMessageModel);
+        await db.execute(createIndexChatMessageFromAndTo);
+        await db.execute(createIndexChatMessageFrom);
+        await db.execute(createIndexChatMessageTo);
+        await db.execute(createIndexChatMessageTime);
+        await db.execute(createIndexChatMessageMid);
       }
-      if (oldVersion <= 22) {
-        db.execute(alterTableRosterAddIsGroup);
+      if (oldVersion < 22) {
+        await db.execute(alterTableRosterAddIsGroup);
       }
-      if (oldVersion <= 23) {
-        db.execute(alterTableUserChatAddPersonalData);
+      if (oldVersion < 23) {
+        await db.execute(alterTableUserChatAddPersonalData);
       }
-      if (oldVersion <= 24) {
-        db.execute(alterTableCallHistoryAddName);
+      if (oldVersion < 24) {
+        await db.execute(alterTableCallHistoryAddName);
       }
-      if (oldVersion <= 26) {
-        db.execute(alterTablePendingMessageAddUid);
+      if (oldVersion < 26) {
+        await db.execute(alterTablePendingMessageAddUid);
       }
     },
     // Set the version. This executes the onCreate function and provides a

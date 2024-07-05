@@ -3,12 +3,14 @@ import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
 
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:infoservice/pages/search_bar_main_page.dart';
 import 'package:infoservice/pages/tabs/tab_call_history_view.dart';
 import 'package:infoservice/pages/tabs/tab_call_screen_view.dart';
 import 'package:infoservice/pages/tabs/tab_companies_view.dart';
 import 'package:infoservice/pages/tabs/tab_home_view.dart';
 import 'package:infoservice/pages/tabs/tab_profile_view.dart';
 import 'package:infoservice/pages/tabs/tab_roster_view.dart';
+import 'package:infoservice/pages/themes.dart';
 import 'package:infoservice/sip_ua/callscreen.dart';
 import 'package:sip_ua/sip_ua.dart';
 
@@ -18,6 +20,7 @@ import '../services/jabber_manager.dart';
 import '../services/permissions_manager.dart';
 import '../services/sip_ua_manager.dart';
 import '../settings.dart';
+import 'bottom_navigation_bar_custom.dart';
 import 'chat/chat_page.dart';
 import 'chat/group_chat_page.dart';
 
@@ -37,6 +40,7 @@ class _DefaultPageWidget extends State<DefaultPage>
   JabberManager? get xmppHelper => widget._xmppHelper;
 
   late bool awesomeNotificationsPerms = false;
+  String inp = "Поиск компаний";
 
   String title = NavigationData.nav[0]['title'];
   final Duration _durationPageView = const Duration(milliseconds: 700);
@@ -136,9 +140,9 @@ class _DefaultPageWidget extends State<DefaultPage>
   void _listedNotificationActionStream() {
     AwesomeNotifications().setListeners(
       onNotificationCreatedMethod:
-      AwesomeNotificationController.onNotificationCreatedMethod,
+          AwesomeNotificationController.onNotificationCreatedMethod,
       onActionReceivedMethod:
-      AwesomeNotificationController.onActionReceivedMethod,
+          AwesomeNotificationController.onActionReceivedMethod,
     );
     /*
     AwesomeNotifications().actionStream.listen((action) {
@@ -190,69 +194,30 @@ class _DefaultPageWidget extends State<DefaultPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
+      /*
       appBar: AppBar(
         backgroundColor: tealColor,
         title: const Text("8800.help"),
+      ),
+      */
+
+      /* Пока убрал, чтобы место освободить
+      appBar: AppBar(
+        titleSpacing: 0,
+        centerTitle: true,
+        surfaceTintColor: transparent,
+        backgroundColor: white,
+        title: const Text("8800.help"),
         /*
-        actions: [
-          PopupMenuButton<String>(
-              onSelected: (String value) {
-                switch (value) {
-                  case 'auth':
-                    Navigator.pushNamed(context, AuthScreenWidget.id);
-                    break;
-                  case 'logout':
-                    helper?.stop();
-                    break;
-                  default:
-                    break;
-                }
-              },
-              icon: const Icon(Icons.menu),
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    PopupMenuItem(
-                      value: 'auth',
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: const [
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
-                            child: Icon(
-                              Icons.account_circle,
-                              color: Colors.black38,
-                            ),
-                          ),
-                          SizedBox(
-                            width: 64,
-                            child: Text('Auth'),
-                          )
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'logout',
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: const [
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
-                            child: Icon(
-                              Icons.logout,
-                              color: Colors.black38,
-                            ),
-                          ),
-                          SizedBox(
-                            width: 64,
-                            child: Text('Logout'),
-                          )
-                        ],
-                      ),
-                    ),
-                    // ... another PopupMenuItem
-                  ]),
-        ],
+        title: SearchBarMainPageWidget(
+          const [],
+          onChanged: (value) => setState(() => inp = value),
+          onMicrophone: () {},
+        ),
         */
       ),
+      */
       body: SafeArea(
         child: PageView(
           controller: _pageController,
@@ -299,6 +264,23 @@ class _DefaultPageWidget extends State<DefaultPage>
           ],
         ),
       ),
+      bottomNavigationBar: BottomNavigationBarCustom(
+        size: MediaQuery.of(context).size,
+        chatMessageCount: 0,
+        onPressed: (index, unavailable) {
+          setState(() {
+            /// checking for availability is handled here because
+            /// you can change the way the app reacts
+            /// For example, maybe it's ok to show Chat/Phone Call/History page
+            /// when pressed on unavailable buttons
+            setPageview(index);
+            setState(() => _pageIndex = index);
+          });
+        },
+        activeIndex: _pageIndex,
+        unauthorized: false,
+      ),
+      /* /// Cтарый вариант нижнего бара
       bottomNavigationBar: ClipRRect(
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(12.0),
@@ -334,6 +316,7 @@ class _DefaultPageWidget extends State<DefaultPage>
           ),
         ),
       ),
+      */
     );
   }
 

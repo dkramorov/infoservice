@@ -1,0 +1,10 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+    <g id="Tapbar / Catalog">
+        <path id="Path" d="M18.975 14.0256C20.4883 15.539 20.3261 18.0955 18.4873 19.3848C17.317 20.2051 15.6835 20.2051 14.5132 19.3848C12.6744 18.0943 12.511 15.539 14.0255 14.0256C15.3918 12.6581 17.6087 12.6581 18.975 14.0256" stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Path_2" d="M19.1211 19.1211L21.0001 21.0001" stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Path_3" fill-rule="evenodd" clip-rule="evenodd" d="M8 10H5C3.895 10 3 9.105 3 8V5C3 3.895 3.895 3 5 3H8C9.105 3 10 3.895 10 5V8C10 9.105 9.105 10 8 10Z" fill="#262729" stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Path_4" fill-rule="evenodd" clip-rule="evenodd" d="M19 10H16C14.895 10 14 9.105 14 8V5C14 3.895 14.895 3 16 3H19C20.105 3 21 3.895 21 5V8C21 9.105 20.105 10 19 10Z" fill="#262729" stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Path_5" fill-rule="evenodd" clip-rule="evenodd" d="M8 21H5C3.895 21 3 20.105 3 19V16C3 14.895 3.895 14 5 14H8C9.105 14 10 14.895 10 16V19C10 20.105 9.105 21 8 21Z" fill="#262729" stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+</svg>

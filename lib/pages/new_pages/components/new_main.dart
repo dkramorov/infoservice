@@ -9,7 +9,6 @@ import 'catalog_page.dart';
 class NewMainPage extends StatefulWidget {
 
   static const String id = '/new_main_page/';
-
   final SIPUAManager? _sipHelper;
   final JabberManager? _xmppHelper;
   final Object? _arguments;

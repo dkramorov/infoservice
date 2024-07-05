@@ -7,7 +7,6 @@ import 'package:infoservice/widgets/rounded_button_widget.dart';
 
 import '../../helpers/log.dart';
 import '../../helpers/phone_mask.dart';
-import '../../models/companies/orgs.dart';
 import '../../models/roster_model.dart';
 import '../../models/user_chat_model.dart';
 import '../../models/user_settings_model.dart';
@@ -127,7 +126,7 @@ class _TabRosterViewState extends State<TabRosterView> {
     myRoster = await RosterModel().getByOwner(myJid);
     for (RosterModel r in myRoster) {
       String rJid = r.jid ?? '';
-      if (r.name != null){
+      if (r.name != null) {
         if (rJid.startsWith(r.name!)) {
           await JabberManager.checkMucCompany(r);
         }
@@ -146,7 +145,6 @@ class _TabRosterViewState extends State<TabRosterView> {
         (a, b) => (b.lastMessageTime ?? 0).compareTo((a.lastMessageTime ?? 0)));
     setState(() {});
   }
-
 
   Future<void> checkStoragePermissions() async {
     if (storageDialogShowed || storageGranted) {
@@ -177,7 +175,7 @@ class _TabRosterViewState extends State<TabRosterView> {
   }
 
   Future<void> checkContactsPermission() async {
-    if (!contactsDialogShowed) {
+    if (!contactsDialogShowed && mounted) {
       contactsDialogShowed = true;
       showDialog(
           context: context,
@@ -266,7 +264,7 @@ class _TabRosterViewState extends State<TabRosterView> {
               },
               child: MyUser(
                 label: 'Я, ${user?.getName() ?? "не авторизован"}',
-                imgPath: DEFAULT_AVATAR,
+                imgPath: user?.getPhoto() ?? DEFAULT_AVATAR,
                 isReady: true,
                 isOnline: user?.getRegistered() ?? false,
                 labelWidth: halfWidth,
@@ -287,9 +285,8 @@ class _TabRosterViewState extends State<TabRosterView> {
           ],
         ),
         SIZED_BOX_H20,
-        user != null
-            ? buildRosterSearch()
-            : buildAuthButton(),
+        user != null ? buildRosterSearch() : buildAuthButton(),
+        SIZED_BOX_H20,
         Expanded(
           child: buildContacts(),
         ),
@@ -317,7 +314,7 @@ class _TabRosterViewState extends State<TabRosterView> {
       itemCount: myRoster.length,
       shrinkWrap: true,
       padding: const EdgeInsets.symmetric(
-        vertical: 15,
+        vertical: 30,
       ),
       itemBuilder: (context, index) {
         RosterModel rosterModel = myRoster[index];
@@ -400,3 +397,4 @@ class _TabRosterViewState extends State<TabRosterView> {
     return Center(child: buildView());
   }
 }
+

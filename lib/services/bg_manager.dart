@@ -94,27 +94,33 @@ void onStart(ServiceInstance service) async {
     });
   }
 
-  service.on('lifecycleResumed').listen((event) async {
+  cancelLifecycleTimer() {
     if (lifecycleTimer != null) {
       lifecycleTimer?.cancel();
       lifecycleTimer = null;
     }
+  }
+
+  service.on('lifecycleResumed').listen((event) async {
+    JabberManager.appState = AppLifecycleState.resumed;
+    cancelLifecycleTimer();
     await JabberManager().init();
   });
 
   service.on('lifecyclePaused').listen((event) async {
-    // Если сервис в паузе больше 60 секунд, прекращаем суету
-    if (lifecycleTimer != null) {
-      lifecycleTimer?.cancel();
-      lifecycleTimer = null;
-    }
+    // Если сервис в паузе больше stopServiceAfterPausedSec секунд, прекращаем суету
+    JabberManager.appState = AppLifecycleState.paused;
+    cancelLifecycleTimer();
     Timer.periodic(const Duration(seconds: 1), (Timer t) async {
       lifecycleTimer = t;
+      if (JabberManager.appState == AppLifecycleState.resumed) {
+        cancelLifecycleTimer();
+        print('Stoping lifecycle timer because app is resumed');
+      }
       if (t.tick > stopServiceAfterPausedSec) {
-        t.cancel();
+        cancelLifecycleTimer();
         print('+++ Stopping xmpp after paused time ${t.tick} +++');
         await stopXMPP();
-        lifecycleTimer = null;
       }
     });
   });
@@ -131,7 +137,8 @@ void onStart(ServiceInstance service) async {
   Future.delayed(Duration.zero, () async {
     try {
       // Предварительно удаляем при старте сервиса все задачи
-      await BGTasksModel().dropAllRows();
+      //await BGTasksModel().dropAllRows();
+
       // Сбрасываем для пользователя статус
       UserSettingsModel? user = await UserSettingsModel().getUser();
       if (user != null) {
@@ -172,11 +179,31 @@ void onStart(ServiceInstance service) async {
 
 Future<void> backgroundJob() async {
   const String tag = 'backgroundJob';
+
+  // Без интернет-соединения смысла выполнять задачу нет
+  SharedPreferences prefs =
+  await SharedPreferencesManager.getSharedPreferences();
+  bool? hasInternet = prefs.getBool('checkInternetConnection');
+  if (hasInternet == null || !hasInternet) {
+    Log.d(tag, 'do nothing, because internet absent');
+    return;
+  }
+
   BGTasksModel.bgTimerTaskRunning = true;
   BGTasksModel.counter += 1;
   //Log.d(tag, 'counter ${BGTasksModel.counter}');
   BGTasksModel? newTask = await BGTasksModel().getTask();
   if (newTask != null) {
+
+    if (newTask.priority != BGTasksModel.authPriority) {
+      // Без пользователя смысла выполнять такую задачу нет
+      UserSettingsModel? user = await UserSettingsModel().getUser();
+      if (user == null || user.isXmppRegistered == 0) {
+        Log.d(tag, 'do nothing, because user not connected');
+        return;
+      }
+    }
+
     BGTasksModel.prev = newTask;
     try {
       await runTaskHelper(newTask);
@@ -288,7 +315,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
             founded = true;
           }
         }
-        Log.d(tag, 'founded by $login: $result');
+        Log.d(tag, 'founded=$founded, by $login: $result');
         if (founded) {
           await JabberManager().addMyRoster(login);
           await prefs.setBool(BGTasksModel.addRosterPrefKey, true);
@@ -522,6 +549,48 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
               phone, JabberManager.user!.credentialsHash ?? '', groupJid);
         }
       }
+      break;
+
+    case BGTasksModel.updateMyVCardTaskKey:
+      /* Обновление VCard
+      */
+      Map<String, dynamic> data = newTask.getJsonData();
+      Map<String, dynamic> descObj =
+      await JabberManager().getVCardDescAsDict();
+      if (data['FN'] != null && data['FN'] != '') {
+        descObj['FN'] = data['FN'];
+      }
+      if (data['BDAY'] != null && data['BDAY'] != '') {
+        descObj['BDAY'] = data['BDAY'];
+      }
+      if (data['EMAIL'] != null && data['EMAIL'] != '') {
+        descObj['EMAIL'] = data['EMAIL'];
+      }
+      if (data['GENDER'] != null && data['GENDER'] != '') {
+        descObj['GENDER'] = data['GENDER'];
+      }
+      // Сохраняем фото
+      // TODO: проверка подключения (т/к фотку могут выбирать долго) - pending
+      if (data['PHOTO'] != null && data['PHOTO'] != '') {
+        descObj['PHOTO'] = data['PHOTO'];
+        File file = File(descObj['PHOTO']);
+        String fname = file.path.split('/').last;
+        int filesize = await file.length();
+        String? putUrl =
+        await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
+        Log.i(tag, 'putUrl is "$putUrl"');
+        if (putUrl != null && putUrl != '') {
+          Map<String, dynamic> response = await requestPutFile(putUrl, file);
+          if (response['statusCode'] == 201) {
+            Log.i(tag, 'upload success $putUrl');
+            descObj['PHOTO'] = putUrl;
+          }
+        }
+      }
+      // Сохраняем VCard
+      JabberManager.myVCard['DESC'] = jsonEncode(descObj);
+      await JabberManager().saveMyVCard();
+
       break;
 
     default:

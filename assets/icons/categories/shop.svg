@@ -1,0 +1,20 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g id="Group">
+        <g id="Group_2">
+            <path id="Path"
+                d="M12.0003 20.0033H4.99742C3.89195 20.0033 2.99658 19.108 2.99658 18.0025V7.49812C2.99658 6.66978 3.66886 5.9975 4.49721 5.9975H17.5026C18.331 5.9975 19.0032 6.66978 19.0032 7.49812V10.9996"
+                stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="Path_2"
+                d="M6.99805 5.9975V5.7474V5.7474C6.99805 3.67553 8.67775 1.99583 10.7496 1.99583H11.2498C13.3217 1.99583 15.0014 3.67553 15.0014 5.7474V5.7474V5.9975"
+                stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="Path_3" d="M14.5616 14.51H21.0043L20.3 18.0335H15.2669L14.2595 13.0004H13.001"
+                stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="Path_4"
+                d="M19.8316 20.4165C19.8516 20.4365 19.8516 20.4675 19.8316 20.4875C19.8116 20.5075 19.7806 20.5075 19.7606 20.4875C19.7406 20.4675 19.7406 20.4365 19.7606 20.4165C19.7796 20.3965 19.8126 20.3965 19.8316 20.4165"
+                stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path id="Path_5"
+                d="M15.8048 20.4165C15.8248 20.4365 15.8248 20.4675 15.8048 20.4875C15.7848 20.5075 15.7537 20.5075 15.7337 20.4875C15.7137 20.4675 15.7137 20.4365 15.7337 20.4165C15.7527 20.3965 15.7848 20.3965 15.8048 20.4165"
+                stroke="#262729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+    </g>
+</svg>

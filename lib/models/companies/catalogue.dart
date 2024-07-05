@@ -14,7 +14,9 @@ class Catalogue extends AbstractModel {
   String? name;
   String? icon;
   int? position;
+  String? parents;
   String? img;
+  Color? color1;
 
   static const TAG = 'Catalogue';
 
@@ -35,6 +37,7 @@ class Catalogue extends AbstractModel {
       'name': name,
       'icon': icon,
       'position': position,
+      'parents': parents,
       'img': img,
     };
   }
@@ -46,15 +49,23 @@ class Catalogue extends AbstractModel {
     this.name,
     this.icon,
     this.position,
+    this.parents,
     this.img,
   });
 
-  Color get color => Colors.primaries[Random().nextInt(Colors.primaries.length)];
+  //Color get color => Colors.primaries[Random().nextInt(Colors.primaries.length)];
+  Color get color {
+    if (color1 == null) {
+      color1 = Colors.primaries[Random().nextInt(Colors.primaries.length)];
+    }
+    return color1!;
+  }
 
   @override
   String toString() {
-    return 'id: $id, count: $count, searchTerms: $searchTerms, ' +
-        'name: $name, icon: $icon, position: $position, img: $img';
+    return 'id: $id, count: $count, searchTerms: $searchTerms, '
+        'name: $name, icon: $icon, position: $position, '
+        'parents: $parents, img: $img';
   }
 
   static List<Catalogue> jsonFromList(List<dynamic> arr) {
@@ -73,6 +84,7 @@ class Catalogue extends AbstractModel {
       name: json['name'] ?? '',
       icon: json['icon'] ?? '',
       position: (json['position'] ?? 0) as int,
+      parents: json['parents'] ?? '',
       img: json['img'] ?? '',
     );
   }
@@ -86,20 +98,48 @@ class Catalogue extends AbstractModel {
       name: dbItem['name'],
       icon: dbItem['icon'],
       position: dbItem['position'],
+      parents: dbItem['parents'],
       img: dbItem['img'],
     );
   }
 
   Future<List<Catalogue>> getFullCatalogue(
-      {String sort = 'name'}) async {
+      {String parents = '', String sort = 'position'}) async {
     final db = await openCompaniesDB();
     final List<Map<String, dynamic>> maps = await db.query(
       tableName,
+      where: 'parents=?',
+      whereArgs: [parents],
       orderBy: sort,
     );
     return List.generate(maps.length, (i) {
       return toModel(maps[i]);
     });
+  }
+
+  Future<Catalogue?> getById(int pk) async {
+    final db = await openCompaniesDB();
+    String where = 'id=?';
+    List<Object?> whereArgs = [pk];
+    final List<Map<String, dynamic>> maps = await db.query(
+      tableName,
+      where: where,
+      whereArgs: whereArgs,
+    );
+    if (maps.isEmpty) {
+      return null;
+    }
+    final Map<String, dynamic> catItem = maps[0];
+    return toModel(catItem);
+  }
+
+  Future<int> getChildrenCount({String parents = ''}) async {
+    final db = await openCompaniesDB();
+    String query = 'SELECT COUNT(*) FROM $tableName where parents=?';
+    int? count = Sqflite.firstIntValue(
+        await db.rawQuery(query, [parents]));
+    Log.i(tableName, '$query ($parents) => $count');
+    return count ?? 0;
   }
 
   Future<List<Catalogue>> searchCatalogue(String query,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:infoservice/pages/new_pages/components/tour_operator.dart';
 
 class CatalogPage extends StatefulWidget {
+  static const String id = '/catalog_page/';
   const CatalogPage({Key? key}) : super(key: key);
 
   @override

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter_login_yandex_updated/flutter_login_yandex.dart';
 import 'package:http/http.dart' as http;
 import 'package:infoservice/helpers/phone_mask.dart';
 import 'package:path_provider/path_provider.dart';
@@ -47,24 +48,28 @@ Future<bool> sendToken(String login, String token, {String? apnsToken}) async {
 Future<void> sendCallPush(String toPhone, String fromPhone, String fromName,
     String credentialsHash) async {
   final uri = Uri.parse('https://$JABBER_SERVER$JABBER_NOTIFY_ENDPOINT');
+  Map<String, dynamic> params = {
+    'only_data': false,
+    'additional_data': {
+      'action': 'call',
+    },
+    'name': fromName,
+    'toJID': cleanPhone(toPhone),
+    'fromJID': cleanPhone(fromPhone),
+    'credentials': credentialsHash,
+  };
   var response = await http.post(
     uri,
     headers: {
       // HttpHeaders.authorizationHeader: 'Basic xxxxxxx',
       //'Content-Type': 'image/jpeg',
     },
-    body: jsonEncode(<String, dynamic>{
-      'only_data': false,
-      'additional_data': {
-        'action': 'call',
-      },
-      'name': fromName,
-      'toJID': cleanPhone(toPhone),
-      'fromJID': cleanPhone(fromPhone),
-      'credentials': credentialsHash,
-    }),
+    body: jsonEncode(params),
   );
-  Log.d('sendCallPush', '$uri, ${response.statusCode}');
+  Log.d(
+      'sendCallPush',
+      '$uri, ${response.statusCode}, params ${params.toString()}'
+  );
   try {
     var decoded = json.decode(response.body);
     Log.i('sendCallPush', 'response ${response.statusCode}');
@@ -119,24 +124,32 @@ Future<File> downloadFile(String url, File file) async {
   return file;
 }
 
-Future<Map<String, dynamic>> requestsGetJson(String url) async {
-  var req = await http.get(Uri.parse(url));
-  if (req.statusCode != 200) {
+Future<Map<String, dynamic>> requestsGetJson(String url,
+    {String authHeader = ''}) async {
+  Map<String, String> headers = {};
+  if (authHeader.isNotEmpty) {
+    headers[HttpHeaders.authorizationHeader] = authHeader;
+  }
+  var req = await http.get(Uri.parse(url), headers: headers);
+  if (req.statusCode != 200 && req.statusCode != 201) {
     Log.e('requestsGetJson', 'status ${req.statusCode}, ${req.body}');
     return {};
   }
+  Log.i('requestsGetJson', '$url, status ${req.statusCode}');
   return jsonDecode(req.body);
 }
 
 Future<Map<String, dynamic>> requestPutFile(String url, File file) async {
-  var response = await http.put(
+  var response = await http
+      .put(
     Uri.parse(url),
     headers: {
       // HttpHeaders.authorizationHeader: 'Basic xxxxxxx',
       //'Content-Type': 'image/jpeg',
     },
     body: await file.readAsBytes(),
-  ).timeout(
+  )
+      .timeout(
     const Duration(seconds: 60),
     onTimeout: () {
       return http.Response(
@@ -213,7 +226,8 @@ Future<void> sendNames2ServerSimple(List<Map<String, dynamic>> contacts,
   Log.d('sendNames2ServerSimple', '$uri, ${response.statusCode}');
   try {
     var decoded = json.decode(response.body);
-    Log.i('sendNames2ServerSimple', 'response ${response.statusCode}, $decoded');
+    Log.i(
+        'sendNames2ServerSimple', 'response ${response.statusCode}, $decoded');
   } catch (ex) {
     Log.e('sendNames2ServerSimple', 'response ${response.statusCode}: $ex');
   }
@@ -260,14 +274,16 @@ Future<void> requestCompanyChat(
     'MUC': companyChatJid,
   };
   Log.d('requestCompanyChat', data.toString());
-  var response = await http.post(
+  var response = await http
+      .post(
     uri,
     headers: {
       // HttpHeaders.authorizationHeader: 'Basic xxxxxxx',
       //'Content-Type': 'image/jpeg',
     },
     body: jsonEncode(data),
-  ).timeout(
+  )
+      .timeout(
     const Duration(seconds: 10),
     onTimeout: () {
       return http.Response(
@@ -284,7 +300,8 @@ Future<void> requestCompanyChat(
   }
 }
 
-Future<void> sendAnalyticsEvent(String eventName, Map<String, dynamic> parameters) async {
+Future<void> sendAnalyticsEvent(
+    String eventName, Map<String, dynamic> parameters) async {
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   Map<String, dynamic> newParams = {};
   // Не все параметры хотим давать в аналитику
@@ -300,4 +317,20 @@ Future<void> sendAnalyticsEvent(String eventName, Map<String, dynamic> parameter
     parameters: newParams,
   );
   Log.i('sendAnalyticsEvent', '$eventName, ${newParams.toString()}');
+}
+
+Future<Map<String, dynamic>> yandexOauth() async {
+  final flutterLoginYandexPlugin = FlutterLoginYandex();
+  final response = await flutterLoginYandexPlugin.signIn();
+  Map<String?, dynamic> oauthToken = Map<String?, dynamic>.from(response!);
+  String token = oauthToken['token'] ?? '';
+  if (token.isNotEmpty) {
+    final userInfo = await requestsGetJson(
+      'https://login.yandex.ru/info?&format=json',
+      authHeader: 'OAuth $token',
+    );
+    userInfo['token'] = token;
+    return userInfo;
+  }
+  return {};
 }

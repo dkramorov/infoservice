@@ -9,9 +9,21 @@ class DBSettingsInstance {
 }
 
 Future<Database> openSettingsDB() async {
-  const int dbVersion = 3; // Версия базы данных
+  const int dbVersion = 7; // Версия базы данных
   const String dbName = 'settingsDB.db';
+
   if (DBSettingsInstance.instance != null) {
+    /*
+    try {
+      int version = await DBSettingsInstance.instance!.getVersion();
+      print('-----> version $version');
+      return DBSettingsInstance.instance!;
+    } catch (e) {
+      print('_________ $e');
+      DBSettingsInstance.instance = null;
+    }
+
+    */
     return DBSettingsInstance.instance!;
   }
 
@@ -58,6 +70,7 @@ Future<Database> openSettingsDB() async {
   const String taskName = 'name text';
   const String taskState = 'state text';
   const String taskData = 'data text';
+  const String taskPriority = 'priority int';
 
   const String createTableBGTasks = 'CREATE TABLE IF NOT EXISTS'
       ' $tableBGTasksModel('
@@ -65,27 +78,34 @@ Future<Database> openSettingsDB() async {
       ', $taskName'
       ', $taskState'
       ', $taskData'
+      ', $taskPriority'
       ')';
 
-  void createTables(Database db) {
-    db.execute(createTableUserSettings);
-    db.execute(createTableBGTasks);
+  const String alterTableBGTasksModelAddPriority =
+      'ALTER TABLE $tableBGTasksModel add $taskPriority';
+
+  Future<void> createTables(Database db) async {
+    await db.execute(createTableUserSettings);
+    await db.execute(createTableBGTasks);
   }
 
   final Future<Database> database = openDatabase(
     join(await getDatabasesPath(), dbName),
 
-    onCreate: (db, version) {
-      createTables(db);
+    onCreate: (db, version) async {
+      await createTables(db);
     },
-    onUpgrade: (db, oldVersion, newVersion) {
+    onUpgrade: (db, oldVersion, newVersion) async {
       Log.i('--- DB UPGRADE ---', '$oldVersion=>$newVersion');
-      createTables(db);
-      if (oldVersion <= 2) {
-        db.execute(alterTableUserSettingsModelAddIsXmppRegistered);
+      await createTables(db);
+      if (oldVersion < 2) {
+        await db.execute(alterTableUserSettingsModelAddIsXmppRegistered);
       }
-      if (oldVersion <= 3) {
-        db.execute(alterTableUserSettingsModelAddRosterVersion);
+      if (oldVersion < 3) {
+        await db.execute(alterTableUserSettingsModelAddRosterVersion);
+      }
+      if (oldVersion < 4) {
+        await db.execute(alterTableBGTasksModelAddPriority);
       }
     },
     // Set the version. This executes the onCreate function and provides a

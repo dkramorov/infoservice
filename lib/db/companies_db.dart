@@ -240,7 +240,8 @@ List<String> companiesSQLHelper() {
       ' count integer,'
       ' icon text,'
       ' img text,'
-      ' position int,'
+      ' position integer,'
+      ' parents string,'
       ' searchTerms text'
       ')';
   queries.add(catalogueQuery);
@@ -323,46 +324,59 @@ List<String> companiesSQLHelper() {
 }
 
 Future<Database> openCompaniesDB() async {
-  const int dbVersion = 5; // Версия базы данных
+  const int dbVersion = 9; // Версия базы данных
   const dbName = 'companiesDB.db';
   if (DBCompaniesInstance.instance != null) {
     return DBCompaniesInstance.instance!;
   }
 
   /* companies sql helper */
-  void companiesSQL(Database db) {
+  Future<void> companiesSQL(Database db) async {
     List<String> companiesSQLQueries = companiesSQLHelper();
     for (int i = 0; i < companiesSQLQueries.length; i++) {
       Log.d('companiesSQLHelper',
           'query ${i + 1} from ${companiesSQLQueries.length}');
-      db.execute(companiesSQLQueries[i]);
+      await db.execute(companiesSQLQueries[i]);
     }
   }
 
-  void createTables(Database db) {
-    companiesSQL(db);
+  Future<void> createTables(Database db) async {
+    await companiesSQL(db);
   }
 
   final Future<Database> database = openDatabase(
     join(await getDatabasesPath(), dbName),
 
-    onCreate: (db, version) {
-      createTables(db);
+    onCreate: (db, version) async {
+      await createTables(db);
     },
-    onUpgrade: (db, oldVersion, newVersion) {
+    onUpgrade: (db, oldVersion, newVersion) async {
       Log.i('--- DB UPGRADE ---', '$oldVersion=>$newVersion');
-      createTables(db);
-      if (oldVersion <= 1) {
+      /*
+      if (oldVersion <= 8) {
+        Log.w('--- DROP TABLE ---', 'catalogue');
+        await db.rawQuery('DROP TABLE IF EXISTS catalogue');
+      }
+      */
+      await createTables(db);
+      if (oldVersion < 1) {
         const String alterCatalogueAddImg = 'ALTER TABLE catalogue add img TEXT';
         Log.d('ALTER TABLE', alterCatalogueAddImg);
-        db.execute(alterCatalogueAddImg);
-      } else if (oldVersion <= 2) {
+        await db.execute(alterCatalogueAddImg);
+      }
+      if (oldVersion < 2) {
         const String alterOrgsAddChat = 'ALTER TABLE orgs add chat TEXT';
         Log.d('ALTER TABLE', alterOrgsAddChat);
-        db.execute(alterOrgsAddChat);
-      } else if (oldVersion <= 4) {
+        await db.execute(alterOrgsAddChat);
+      }
+      if (oldVersion < 3) {
         Log.d('CREATE INDEX', orgsIndexChat);
-        db.execute(orgsIndexChat);
+        await db.execute(orgsIndexChat);
+      }
+      if (oldVersion < 6) {
+        const String alterCatalogueAddParents = 'ALTER TABLE catalogue add parents TEXT';
+        Log.d('ALTER TABLE', alterCatalogueAddParents);
+        await db.execute(alterCatalogueAddParents);
       }
     },
     // Set the version. This executes the onCreate function and provides a

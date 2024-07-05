@@ -4,5 +4,9 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:yx0269fd8522e74f3e8e9ff428f4f5cc87.oauth.yandex.ru</string>
+	</array>
 </dict>
 </plist>

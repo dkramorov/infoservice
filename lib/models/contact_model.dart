@@ -13,7 +13,8 @@ class ContactModel extends AbstractModel {
 
   @override
   Future<Database> openDB() async {
-    return openChatDB();
+    //print('___openChatDB___');
+    return await openChatDB();
   }
 
   Key key = UniqueKey();

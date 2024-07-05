@@ -35,15 +35,18 @@ class BGTasksModel extends AbstractModel {
   static const String sendTextGroupMessageTaskKey = 'sendTextGroupMessageTaskKey';
   static const String sendFileGroupMessageTaskKey = 'sendFileGrpupMessageTaskKey';
   static const String checkMeInGroupVCardTaskKey = 'checkMeInGroupVCardTaskKey';
-
+  static const String updateMyVCardTaskKey = 'updateMyVCardTaskKey';
   static const String loginUserTaskKey = 'loginUserTask';
 
   // SharedPreferences
   static const String addRosterPrefKey = 'addUserResult';
 
+  static const int authPriority = 10;
+
   @override
   Future<Database> openDB() async {
-    return openSettingsDB();
+    //print('___openSettingsDB___');
+    return await openSettingsDB();
   }
 
   Key key = UniqueKey();
@@ -52,6 +55,7 @@ class BGTasksModel extends AbstractModel {
   String? name;
   String? state;
   String? data;
+  int? priority;
 
   String getTableName() {
     return tableBGTasksModel;
@@ -65,6 +69,7 @@ class BGTasksModel extends AbstractModel {
     this.name,
     this.state,
     this.data,
+    this.priority,
   });
 
   @override
@@ -74,6 +79,7 @@ class BGTasksModel extends AbstractModel {
       'name': name,
       'state': state,
       'data': data,
+      'priority': priority,
     };
   }
 
@@ -84,13 +90,14 @@ class BGTasksModel extends AbstractModel {
       name: dbItem['name'],
       state: dbItem['state'],
       data: dbItem['data'],
+      priority: dbItem['priority'],
     );
   }
 
   @override
   String toString() {
     final String table = getTableName();
-    return '$table{id: $id, name: $name, state: $state, data: $data}';
+    return '$table{id: $id, name: $name, state: $state, data: $data, priority: $priority}';
   }
 
   Map<String, dynamic> getJsonData() {
@@ -106,6 +113,7 @@ class BGTasksModel extends AbstractModel {
       tableName,
       //where: 'state=?',
       //whereArgs: [taskCreatedKey],
+      orderBy: 'priority DESC',
     );
     if (maps.isEmpty) {
       return null;
@@ -114,12 +122,14 @@ class BGTasksModel extends AbstractModel {
     return toModel(task);
   }
 
-  static Future<BGTasksModel> createTask(String key, Map<String, dynamic> data) async {
+  static Future<BGTasksModel> createTask(String key,
+      Map<String, dynamic> data, {int priority = 1}) async {
     /* Вспомогательная функция для создания задачи */
     BGTasksModel task = BGTasksModel(
         name: key,
         state: BGTasksModel.taskCreatedKey,
         data: jsonEncode(data),
+        priority: priority,
     );
     int pk = await task.insert2Db();
     task.id = pk;
@@ -129,26 +139,31 @@ class BGTasksModel extends AbstractModel {
   static Future<BGTasksModel> createLoginUserTask() async {
     /* Создаем задачу на регистрацию в xmpp
     */
-    return await createTask(BGTasksModel.loginUserTaskKey, {});
+    return await createTask(BGTasksModel.loginUserTaskKey,
+        {}, priority: authPriority);
   }
 
   static Future<BGTasksModel> createRegisterTask(Map<String, dynamic> userData) async {
     /* Создаем задачу на регистрацию в xmpp
     */
-    await sendAnalyticsEvent('login', userData);
-    return await createTask(BGTasksModel.registerUserTaskKey, userData);
+    // 'value is String || value is num': 'string' OR 'number'
+    //await sendAnalyticsEvent('login', userData); // isSimpleReg=false
+    return await createTask(BGTasksModel.registerUserTaskKey,
+        userData, priority: authPriority);
   }
 
   static Future<BGTasksModel> createUnregisterTask() async {
     /* Создаем задачу на выход из xmpp
     */
-    return await createTask(BGTasksModel.unregisterUserTaskKey, {});
+    return await createTask(BGTasksModel.unregisterUserTaskKey,
+        {}, priority: authPriority);
   }
 
   static Future<BGTasksModel> createCheckRegTask() async {
     /* Создаем задачу на проверку авторизации
     */
-    return await createTask(BGTasksModel.checkRegUserTaskKey, {});
+    return await createTask(BGTasksModel.checkRegUserTaskKey,
+        {}, priority: authPriority);
   }
 
   static Future<BGTasksModel> loadRosterTask() async {
@@ -197,4 +212,9 @@ class BGTasksModel extends AbstractModel {
     return await createTask(BGTasksModel.checkMeInGroupVCardTaskKey, data);
   }
 
+  static Future<BGTasksModel> updateMyVCardTask(Map<String, dynamic> data) async {
+    /* Создаем задачу на обновление своего vCard
+    */
+    return await createTask(BGTasksModel.updateMyVCardTaskKey, data);
+  }
 }

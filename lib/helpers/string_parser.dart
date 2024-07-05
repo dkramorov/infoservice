@@ -33,3 +33,18 @@ String translit(String text) {
 String uri2rus(String url) {
   return Uri.decodeFull(url);
 }
+
+String? validateName(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return 'Не оставляйте имя пустым';
+  }
+  return null;
+}
+
+String? validatePassword(String? value) {
+  const int minLen = 3;
+  if (value != null && value.length < minLen || value!.trim().isEmpty) {
+    return 'Минимальная длина - $minLen символа';
+  }
+  return null;
+}

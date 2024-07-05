@@ -1,14 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:infoservice/helpers/dialogs.dart';
 import 'package:infoservice/models/bg_tasks_model.dart';
 import 'package:infoservice/models/user_settings_model.dart';
-import 'package:infoservice/services/shared_preferences_manager.dart';
 import 'package:infoservice/widgets/rounded_input_text.dart';
 import 'package:infoservice/widgets/submit_button.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/phone_mask.dart';
 import '../helpers/log.dart';

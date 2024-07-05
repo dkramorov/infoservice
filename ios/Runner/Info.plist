@@ -94,5 +94,23 @@
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>primaryyandexloginsdk</string>
+		<string>secondaryyandexloginsdk</string>
+	</array>
+	<key>YAClientId</key>
+	<string>0269fd8522e74f3e8e9ff428f4f5cc87</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>YandexLoginSDK</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>yx0269fd8522e74f3e8e9ff428f4f5cc87</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

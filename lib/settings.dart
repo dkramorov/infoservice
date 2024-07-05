@@ -17,6 +17,7 @@ const String SIP_WSS = 'wss://$SIP_DOMAIN:7443';
 const String JABBER_SERVER = 'chat.masterme.ru';
 const int JABBER_PORT = 5222; // В подключение надо строкой передавать
 const String JABBER_REG_ENDPOINT = '/jabber/register_user/';
+const String JABBER_REG_OAUTH_ENDPOINT = '/jabber/register_user_oauth/';
 const String JABBER_VCARD_ENDPOINT = '/jabber/vcard/';
 const String JABBER_GROUP_VCARD_ENDPOINT = '/jabber/group_vcard/';
 const String JABBER_CONTACTS_ENDPOINT = '/jabber/set_device_contacts/';
@@ -27,7 +28,8 @@ const String JABBER_NOTIFY_BATCH_ENDPOINT = '/jabber/notification_batch/masterme
 const String YANDEX_METRIKA_KEY = '7b18a104-24f3-4df5-a30a-68a1841f3e2b';
 const DB_SERVER = 'https://chat.masterme.ru';
 const DB_UPDATE_ENDPOINT = '/media/app_json/companies_db_helper.json';
-const DB_UPDATE_ARCHIVE_ENDPOINT = '/media/companies_db_helper.tar.gz';
+//const DB_UPDATE_ARCHIVE_ENDPOINT = '/media/companies_db_helper.tar.gz';
+const DB_UPDATE_ARCHIVE_ENDPOINT = '/media/companies.tar.gz';
 const DB_LOGO_PATH = '/media/'; // Полный путь передаем, начиная с /media/
 // Маршут, который говорит какая версия для обновления доступна
 const DB_UPDATE_VERSION = '/media/app_json/version.json';

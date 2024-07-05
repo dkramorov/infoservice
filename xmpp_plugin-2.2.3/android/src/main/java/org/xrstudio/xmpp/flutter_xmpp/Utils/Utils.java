@@ -241,6 +241,7 @@ public class Utils {
 
     private static Message parseEventStanzaMessage(Message message) {
         try {
+
             EventElement eventElement = message.getExtension(Constants.event, Constants.eventPubSubNameSpace);
             if (eventElement != null) {
                 List<ExtensionElement> itemExtensions = eventElement.getExtensions();
@@ -251,6 +252,7 @@ public class Utils {
                         PayloadItem<?> it = (PayloadItem<?>) items.get(j);
                         SimplePayload payloadElement = (SimplePayload) it.getPayload();
                         String xmlStanza = (String) payloadElement.toXML(null);
+                        //Log.d("RECEIVEDSTANZA", xmlStanza); // Can only parse message, iq or presence, not metadata
                         message = (Message) PacketParserUtils.parseStanza(xmlStanza);
                     }
                 }

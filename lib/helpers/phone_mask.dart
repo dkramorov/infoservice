@@ -6,18 +6,28 @@ import '../settings.dart';
 String cleanPhone(String phone) {
   /* Приведение телефона к цифровому виду
      Надо сплитить по @ иначе почему-то все восьмерки телефон дублируется
+     Теперь телефон упразднили
+     Логин может быть любым, поэтому приводим к телефону только то,
+     что явно подошло под телефон
   */
-  String newPhone = phone.split('@')[0].replaceAll(RegExp('[^0-9]+'), '');
+  phone = phone.split('@')[0];
+  String newPhone = phone.replaceAll(RegExp('[^0-9]+'), '');
   if (newPhone.startsWith('7')) {
     newPhone = '8${newPhone.substring(1)}';
   }
-  return newPhone;
+  if (newPhone.length == 11 && (newPhone.startsWith('88') || newPhone.startsWith('89'))) {
+    return newPhone;
+  }
+  return phone;
 }
 
 // PHONE_MASK == 1 => 8 (800) 700-11-78
 String phoneMaskHelper1(String phone) {
-  String newPhone = phone.replaceAll(RegExp('[^0-9]+'), '');
+  String newPhone = cleanPhone(phone);
   int newPhoneLen = newPhone.length;
+  if (newPhoneLen != 11) {
+    return phone;
+  }
   String result = '';
 
   for (int i = 0; i < newPhoneLen; i++) {
@@ -55,8 +65,11 @@ String phoneMaskHelper1(String phone) {
 
 // PHONE_MASK == 2 => 8 (###) #-###-###
 String phoneMaskHelper2(String phone) {
-  String newPhone = phone.replaceAll(RegExp('[^0-9]+'), '');
+  String newPhone = cleanPhone(phone);
   int newPhoneLen = newPhone.length;
+  if (newPhoneLen != 11) {
+    return phone;
+  }
   String result = '';
 
   for (int i = 0; i < newPhoneLen; i++) {
@@ -117,3 +130,19 @@ class PhoneFormatter extends TextInputFormatter {
     );
   }
 }
+
+String? validatePhone(String? value) {
+  if (value != null && value.length < 11 || value!.trim().isEmpty) {
+    return 'Неверный номер телефона';
+  }
+  return null;
+}
+
+String cleanUpPhone(String? value) =>
+    value
+        ?.replaceAll(' ', '')
+        .replaceAll('+', '')
+        .replaceAll('-', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '') ??
+        '';

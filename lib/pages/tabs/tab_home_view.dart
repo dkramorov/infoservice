@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:infoservice/helpers/context_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/companies/catalogue.dart';
@@ -16,6 +17,8 @@ import '../../settings.dart';
 import '../../widgets/companies/cat_row.dart';
 import '../../widgets/companies/catalogue_in_update.dart';
 import '../../widgets/companies/floating_search_widget.dart';
+import '../../widgets/top_bar_item.dart';
+import '../companies/cats_listing_screen.dart';
 import '../companies/companies_listing_screen.dart';
 
 class TabHomeView extends StatefulWidget {
@@ -53,9 +56,18 @@ class _TabHomeViewState extends State<TabHomeView> {
 
   late Timer updateTimer;
 
+  int _currentPage = 0;
+  final PageController _pageController = PageController(initialPage: 0);
+
+  void _handlePageChange() {
+    _currentPage = _pageController.page?.round() ?? 0;
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    _pageController.addListener(_handlePageChange);
     loadRubrics();
     // Из фона не приезджает stream?
     updateSubscription =
@@ -72,8 +84,7 @@ class _TabHomeViewState extends State<TabHomeView> {
       bool catalogueLoadedAction =
           preferences.getBool(UpdateManager.catalogueLoadedAction) ?? false;
       if (catalogueLoadedAction) {
-        print(
-            'UpdateManager.updateStream.updateSection section'
+        print('UpdateManager.updateStream.updateSection section'
             ' ${UpdateManager.catalogueLoadedAction}');
         preferences.setBool(UpdateManager.catalogueLoadedAction, false);
         loadRubrics();
@@ -93,6 +104,7 @@ class _TabHomeViewState extends State<TabHomeView> {
   void dispose() {
     updateSubscription?.cancel();
     updateTimer.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -101,7 +113,7 @@ class _TabHomeViewState extends State<TabHomeView> {
       isRubricsSorted = false;
       setState(() {
         rubrics = result;
-        sortRubrics();
+        //sortRubrics(); // cортировка есть в getFullCatalogue
       });
     });
   }
@@ -181,74 +193,6 @@ class _TabHomeViewState extends State<TabHomeView> {
     );
   }
 
-  Widget buildRubricForRowMore() {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          widget.setStateCallback({
-            'setPageview': 5,
-          });
-        },
-        child: Column(
-          children: [
-            const SizedBox(
-              height: 60.0,
-              child: Icon(
-                Icons.more_horiz,
-                size: 42.0,
-                color: tealColor,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5.0),
-              child: const Text(
-                'Показать все',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildRubricForRow(Catalogue rubric) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(context, CompaniesListingScreen.id, arguments: {
-            sipHelper,
-            xmppHelper,
-            rubric,
-          });
-        },
-        child: Column(
-          children: [
-            SizedBox(
-              height: 60.0,
-              child: buildAvatar(rubric),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5.0),
-              child: Text(
-                rubric.name ?? '',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget buildRubricForSlider(Catalogue rubric) {
     return GestureDetector(
       onTap: () {
@@ -295,6 +239,155 @@ class _TabHomeViewState extends State<TabHomeView> {
   }
 
   Widget buildCatsSlider() {
+    if (rubrics.length < 6) {
+      return Container();
+    }
+    final List<dynamic> item = [
+      {
+        "id": 0,
+        "list": [
+          {
+            "id": 0,
+            "big": true,
+            "color-1": 234,
+            "color-2": 243,
+            "color-3": 250,
+            "name": "Авиакомпании",
+            "col": 38,
+            "height": 100,
+            "img": "plane",
+          },
+          {
+            "id": 1,
+            "big": false,
+            "color-1": 250,
+            "color-2": 236,
+            "color-3": 236,
+            "name": "Страхование",
+            "col": 137,
+            "height": 74,
+            "img": "lifesaving",
+          },
+          {
+            "id": 2,
+            "big": false,
+            "color-1": 243,
+            "color-2": 241,
+            "color-3": 238,
+            "name": "Красота",
+            "col": 80,
+            "height": 65,
+            "img": "towel",
+          },
+        ],
+      },
+      {
+        "id": 1,
+        "list": [
+          {
+            "id": 3,
+            "big": false,
+            "color-1": 254,
+            "color-2": 243,
+            "color-3": 252,
+            "name": "Банки",
+            "col": 137,
+            "height": 66,
+            "img": "pig",
+          },
+          {
+            "id": 4,
+            "big": false,
+            "color-1": 254,
+            "color-2": 240,
+            "color-3": 228,
+            "name": "Туроператоры",
+            "col": 80,
+            "height": 67,
+            "img": "slippers",
+          },
+          {
+            "id": 5,
+            "big": true,
+            "color-1": 238,
+            "color-2": 241,
+            "color-3": 248,
+            "name": "Операторы сотовой связи",
+            "col": 20,
+            "height": 0,
+            "img": null,
+          },
+        ],
+      },
+    ];
+    onPressed(int catId) async {
+      Catalogue? cat = await Catalogue().getById(catId);
+      if (cat == null) {
+        return;
+      }
+      int childrenCount = await Catalogue().getChildrenCount(parents: '${cat.parents}_${cat.id}');
+      Log.d('onTap', 'cat=${cat.id}, parents=${cat.parents}, children_count=$childrenCount');
+      Future.delayed(Duration.zero, () {
+        if (childrenCount > 0) {
+          Navigator.pushNamed(context, CatsListingScreen.id, arguments: {
+            sipHelper,
+            xmppHelper,
+            cat,
+          });
+        } else {
+          Navigator.pushNamed(context, CompaniesListingScreen.id, arguments: {
+            sipHelper,
+            xmppHelper,
+            cat,
+          });
+        }
+      });
+    }
+    for (int i = 0; i < 3; i++) {
+      item[0]['list'][i]['id'] = rubrics[i].id;
+      item[0]['list'][i]['name'] = rubrics[i].name;
+      item[0]['list'][i]['col'] = rubrics[i].count;
+      item[0]['list'][i]['onPressed'] = onPressed;
+    }
+    for (int i = 3; i < 6; i++) {
+      item[1]['list'][i - 3]['id'] = rubrics[i].id;
+      item[1]['list'][i - 3]['name'] = rubrics[i].name;
+      item[1]['list'][i - 3]['col'] = rubrics[i].count;
+      item[1]['list'][i - 3]['onPressed'] = onPressed;
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 208,
+          child: PageView.builder(
+            controller: _pageController,
+            scrollDirection: Axis.horizontal,
+            itemCount: imageSliders.length,
+            itemBuilder: (context, index) => Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: index == 0 ? 0 : 16,
+              ),
+              child: Wrap(
+                runSpacing: 8,
+                spacing: 9,
+                children: item[index]['list']
+                    .map<Widget>(
+                      (Map<String, dynamic> listItem) =>
+                          TopBarItem(listItem, size: context.screenSize),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+
+    /* /// Старый вариант
     List<Widget> topCats = [];
     for (int i = 0; i < 10; i++) {
       if (rubrics[i].img != null &&
@@ -345,83 +438,7 @@ class _TabHomeViewState extends State<TabHomeView> {
         }).toList(),
       ),
     ]);
-  }
-
-  Widget buildCatalogueOld() {
-    if (rubrics.isEmpty) {
-      return Column(
-        children: [
-          SIZED_BOX_H30,
-          CatalogueInUpdate(),
-          SIZED_BOX_H24,
-          buildSlider(),
-        ],
-      );
-    }
-    sortRubrics();
-    return Column(
-      children: [
-        // Подложка для поиска
-        buildPanelForSearch(),
-        SIZED_BOX_H12,
-        Expanded(
-          child: ListView(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(45),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.shade300,
-                      offset: const Offset(-2, 0),
-                      blurRadius: 7,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildRubricForRow(rubrics[0]),
-                        buildRubricForRow(rubrics[1]),
-                        buildRubricForRow(rubrics[2]),
-                        buildRubricForRow(rubrics[3]),
-                      ],
-                    ),
-                    SIZED_BOX_H20,
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildRubricForRow(rubrics[5]),
-                        buildRubricForRow(rubrics[6]),
-                        buildRubricForRow(rubrics[7]),
-                        buildRubricForRowMore(),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              SIZED_BOX_H24,
-              buildSlider(),
-              /*
-              SIZED_BOX_H24,
-              IconButton(
-                icon: const Icon(
-                  Icons.new_releases,
-                ),
-                onPressed: () {
-                  Navigator.pushNamed(context, NewMainPage.id, arguments: {});
-                },
-              ),
-              */
-            ],
-          ),
-        ),
-      ],
-    );
+    */
   }
 
   /* Вкладка со всеми категориями */

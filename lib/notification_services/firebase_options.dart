@@ -15,7 +15,8 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(_unsupportedMsg);
+        //throw UnsupportedError(_unsupportedMsg);
+        return macos;
       case TargetPlatform.fuchsia:
         throw UnsupportedError(_unsupportedMsg);
       case TargetPlatform.linux:

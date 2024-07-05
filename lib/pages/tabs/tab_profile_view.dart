@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:infoservice/helpers/context_extensions.dart';
 import 'package:infoservice/helpers/dialogs.dart';
 import 'package:infoservice/models/user_chat_model.dart';
+import 'package:infoservice/pages/profile/about_page.dart';
 import 'package:infoservice/services/shared_preferences_manager.dart';
-import 'package:infoservice/widgets/terms_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,11 +22,15 @@ import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../services/update_manager.dart';
 import '../../settings.dart';
-import '../../widgets/chat/avatar_widget.dart';
 import '../../widgets/chat/online_indicator.dart';
+import '../../widgets/dialog_md.dart';
 import '../../widgets/my_elevated_button_widget.dart';
 import '../../widgets/rounded_button_widget.dart';
+import '../../widgets/user_support_button.dart';
+import '../app_asset_lib.dart';
 import '../authorization.dart';
+import '../profile/settings_page.dart';
+import '../themes.dart';
 
 class TabProfileView extends StatefulWidget {
   final SIPUAManager? sipHelper;
@@ -70,23 +77,34 @@ class _TabProfileViewState extends State<TabProfileView> {
   final ImagePicker _imagePicker = ImagePicker();
 
   Future<void> checkUser() async {
-    if (userSettings == null) {
-      userSettings = await UserSettingsModel().getUser();
-      setState(() {});
-    }
-    if (userSettings != null) {
-      if (isRegistered != (userSettings?.isXmppRegistered == 1)) {
-        if (user == null) {
-          await getUser(userSettings?.phone ?? '');
-        }
-      }
-    }
-
     SharedPreferences prefs =
         await SharedPreferencesManager.getSharedPreferences();
     setState(() {
       hasInternet = prefs.getBool('checkInternetConnection') ?? false;
     });
+
+    if (userSettings != null) {
+      return;
+    }
+    userSettings ??= await UserSettingsModel().getUser();
+    if (userSettings != null) {
+      setState(() {
+        name = userSettings!.name ?? '';
+        email = userSettings!.email ?? '';
+        gender = userSettings!.gender ?? 1;
+        birthday = userSettings!.birthday ?? '';
+        if (userSettings!.isDropped ?? false) {
+          dropPersonalDataFlag = 1;
+        }
+        if (userSettings!.photo != null && userSettings!.photo != '') {
+          photo = userSettings!.photo!;
+        }
+        print('received ${userSettings.toString()}');
+        nameController.text = name;
+        emailController.text = email;
+        birthdayController.text = birthday;
+      });
+    }
   }
 
   @override
@@ -124,12 +142,10 @@ class _TabProfileViewState extends State<TabProfileView> {
   }
 
   Future<void> dropAccount() async {
-    if (isRegistered) {
-      userSettings = await UserSettingsModel().getUser();
-      if (userSettings != null) {
-        userSettings?.updatePartial(userSettings?.id, {'isDropped': true});
-        await logout();
-      }
+    userSettings = await UserSettingsModel().getUser();
+    if (userSettings != null) {
+      userSettings!.updatePartial(userSettings!.id, {'isDropped': true});
+      await logout();
     }
   }
 
@@ -142,41 +158,6 @@ class _TabProfileViewState extends State<TabProfileView> {
         sipHelper,
         xmppHelper,
       });
-    });
-  }
-
-  Future<void> getUser(String login) async {
-    UserChatModel defaultUser = UserChatModel(login: login);
-
-    user = await UserChatModel().getByLogin(login) ?? defaultUser;
-    setState(() {
-      if (user!.name != null) {
-        nameController.text = user!.name!;
-        name = nameController.text;
-      }
-      if (user!.email != null) {
-        emailController.text = user!.email!;
-        email = emailController.text;
-      }
-      if (user!.birthday != null) {
-        birthdayController.text = user!.birthday!;
-        birthday = birthdayController.text;
-      }
-      if (user!.gender != null) {
-        gender = user!.gender!;
-      }
-      if (user!.dropPersonalData != null) {
-        dropPersonalDataFlag = user!.dropPersonalData!;
-      }
-
-      Log.i(tag, 'fetched user from db by login $login: ${user.toString()}');
-    });
-  }
-
-  void ifPhotoDownloaded(String path) {
-    /* Если фотка загрузилась с сервера */
-    setState(() {
-      photo = path;
     });
   }
 
@@ -208,30 +189,24 @@ class _TabProfileViewState extends State<TabProfileView> {
     Map<String, dynamic> values = {
       'photo': dest.path,
     };
-    if (user != null) {
-      user!.photo = dest.path;
-      if (user!.id != null) {
-        await user!.updatePartial(
-          user!.id,
-          values,
-        );
-      } else {
-        int pk = await user!.insert2Db();
-        user!.id = pk;
-      }
+
+    userSettings = await UserSettingsModel().getUser();
+    if (userSettings != null) {
+      userSettings!.photo = values['photo'];
+      userSettings!.updatePartial(userSettings!.id, values);
+      await BGTasksModel.updateMyVCardTask({
+        'PHOTO': values['photo'],
+      });
     }
-    // Обновить UI
-    setState(() {});
+    setState(() {
+      photo = values['photo'];
+    });
     //setStateCallback({'photo': dest.path});
     //uploadImage(bytes, imageName);
   }
 
+  // Старый вариант
   Widget buildView() {
-    ImageProvider photo = const AssetImage(DEFAULT_AVATAR);
-    if (user != null && user!.photo != null && user!.photo != '') {
-      photo = FileImage(File(user!.photo!));
-    }
-
     return Container(
       color: Colors.white,
       child: ListView(
@@ -264,7 +239,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                           Padding(
                             padding: const EdgeInsets.only(left: 25.0),
                             child: Text(
-                              user?.login ?? 'Ваш профиль',
+                              userSettings?.phone ?? 'Ваш профиль',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 20.0,
@@ -284,17 +259,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
-                              Container(
-                                width: 140.0,
-                                height: 140.0,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  image: DecorationImage(
-                                    image: photo,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
+                              buildPhotoImage(),
                             ],
                           ),
                           Padding(
@@ -345,10 +310,10 @@ class _TabProfileViewState extends State<TabProfileView> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           mainAxisSize: MainAxisSize.max,
                           children: [
-                            Column(
+                            const Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Text(
                                   'Персональная информация',
                                   style: TextStyle(
@@ -370,8 +335,8 @@ class _TabProfileViewState extends State<TabProfileView> {
                           ],
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(
+                      const Padding(
+                        padding: EdgeInsets.only(
                           left: 25.0,
                           right: 25.0,
                           top: 25.0,
@@ -382,7 +347,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                             Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Text(
                                   'Ваше имя',
                                   style: TextStyle(
@@ -422,8 +387,8 @@ class _TabProfileViewState extends State<TabProfileView> {
                           ],
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(
+                      const Padding(
+                        padding: EdgeInsets.only(
                           left: 25.0,
                           right: 25.0,
                           top: 25.0,
@@ -434,7 +399,7 @@ class _TabProfileViewState extends State<TabProfileView> {
                             Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Text(
                                   'Ваш Email',
                                   style: TextStyle(
@@ -578,7 +543,10 @@ class _TabProfileViewState extends State<TabProfileView> {
                   ),
                 ),
               ),
-              const TermsWidget(),
+
+              /* Теперь нельзя т/к Expanded - высоты нет */
+              //const TermsWidget(),
+
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -586,8 +554,8 @@ class _TabProfileViewState extends State<TabProfileView> {
                     Container(
                       padding: const EdgeInsets.only(left: 15.0),
                       child: TextButton(
-                        child: Row(
-                          children: const [
+                        child: const Row(
+                          children: [
                             Icon(
                               Icons.delete_forever,
                               color: Colors.red,
@@ -709,27 +677,16 @@ class _TabProfileViewState extends State<TabProfileView> {
       'email': email,
       'birthday': birthday,
       'gender': gender,
-      'dropPersonalData': dropPersonalDataFlag,
+      'isDropped': dropPersonalDataFlag == 1 ? 't' : 'f',
     };
-    if (user != null && user!.id != null) {
-      await user!.updatePartial(
-        user!.id,
-        values,
-      );
-    } else {
-      if (userSettings != null) {
-        user = UserChatModel(
-            name: name,
-            email: email,
-            birthday: birthday,
-            gender: gender,
-            dropPersonalData: dropPersonalDataFlag);
-        user!.id = await user!.insert2Db();
-      }
-    }
+
     if (userSettings != null) {
-      values.remove('dropPersonalData');
       userSettings?.updatePartial(userSettings?.id, values);
+      await BGTasksModel.updateMyVCardTask({
+        'FN': name,
+        'BDAY': birthday,
+        'EMAIL': email,
+      });
     }
     setState(() {});
   }
@@ -895,31 +852,373 @@ class _TabProfileViewState extends State<TabProfileView> {
           );
   }
 
+  Widget buildPhotoImage() {
+    ImageProvider userPhoto = const AssetImage(DEFAULT_AVATAR);
+
+    if (photo != '' && photo != DEFAULT_AVATAR) {
+      if (photo.startsWith('http')) {
+        return CachedNetworkImage(
+          height: 120.0,
+          width: 120.0,
+          imageUrl: photo,
+          fit: BoxFit.cover,
+          imageBuilder: (context, imageProvider) => Container(
+            width: 120.0,
+            height: 120.0,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              image: DecorationImage(
+                image: imageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        );
+      } else {
+        userPhoto = FileImage(File(photo));
+      }
+    }
+
+    return Container(
+      width: 140.0,
+      height: 140.0,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        image: DecorationImage(
+          image: userPhoto,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  // Старый вариант
+  Widget buildAuthorizedView() {
+    return SizedBox(
+      width: context.screenSize.width,
+      height: context.screenSize.height,
+      child: Stack(
+        children: [
+          Container(
+            height: 290,
+            width: context.screenSize.width,
+            decoration: BoxDecoration(
+              color: blue,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(16),
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: SizedBox(
+                    width: context.screenSize.width * 0.6,
+                    child: Image.asset(AssetLib.union1),
+                  ),
+                ),
+                Positioned(
+                  top: 60,
+                  left: 32,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
+                        fit: StackFit.loose,
+                        children: <Widget>[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              buildPhotoImage(),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: 90.0,
+                              right: 100.0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                GestureDetector(
+                                  child: const CircleAvatar(
+                                    backgroundColor: tealColor,
+                                    radius: 25.0,
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    handleImageSelection();
+                                  },
+                                )
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: w500,
+                          color: Colors.white,
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+          Positioned(
+            top: 206,
+            left: 16,
+            child: Column(
+              children: [
+                Container(
+                  width: context.screenSize.width - 32,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Column(
+                      children: [
+                        ProfileItemWidget(
+                          text: 'Ваши данные',
+                          icon: 'settings',
+                          onTap: () async {
+                            Navigator.pushNamed(context, SettingsPage.id,
+                                arguments: {
+                                  sipHelper,
+                                  xmppHelper,
+                                });
+                          },
+                        ),
+                        ProfileItemWidget(
+                          text: 'Политика конфиденциальности',
+                          icon: 'file',
+                          onTap: () {
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return DialogMDWidget(
+                                      mdFileName: 'privacy_policy.md');
+                                });
+                          },
+                        ),
+                        ProfileItemWidget(
+                          text: 'Условия предоставления услуг',
+                          icon: 'file',
+                          onTap: () {
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return DialogMDWidget(
+                                      mdFileName: 'terms_and_conditions.md');
+                                });
+                          },
+                        ),
+                        ProfileItemWidget(
+                          text: 'Выйти',
+                          icon: 'logout',
+                          onTap: () async {
+                            await logout();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const UserSupportButton(),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget buildUnauthorizedView() {
+    /* Показываем для неавторизованного пользователя */
+    /* /// Старый вариант
+    return Stack(
+      children: [
+        RoundedButtonWidget(
+          text: const Text('Вход / Регистрация'),
+          minWidth: 200.0,
+          onPressed: () {
+            Navigator.pushNamed(context, AuthScreenWidget.id);
+          },
+        ),
+        Positioned(
+          left: 0,
+          top: 0,
+          child: OnlineIndicator(
+            width: 0.26 * 50,
+            height: 0.26 * 50,
+            isOnline: hasInternet,
+          ),
+        ),
+      ],
+    );
+    */
+
+    return SizedBox(
+      width: context.screenSize.width,
+      height: context.screenSize.height,
+      child: Stack(
+        children: [
+          Container(
+            height: 290,
+            width: context.screenSize.width,
+            decoration: BoxDecoration(
+              color: blue,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(16),
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: SizedBox(
+                    width: context.screenSize.width * 0.6,
+                    child: Image.asset(AssetLib.union1),
+                  ),
+                ),
+                Positioned(
+                  top: 68,
+                  left: 32,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Войдите',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: w500,
+                          color: white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Чтобы делать звонки\nи общаться в чатах',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: w500,
+                          color: white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide.none,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          backgroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          Navigator.pushNamed(context, AuthScreenWidget.id);
+                        },
+                        child: Text(
+                          'Войти',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: w500,
+                            color: black,
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+          Positioned(
+            top: 230,
+            left: 16,
+            child: Column(
+              children: [
+                Container(
+                  width: context.screenSize.width - 32,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Column(
+                      children: [
+                        ProfileItemWidget(
+                          text: 'Политика конфиденциальности',
+                          icon: 'file',
+                          onTap: () {
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return DialogMDWidget(
+                                      mdFileName: 'privacy_policy.md');
+                                });
+                          },
+                        ),
+                        ProfileItemWidget(
+                          text: 'Условия предоставления услуг',
+                          icon: 'file',
+                          onTap: () {
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return DialogMDWidget(
+                                      mdFileName: 'terms_and_conditions.md');
+                                });
+                          },
+                        ),
+                        ProfileItemWidget(
+                          text: 'О приложении',
+                          icon: 'logo',
+                          onTap: () {
+                            Navigator.pushNamed(context, AboutPage.id,
+                                arguments: {
+                                  sipHelper,
+                                  xmppHelper,
+                                });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Неавторизованным не показываем
+                //const UserSupportButton(),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
+      //child: userSettings != null ? buildView() : buildUnauthorizedView(),
       child: userSettings != null
-          ? buildView()
-          : Stack(
-              children: [
-                RoundedButtonWidget(
-                  text: const Text('Вход / Регистрация'),
-                  minWidth: 200.0,
-                  onPressed: () {
-                    Navigator.pushNamed(context, AuthScreenWidget.id);
-                  },
-                ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: OnlineIndicator(
-                    width: 0.26 * 50,
-                    height: 0.26 * 50,
-                    isOnline: hasInternet,
-                  ),
-                ),
-              ],
-            ),
+          ? buildAuthorizedView()
+          : buildUnauthorizedView(),
     );
   }
 }

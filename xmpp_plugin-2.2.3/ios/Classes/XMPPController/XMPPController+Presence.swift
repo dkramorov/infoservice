@@ -7,10 +7,7 @@ extension XMPPController {
     func getPresenceOfUser(withJid jid : String, withStrem: XMPPStream, objXMPP : XMPPController) {
         /**
          https://stackoverflow.com/questions/56713245/xmpp-how-to-query-specific-rosters-presence
-         
          https://stackoverflow.com/questions/4029924/xmpp-how-to-request-server-for-presence-status-of-a-users-contacts?rq=1
-         
-         
         */
         //let objPresence : XMPPPresence = XMPPPresence.init()
         //objPresence.
@@ -22,7 +19,8 @@ extension XMPPController {
             return
         }
         let obj = objXMPP.xmppRosterStorage?.user(for: vJid, xmppStream: withStrem, managedObjectContext: nil)
-        printLog("obj: \(obj)")
+        //let obj = objXMPP.xmppRosterStorage?.user(for: vJid) // XMPPUserMemoryStorageObject
+        printLog("obj: \(String(describing: obj))")
     }
     
     //MARK: -
@@ -47,7 +45,6 @@ extension XMPPController {
         }
         /**
          <presence xmlns="jabber:client" from="test@xrstudio.in/iOS" to="test@xrstudio.in/iOS" type="available"></presence>
-         
          <presence xmlns="jabber:client" from="test1@xrstudio.in/iOS" to="test@xrstudio.in/iOS" type="available"><delay xmlns="urn:xmpp:delay" stamp="2022-01-20T09:10:51Z" from="test1@xrstudio.in/iOS"></delay></presence>
          */
         let vFrom : String = presence.fromStr ?? ""

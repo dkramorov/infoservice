@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:infoservice/widgets/terms_widget.dart';
 
-import '../../settings.dart';
 import '../helpers/dialogs.dart';
 import '../pages/register/reg_wizard_screen.dart';
+import '../pages/themes.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
 
@@ -32,6 +31,24 @@ class RegLinksWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            regProcess(context, 'reg');
+          },
+          child: Text(
+            'Зарегистрироваться',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: w500,
+              color: blue,
+            ),
+          ),
+        ),
+      ],
+    );
+    /* /// Старый вариант
     return Column(
       children: [
         SIZED_BOX_H20,
@@ -69,5 +86,6 @@ class RegLinksWidget extends StatelessWidget {
         const TermsWidget(),
       ],
     );
+    */
   }
 }

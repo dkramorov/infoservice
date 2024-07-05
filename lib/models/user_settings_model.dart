@@ -10,6 +10,7 @@ import '../helpers/log.dart';
 import '../helpers/network.dart';
 import '../helpers/phone_mask.dart';
 import '../services/shared_preferences_manager.dart';
+import '../settings.dart';
 import 'abstract_model.dart';
 
 
@@ -20,7 +21,8 @@ class UserSettingsModel extends AbstractModel {
 
   @override
   Future<Database> openDB() async {
-    return openSettingsDB();
+    //print('___openSettingsDB___');
+    return await openSettingsDB();
   }
 
   Key key = UniqueKey();
@@ -98,7 +100,7 @@ class UserSettingsModel extends AbstractModel {
       email: dbItem['email'],
       token: dbItem['token'],
       phone: dbItem['phone'],
-      isDropped: dbItem['isDropped'],
+      isDropped: dbItem['isDropped'] == 't' ? true : false,
       isXmppRegistered: dbItem['isXmppRegistered'],
       rosterVersion: dbItem['rosterVersion'],
     );
@@ -208,6 +210,13 @@ class UserSettingsModel extends AbstractModel {
     }
     final Map<String, dynamic> user = maps[0];
     return toModel(user);
+  }
+
+  String getPhoto() {
+    if (photo != null && photo != '' && photo != DEFAULT_AVATAR) {
+      return photo!;
+    }
+    return DEFAULT_AVATAR;
   }
 
 }

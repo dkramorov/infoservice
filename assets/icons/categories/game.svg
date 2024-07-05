@@ -1,0 +1,14 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g id="24 / Game">
+        <path id="Vector 6794"
+            d="M1.31623 17.7864L2.55869 9.08919C2.81191 7.31663 4.32999 6 6.12056 6H17.942C19.6967 6 21.1843 7.29022 21.4325 9.02724L22.6082 17.2576C22.8382 18.8671 21.9374 20.425 20.4279 21.0288C18.986 21.6056 17.3366 21.1707 16.3664 19.9581L15.3421 18.6776C14.4938 17.6173 13.2095 17 11.8516 17C10.666 17 9.52905 17.471 8.69074 18.3093L6.58114 20.4189C5.6369 21.3631 4.19438 21.5972 3 21C1.80562 20.4028 1.12738 19.1083 1.31623 17.7864Z"
+            stroke="#262729" stroke-width="1.5" />
+        <path id="Vector 6797" d="M12 6V2" stroke="#262729" stroke-width="1.5"
+            stroke-linecap="round" />
+        <path id="Vector 6795" d="M8 10V14" stroke="#262729" stroke-width="1.5"
+            stroke-linecap="round" />
+        <path id="Vector 6796" d="M10 12L6 12" stroke="#262729" stroke-width="1.5"
+            stroke-linecap="round" />
+        <circle id="Ellipse 2804" cx="16" cy="12" r="2" stroke="#262729" stroke-width="1.5" />
+    </g>
+</svg>

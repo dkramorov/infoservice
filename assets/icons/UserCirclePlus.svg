@@ -1,0 +1,14 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g id="UserCirclePlus">
+        <path id="Vector 6800" d="M37 6V15" stroke="#262729" stroke-width="2" stroke-linecap="round" />
+        <path id="Vector 6801" d="M41.5 10.5L32.5 10.5" stroke="#262729" stroke-width="2"
+            stroke-linecap="round" />
+        <path id="Ellipse 4562"
+            d="M42 24C42 33.9411 33.9411 42 24 42C14.0589 42 6 33.9411 6 24C6 14.0589 14.0589 6 24 6"
+            stroke="#262729" stroke-width="2" stroke-linecap="round" />
+        <circle id="Ellipse 4563" cx="24" cy="22" r="7" stroke="#262729" stroke-width="2" />
+        <path id="Ellipse 4564"
+            d="M11.3477 37C13.5946 32.2701 18.4156 29 24.0004 29C29.5852 29 34.4062 32.2701 36.6531 37"
+            stroke="#262729" stroke-width="2" />
+    </g>
+</svg>

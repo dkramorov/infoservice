@@ -34,7 +34,7 @@ class _DialpadScreen extends State<DialpadScreen> {
     for (Object? arg in args) {
       if (arg is DialpadModel) {
         dialpadModel = arg;
-        Log.d(TAG, '---> chat with ${dialpadModel.toString()}');
+        Log.d(TAG, '---> call with ${dialpadModel.toString()}');
         break;
       }
     }

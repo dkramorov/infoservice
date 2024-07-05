@@ -29,6 +29,10 @@ class SharedPreferencesManager {
       } catch (ex) {
         await Future.delayed(const Duration(milliseconds: 10));
         Log.e('getSharedPreferences', 'loadSettings error - ${ex.toString()}');
+        // Если MissingPluginException(No implementation found for method getAll on channel plugins.flutter.io/shared_preferences_android)
+        if (i == retry - 1) {
+          SharedPreferences.setMockInitialValues({});
+        }
       }
     }
     return await SharedPreferences.getInstance();

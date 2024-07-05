@@ -396,6 +396,9 @@ class XmppConnection {
   Future<void> saveVCard(Map<Object?, Object?> vCard) async {
     final params = {
       "DESC": vCard['DESC'],
+      "FN": vCard['FN'],
+      "BDAY": vCard['BDAY'],
+      "EMAIL": vCard['EMAIL'],
     };
     await _channel.invokeMethod('save_vcard', params);
     print('checkNewFeat saveVCard vcard: $vCard');

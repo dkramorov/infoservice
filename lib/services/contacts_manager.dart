@@ -1,4 +1,5 @@
 import 'package:contacts_service/contacts_service.dart';
+import 'package:infoservice/services/jabber_manager.dart';
 import 'package:infoservice/services/permissions_manager.dart';
 
 import '../helpers/log.dart';

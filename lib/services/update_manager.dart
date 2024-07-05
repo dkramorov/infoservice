@@ -93,9 +93,9 @@ class CompaniesUpdate {
     final int orgsLen = orgs != null ? orgs!.length : 0;
     final int catContposLen = catContpos != null ? catContpos!.length : 0;
 
-    return 'branches: $branchesLen, addresses: $addressesLen, ' +
-        'phones: $phonesLen, catalogue: $catalogueLen, ' +
-        'cats: $catsLen, orgs: $orgsLen, ' +
+    return 'branches: $branchesLen, addresses: $addressesLen, '
+        'phones: $phonesLen, catalogue: $catalogueLen, '
+        'cats: $catsLen, orgs: $orgsLen, '
         'catContpos: $catContposLen';
   }
 
@@ -161,7 +161,8 @@ class UpdateManager {
   static const String phonesLoadedAction = 'phonesLoaded';
   static const String rubricsIsEmptyAction = 'rubrisIsEmpty';
 
-  static const String updateFName = 'companies_db_helper';
+  static const String updateAName = 'companies'; // archive
+  static const String updateFName = 'companies_db_helper'; // fname
 
   static UpdateManagerStream? updateStream;
 
@@ -237,7 +238,7 @@ class UpdateManager {
   }
 
   Future<File> getArchivePath() async {
-    final File updateArchivePath = await getLocalFilePath('$updateFName.tar.gz');
+    final File updateArchivePath = await getLocalFilePath('$updateAName.tar.gz');
     Log.d('getArchivePath', updateArchivePath.path);
     return updateArchivePath;
   }
@@ -266,7 +267,6 @@ class UpdateManager {
     final input2 = InputFileStream(tarPath);
     final archive = TarDecoder().decodeBuffer(input2);
     extractArchiveToDisk(archive, folder);
-    print(folder);
   }
 
   /* Обрабатываем файл, который только что загрузился и
@@ -276,15 +276,10 @@ class UpdateManager {
   Future<CompaniesUpdate?> parseUpdateFile() async {
     //File updateFile = await downloadUpdateFile();
     File archiveFile = await downloadUpdateArchiveFile();
-
     // UNTAR
     String folder = await makeAppFolder();
     //await extractFileToDisk(archiveFile.path, folder, asyncWrite: true);
-
-
     await compute(extractUpdateArchive, [folder, archiveFile.path]);
-
-
     // Тут полагаем, что файл в архиве называется также как наш путь к обновлению
     File updateFile = await getUpdatePath();
     String content = await updateFile.readAsString();

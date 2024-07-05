@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:infoservice/widgets/chat/msg_counter.dart';
 
@@ -27,6 +28,9 @@ class Avatar extends StatelessWidget {
   ImageProvider getImageProvider(path) {
     if (imgPath.startsWith('assets')) {
       return AssetImage(imgPath);
+    }
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
     }
     return FileImage(File(imgPath));
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_floating_search_bar/material_floating_search_bar.dart';
 
 import '../../models/companies/search.dart';
+import '../../pages/themes.dart';
 import '../../services/jabber_manager.dart';
 import '../../settings.dart';
 
@@ -19,6 +20,8 @@ class _CompaniesFloatingSearchWidgetState
   late SearchModel searchModel;
   bool searchProcessing = false;
   List<Widget> searchResult = [];
+
+  List<DropdownMenuItem<String>> dropdownItems = [];
 
   JabberManager? get helper => widget._helper;
 
@@ -130,7 +133,6 @@ class _CompaniesFloatingSearchWidgetState
   }
 }
 
-
 /* Подложка для поиска */
 Widget buildPanelForSearch() {
   return ClipRRect(
@@ -140,7 +142,8 @@ Widget buildPanelForSearch() {
     ),
     child: Container(
       height: 90.0,
-      color: tealColor,
+      //color: tealColor,
+      color: white,
     ),
   );
 }

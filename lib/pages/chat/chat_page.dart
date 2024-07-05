@@ -321,12 +321,16 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     for (ChatMessageModel dbMessage in mamMessages) {
-      Log.d(tag, 'messages time ${dbMessage.time}');
+      //Log.d(tag, 'messages time ${dbMessage.time}');
       MessageChat chatMessageModel =
           ChatMessageModel.convert2MessageChat(dbMessage);
+      //Log.d(tag, 'chatMessageModel ${chatMessageModel.toString()}');
       ChatMessage chatMessage = ChatMessageModel.convert2ChatMessage(
-          chatMessageModel, me,
-          context: context);
+          chatMessageModel,
+          me,
+          context: context
+      );
+      Log.d(tag, 'chatMessage ${chatMessage.toString()}, me ${me.toString()}');
       messages.add(chatMessage);
     }
     times = getMinMaxMessageTime();
@@ -634,7 +638,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 xmppHelper,
                 // в DialPadModel нужно передавать телефон без домена
                 DialpadModel(
-                    phone: cleanPhone(friend.id), isSip: true, startCall: true),
+                    phone: cleanPhone(friend.id.split('@')[0]), isSip: true, startCall: true),
               });
             },
           ),

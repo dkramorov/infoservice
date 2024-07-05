@@ -26,7 +26,8 @@ to your XCode > Runner > Target > Buld Settings > All > Linking > Other LInker F
 just add and it does resolves your bug
 
 
-
+https://developers.google.com/android/guides/client-auth
+keytool -list -v -alias upload -keystore /Users/jocker/archive/Certificates/masterme_ru/upload-keystore.jks
 
 
 
@@ -52,7 +53,7 @@ just add and it does resolves your bug
     Remove project.workspace file
     Run again in iOS platform.
 Если опять не помогло
-runner->build setting->other linker flags, and delete bad_framework
+Runner.xcodeproj runner->build setting->other linker flags, and delete bad_framework
 
 // Android problem with flag on registerReceiver
 // https://stackoverflow.com/questions/77235063/one-of-receiver-exported-or-receiver-not-exported-should-be-specified-when-a-rec
@@ -136,3 +137,53 @@ Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
 2024-04-05 16:42:30.930 829-829/ru.masterme.chat.masterme_chat W/System.err:     at java.lang.reflect.Method.invoke(Native Method)
 2024-04-05 16:42:30.930 829-829/ru.masterme.chat.masterme_chat W/System.err:     at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:568)
 2024-04-05 16:42:30.931 829-829/ru.masterme.chat.masterme_chat W/System.err:     at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1013)
+
+для отладки huawei можно попробовать использовать hms tookit
+21:29	HMS Toolkit plugin uses JCEF for some components. Please change Java Runtime to JBR with JCEF to view all pages properly.
+
+# При блокировке экрана из приложения на экране ростера ждем дисконнекта и возвращаемся в приложение разблокировкой
+# особенно много насыпает, когда происходит переход в background (открыли, не дождались логина, блокировку влключили - насыпало)
+# в момент выхода из блокировки насыпает как надо
+(не всегда, иногда быстрее lost connection to device под отладкой)
+flutter: D/[JabberManager]: new connectionStatus=XmppConnectionState.disconnected, registered=false
+[error] error: (522) I/O error for database at /var/mobile/Containers/Data/Application/6DFC296F-1A55-4BFB-94BE-B191612372B1/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite.  SQLite error code:522, 'disk I/O error'
+CoreData: error: (522) I/O error for database at /var/mobile/Containers/Data/Application/6DFC296F-1A55-4BFB-94BE-B191612372B1/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite.  SQLite error code:522, 'disk I/O error'
+[error] error: SQLCore dispatchRequest: exception handling request: <NSSQLFetchRequestContext: 0x280460700> , I/O error for database at /var/mobile/Containers/Data/Application/6DFC296F-1A55-4BFB-94BE-B191612372B1/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite.  SQLite error code:522, 'disk I/O error' with userInfo of {
+NSFilePath = "/var/mobile/Containers/Data/Application/6DFC296F-1A55-4BFB-94BE-B191612372B1/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite";
+NSSQLiteErrorDomain = 522;
+}
+
+
+
+Time: 2024-04-27 12:10:30.9640
+Action: methodReceiveFromFlutter
+NativeMethod: get_my_rosters
+Content: nil
+
+
+
+
+addLogger(_:_:) | Not initialize XMPPLogger
+handle(_:result:) |vMethod get_my_rosters
+getMyRostersActivity(_:_:) | get_my_rosters | arguments: nil
+[logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /private/var/mobile/Containers/Data/Application/63736A79-CAA5-42D3-BC7C-72DDB1D25C8F/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite
+[logging] invalidated open fd: 45 (0x11)
+[logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /private/var/mobile/Containers/Data/Application/63736A79-CAA5-42D3-BC7C-72DDB1D25C8F/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite-wal
+[logging] invalidated open fd: 46 (0x11)
+flutter: ___openSettingsDB___
+[error] error: (522) I/O error for database at /var/mobile/Containers/Data/Application/63736A79-CAA5-42D3-BC7C-72DDB1D25C8F/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite.  SQLite error code:522, 'disk I/O error'
+CoreData: error: (522) I/O error for database at /var/mobile/Containers/Data/Application/63736A79-CAA5-42D3-BC7C-72DDB1D25C8F/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite.  SQLite error code:522, 'disk I/O error'
+[error] error: SQLCore dispatchRequest: exception handling request: <NSSQLFetchRequestContext: 0x282b1ddc0> , I/O error for database at /var/mobile/Containers/Data/Application/63736A79-CAA5-42D3-BC7C-72DDB1D25C8F/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite.  SQLite error code:522, 'disk I/O error' with userInfo of {
+NSFilePath = "/var/mobile/Containers/Data/Application/63736A79-CAA5-42D3-BC7C-72DDB1D25C8F/Library/Application Support/ru.masterme.chat.mastermeChat/XMPPRoster.sqlite";
+NSSQLiteErrorDomain = 522;
+}
+# Проверить
+await db.execute('PRAGMA journal_mode=WAL')
+
+Пробуем
+#import "XMPPRosterCoreDataStorage.h" =>
+#import "XMPPRosterMemoryStorage.h"
+
+
+https://www.figma.com/design/4nG5pUQ1wCaAkjJSRVLlD0/8800?node-id=411-3252&t=zAqMlIvfkNP7RvKQ-0
+TODO: удалять при миграции на priority все задачи

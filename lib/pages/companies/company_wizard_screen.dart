@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:infoservice/pages/companies/tab_branches_view.dart';
-import 'package:infoservice/pages/companies/tab_chat_view.dart';
 import 'package:infoservice/pages/companies/tab_company_view.dart';
 import 'package:infoservice/pages/companies/tab_phones_view.dart';
 
@@ -115,7 +114,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    void _onPageChanged(int page) {
+    void onPageChanged(int page) {
       setState(() {
         title = NavigationData.nav[page]['title'];
       });
@@ -131,7 +130,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
       body: SafeArea(
         child: PageView(
           controller: _pageController,
-          onPageChanged: _onPageChanged,
+          onPageChanged: onPageChanged,
           physics: const NeverScrollableScrollPhysics(),
           children: [
             TabCompanyView(
@@ -167,6 +166,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
           ],
         ),
       ),
+      /*  Не используем вкладки на компании
       bottomNavigationBar: ClipRRect(
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(12.0),
@@ -202,6 +202,7 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
           ),
         ),
       ),
+      */
     );
   }
 }

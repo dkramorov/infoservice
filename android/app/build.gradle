@@ -79,6 +79,7 @@ android {
         targetSdkVersion flutterCompileSdkVersion.toInteger()
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        manifestPlaceholders += [YANDEX_CLIENT_ID:"0269fd8522e74f3e8e9ff428f4f5cc87"]
     }
 
     signingConfigs {
@@ -111,6 +112,10 @@ flutter {
 
 dependencies {
     implementation platform('com.google.firebase:firebase-bom:30.0.1')
+    //implementation 'com.huawei.agconnect:agconnect-core:1.5.2.300'
+    implementation 'com.yandex.android:authsdk:2.5.1' // plugins => id "org.jetbrains.kotlin.android" version "1.8.0" apply false
 }
 
 apply plugin: 'com.google.gms.google-services'
+//apply plugin: 'com.huawei.agconnect'
+

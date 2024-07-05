@@ -163,7 +163,6 @@ class RegistrationModel {
         message: 'Неправильно введен код подтверждения',
       );
     }
-
     return null;
   }
 }

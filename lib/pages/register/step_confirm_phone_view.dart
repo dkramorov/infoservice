@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/dialogs.dart';
 import '../../models/registration_model.dart';
 import '../../settings.dart';
+import '../../widgets/button.dart';
+import '../../widgets/pin_code.dart';
 import '../../widgets/progress_bar.dart';
 import '../../widgets/submit_button.dart';
+import '../back_button_custom.dart';
+import '../themes.dart';
 
 class StepConfirmPhoneView extends StatefulWidget {
   final Function? setStateCallback;
@@ -33,9 +38,33 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
   // This use to switch from a TextField to anothers.
   final FocusScopeNode _scopeNode = FocusScopeNode();
 
+  int _secondsRemaining = 60;
+  bool _isCountdownComplete = false;
+
   @override
   void initState() {
     super.initState();
+    _startCountdown();
+    if (mounted) setState(() {});
+  }
+
+  void _startCountdown() {
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 0) {
+        if (mounted) {
+          setState(() {
+            _secondsRemaining--;
+          });
+        }
+      } else {
+        timer.cancel();
+        if (mounted) {
+          setState(() {
+            _isCountdownComplete = true;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -45,7 +74,7 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
   }
 
   /* Отправка формы кода подтверждения */
-  Future<void> regConfirmCodeFormSubmit() async {
+  Future<void> regConfirmCodeFormSubmit(String confirmCode) async {
     if (widget.userData!['phone'] == null) {
       openInfoDialog(
         context,
@@ -56,7 +85,8 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
       );
       return;
     }
-    String confirmCode = getOtpValue();
+
+    //String confirmCode = getOtpValue();
     if (confirmCode.length != _OTP_SIZE) {
       openInfoDialog(
         context,
@@ -71,6 +101,7 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
     widget.setStateCallback!({
       'loading': true,
     });
+
     final confirm = await RegistrationModel.confirmRegistration(
         widget.userData!['phone'],
         confirmCode,
@@ -153,6 +184,143 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
 
   @override
   Widget build(BuildContext context) {
+    String minutes = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
+    String seconds = (_secondsRemaining % 60).toString().padLeft(2, '0');
+    Size size = MediaQuery.sizeOf(context);
+    return Scaffold(
+      body: Container(
+        color: white,
+        width: size.width,
+        height: size.height,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 54),
+              Container(
+                width: size.width - 32,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: white,
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppBarButtonCustom(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 98),
+              Text(
+                'Проверочный код',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: w500,
+                  color: black,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: size.width * 0.8,
+                child: Text(
+                  'Введите код продиктованный нашим роботом помощником',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: w400,
+                    color: gray100,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PinCodeTextField(
+                    pinTextStyle: TextStyle(
+                      fontSize: 16,
+                      fontWeight: w400,
+                      color: black,
+                    ),
+                    onDone: (text) async {
+                      await regConfirmCodeFormSubmit(text);
+                      /*
+                      confirmRegistration(widget.phone, text)
+                          .then((value) async {
+                        print(value.data);
+                        if (value.statusCode == 200) {
+                          SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+                          name = widget.name;
+                          myPhone = widget.phone;
+                          email = widget.phone;
+                          pass = widget.pass;
+                          if (mounted) setState(() {});
+                          prefs.setString('name', widget.name);
+                          prefs.setString('phone', widget.phone);
+                          prefs.setString('email', widget.email);
+                          prefs
+                              .setString('password', widget.pass)
+                              .then((value) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (c) => const Index(
+                                  null, null, null,
+                                ),
+                              ),
+                            );
+                          });
+                        } else if (value.statusCode == 429) {
+                          /*
+                          showOverlayNotification((context) {
+                            return ErrorAlert(
+                              text:
+                                  "Слишком много попыток, повторите регистрацию через полчаса",
+                              color: error100,
+                            );
+                          });
+                          */
+                        }
+                      });
+                      */
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: size.width - 60,
+                child: PrimaryButton(
+                  onPressed: _isCountdownComplete
+                      ? () {
+                    _secondsRemaining = 60;
+                    _isCountdownComplete = false;
+                    _startCountdown();
+                    setState(() {});
+                  }
+                      : () {},
+                  color: _isCountdownComplete ? blue : surfacePrimary,
+                  child: Text(
+                    _isCountdownComplete
+                        ? 'Получить новый код'
+                        : 'Получить новый код через $minutes:$seconds',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: w500,
+                      color: _isCountdownComplete
+                          ? white
+                          : const Color.fromRGBO(192, 193, 195, 1),
+                    ),
+                  ),
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+
+    /* /// Старый вариант
     final titleTextStyle =
         Theme.of(context).textTheme.headline4?.copyWith(color: Colors.black);
     final subtitleTextStyle = Theme.of(context).textTheme.subtitle2;
@@ -235,6 +403,7 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
         ),
       ),
     );
+    */
   }
 }
 

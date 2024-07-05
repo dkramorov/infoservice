@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:infoservice/helpers/model_utils.dart';
+import 'package:infoservice/helpers/phone_mask.dart';
 import 'package:infoservice/models/dialpad_model.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,11 +12,15 @@ import 'package:sip_ua/sip_ua.dart';
 import '../a_notifications/notifications.dart';
 import '../helpers/network.dart';
 import '../models/user_settings_model.dart';
+import '../pages/app_asset_lib.dart';
 import '../pages/authorization.dart';
+import '../pages/back_button_custom.dart';
+import '../pages/themes.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
 import '../settings.dart';
 import '../widgets/action_button.dart';
+import '../widgets/phone_call_button.dart';
 import '../widgets/rounded_button_widget.dart';
 
 class DialPadWidget extends StatefulWidget {
@@ -35,7 +41,7 @@ class _MyDialPadWidget extends State<DialPadWidget>
   JabberManager? get xmppHelper => widget._xmppHelper;
   DialpadModel? get dialpadModel => widget.dialpadModel;
 
-  String? _dest;
+  String _dest = '';
   TextEditingController? _textController;
   late SharedPreferences _preferences;
 
@@ -64,7 +70,7 @@ class _MyDialPadWidget extends State<DialPadWidget>
       // TODO: isSip
     }
     _textController = TextEditingController(text: _dest);
-    _textController!.text = _dest!;
+    _textController!.text = _dest;
     setState(() {});
 
     if (dialpadModel != null && dialpadModel!.startCall) {
@@ -76,8 +82,9 @@ class _MyDialPadWidget extends State<DialPadWidget>
 
   Future<Widget?> _handleCall(BuildContext context,
       [bool voiceonly = true]) async {
-    var dest = _textController?.text;
-    if (dest == null || dest.isEmpty) {
+    //var dest = _textController?.text;
+    final dest = _dest;
+    if (dest.isEmpty) {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -138,26 +145,54 @@ class _MyDialPadWidget extends State<DialPadWidget>
 
     sipHelper!.call(to, voiceonly: voiceonly, mediaStream: mediaStream);
     _preferences.setString('dest', dest);
+    int companyId = 0;
+    if (dialpadModel != null && dialpadModel!.company != null && dialpadModel!.company!.id != null) {
+      companyId = dialpadModel!.company!.id!;
+    }
+    _preferences.setInt('company_id', companyId);
 
     return null;
-  }
-
-  void _handleBackSpace([bool deleteAll = false]) {
-    var text = _textController!.text;
-    if (text.isNotEmpty) {
-      setState(() {
-        text = deleteAll ? '' : text.substring(0, text.length - 1);
-        _textController!.text = text;
-      });
-    }
-    // Тест на уведомление по бэкспейсу
-    createSimpleNotification();
   }
 
   void _handleNum(String number) {
     setState(() {
       _textController!.text += number;
     });
+  }
+
+  Widget buildDigitButton(String text, VoidCallback onTap) {
+    final size = MediaQuery.of(context).size;
+    final isFinger = text == 'finger';
+    final isDelete = text == 'delete';
+
+    return InkWell(
+      onTap: onTap,
+      onLongPress: () {
+        if (isDelete) {
+          _removeLastDigit(deleteAll: true);
+        }
+      },
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        width: size.width * 0.33,
+        height: size.width * 0.15,
+        color: transparent,
+        child: Center(
+          child: isDelete
+              ? SvgPicture.asset(AssetLib.remove)
+              : Text(
+            text,
+            style: isFinger || isDelete
+                ? null
+                : TextStyle(
+              fontSize: 24,
+              fontWeight: w400,
+              color: black,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   List<Widget> _buildNumPad() {
@@ -200,7 +235,39 @@ class _MyDialPadWidget extends State<DialPadWidget>
         .toList();
   }
 
-  List<Widget> _buildDialPad() {
+  void _addDigit(String digit) {
+    if (_dest.length < 11) {
+      setState(() {
+        _dest += digit;
+      });
+    }
+  }
+
+  void _removeLastDigit({bool deleteAll = false}) {
+    if (_dest.isNotEmpty) {
+      setState(() {
+        if (deleteAll) {
+          _dest = '';
+        } else {
+          _dest = _dest.substring(0, _dest.length - 1);
+        }
+      });
+    }
+  }
+
+  void _handleBackSpace([bool deleteAll = false]) {
+    var text = _textController!.text;
+    if (text.isNotEmpty) {
+      setState(() {
+        text = deleteAll ? '' : text.substring(0, text.length - 1);
+        _textController!.text = text;
+      });
+    }
+    // Тест на уведомление по бэкспейсу
+    //createSimpleNotification();
+  }
+
+  List<Widget> _buildDialPad({size=300}) {
     if (!isRegistered) {
       return [
         RoundedButtonWidget(
@@ -211,7 +278,52 @@ class _MyDialPadWidget extends State<DialPadWidget>
             })
       ];
     }
+    return [
+      const Spacer(flex: 3),
+      Text(
+        phoneMaskHelper(_dest),
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: w500,
+          color: black,
+        ),
+      ),
+      const Spacer(flex: 3),
+      Wrap(
+        runSpacing: size.width * 0.05,
+        children: [
+          for (int i = 1; i <= 9; i++)
+            buildDigitButton(
+              i.toString(),
+                  () => _addDigit(i.toString()),
+            ),
 
+          SizedBox(
+            width: size.width * 0.33,
+            height: size.width * 0.15,
+          ),
+
+          buildDigitButton('0', () => _addDigit('0')),
+          buildDigitButton('delete', _removeLastDigit),
+        ],
+      ),
+      const SizedBox(height: 24),
+      PhoneCallButton(
+        asset: AssetLib.phoneCallButton,
+        backgroundColor: (_dest.length == 11) ? blue : white,
+        assetColor: (_dest.length == 11)
+            ? white
+            : const Color.fromRGBO(189, 193, 199, 1),
+        onPressed: (_dest.length < 11)
+            ? null
+            : () {
+          _handleCall(context, true);
+          /* Вызывается callscreen.dart из callStateChanged на defaultPage */
+        },
+      ),
+      const Spacer(flex: 3),
+    ];
+    /* /// Старый вариант
     return [
       SizedBox(
           width: 360,
@@ -263,10 +375,47 @@ class _MyDialPadWidget extends State<DialPadWidget>
                 ],
               )))
     ];
+    */
   }
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.sizeOf(context);
+    return Scaffold(
+      /* Некуда назад уходить
+      appBar: AppBar(
+        titleSpacing: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        surfaceTintColor: transparent,
+        backgroundColor: white,
+        title: Container(
+          width: size.width - 32,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: white,
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppBarButtonCustom(),
+            ],
+          ),
+        ),
+      ),
+      */
+      body: isRegistered ? Column(
+        children: _buildDialPad(size:size),
+      ) : Center(
+          child: RoundedButtonWidget(
+              text: const Text('Вход / Регистрация'),
+              minWidth: 200.0,
+              onPressed: () {
+                Navigator.pushNamed(context, AuthScreenWidget.id);
+              }),
+      ),
+    );
+    /* /// Старый вариант
     return ListView(children: [
       Align(
           alignment: const Alignment(0, 0),
@@ -302,6 +451,7 @@ class _MyDialPadWidget extends State<DialPadWidget>
                 ),
               ])),
     ]);
+    */
   }
 
   @override

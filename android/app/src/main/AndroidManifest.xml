@@ -44,6 +44,7 @@
     <application
         android:label="8800 help"
         android:allowBackup="false"
+        android:launchMode="singleTask"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -76,7 +77,39 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-       <meta-data
+        <!-- HUAWEI Set push kit auto enable to true (for obtaining the token on initialize)
+        <meta-data
+            android:name="push_kit_auto_init_enabled"
+            android:value="true" />
+        -->
+        <!-- These receivers are for sending scheduled local notifications
+        <receiver
+            android:name="com.huawei.hms.flutter.push.receiver.local.HmsLocalNotificationBootEventReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.huawei.hms.flutter.push.receiver.local.HmsLocalNotificationScheduledPublisher"
+            android:exported="false" />
+        <receiver
+            android:name="com.huawei.hms.flutter.push.receiver.BackgroundMessageBroadcastReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.huawei.hms.flutter.push.receiver.BACKGROUND_REMOTE_MESSAGE" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".FlutterHmsMessageService" android:exported="false">
+            <intent-filter>
+                <action android:name="com.huawei.hms.push.action.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+        -->
+        <!-- Huawei data ends here -->
+
+        <meta-data
            android:name="com.google.firebase.messaging.default_notification_channel_id"
            android:value="normal_channel"/>
 
@@ -111,6 +144,16 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
     </application>
+    <!--
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="com.huawei.hms.core.aidlservice" />
+        </intent>
+    </queries>
+    -->
 </manifest>

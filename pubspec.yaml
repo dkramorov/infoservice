@@ -4,7 +4,7 @@ description: Social service
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.1.1+120
+version: 1.1.142+142
 
 environment:
   # sdk: '>=2.18.0 <3.0.5' # flutter 3.3.0
@@ -30,7 +30,7 @@ dependencies:
   # Granular media permissions https://github.com/Baseflow/flutter-permission-handler/issues/907
   permission_handler: ^11.0.1
   package_info_plus: ^3.1.2
-  sqflite: ^2.0.2+1
+  sqflite: ^2.3.3
   cached_network_image: ^3.3.1
   #dash_chat_2: ^0.0.14
   dash_chat_2:
@@ -81,6 +81,15 @@ dependencies:
   # intl: ^0.19.0
   flutter_local_notifications: ^17.0.0
   appmetrica_plugin: ^1.4.0
+  # huawei_push: ^6.12.0+300
+  overlay_support: ^2.1.0
+  flutter_masked_text2: ^0.9.1
+  visibility_detector: ^0.4.0+2
+  flutter_rating_stars: ^1.0.3+4
+  # oauth2: ^2.0.1
+  # flutter_login_yandex: ^0.0.4
+  flutter_login_yandex_updated: # https://github.com/missionnowin/flutter_login_yandex/
+    path: flutter_login_yandex-0.0.8 # custom version
 
 dev_dependencies:
   flutter_test:
@@ -101,8 +110,18 @@ flutter:
     - assets/misc/
     - assets/call/
     - assets/images/
+    - assets/icons/
+    - assets/imgs/
 
   fonts:
     - family: Funtya
       fonts:
         - asset: assets/fonts/funtya.ttf
+    - family: GolosText
+      fonts:
+        - asset: assets/fonts/GolosText-Regular.ttf
+        - asset: assets/fonts/GolosText-Medium.ttf
+        - asset: assets/fonts/GolosText-SemiBold.ttf
+        - asset: assets/fonts/GolosText-Bold.ttf
+        - asset: assets/fonts/GolosText-ExtraBold.ttf
+        - asset: assets/fonts/GolosText-Black.ttf

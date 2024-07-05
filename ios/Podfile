@@ -1,6 +1,8 @@
 # Uncomment this line to define a global platform for your project
 platform :ios, '12.0'
 
+###pod 'YandexLoginSDK', '2.1.0'
+
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 ENV['SWIFT_VERSION'] = '5'
@@ -49,7 +51,7 @@ post_install do |installer|
       end
 
       # Должно соответствовать Deployment platform в Xcode, а то нихуя не сбилдится
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
 
       # Добавляем в Xcode в Project - Runner - Build Settings - Excluded Architectures
       # и в Targets - Runner тоже в debug, profile, release (i386 нужно, в Project не нужно)

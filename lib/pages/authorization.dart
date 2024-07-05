@@ -1,18 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:infoservice/models/bg_tasks_model.dart';
+import 'package:flutter_masked_text2/flutter_masked_text2.dart';
 import 'package:infoservice/models/user_settings_model.dart';
+import 'package:infoservice/pages/static_values.dart';
+import 'package:infoservice/pages/themes.dart';
+import 'package:infoservice/settings.dart';
 
 import '../helpers/dialogs.dart';
 import '../helpers/log.dart';
+import '../helpers/phone_mask.dart';
+import '../helpers/string_parser.dart';
+import '../models/bg_tasks_model.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
-import '../settings.dart';
+import '../widgets/auth/yandex_oauth_button.dart';
+import '../widgets/password_eye_widget.dart';
 import '../widgets/reg_links.dart';
-import '../widgets/sign_in_form.dart';
-import '../widgets/sign_out_form.dart';
+import '../widgets/text_field_custom.dart';
+import 'app_asset_lib.dart';
+import 'back_button_custom.dart';
+import '../widgets/button.dart';
 
 class AuthScreenWidget extends StatefulWidget {
   final SIPUAManager? _sipHelper;
@@ -34,6 +42,48 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
   late Timer updateTimer;
   bool isRegistered = false;
   String login = '';
+
+  final phone = MaskedTextController(mask: '8 (900) 000-00-00');
+  final password = TextEditingController();
+  bool loading = false;
+  final formKey = GlobalKey<FormState>();
+  bool hidePassword = true;
+
+  /* Отправка формы авторизации */
+  Future<void> loginFormSubmit() async {
+    formKey.currentState!.save();
+
+    if (!formKey.currentState!.validate()) {
+      return;
+    }
+    setState(() => loading = true);
+
+    Map<String, dynamic> userData = {
+      'login': cleanPhone(phone.text),
+      'passwd': password.text,
+    };
+    UserSettingsModel? user = await UserSettingsModel().getUser();
+    if (user != null) {
+      Log.d('loginFormSubmit', 'check account for drop => ${user.isDropped}');
+      if (user.isDropped != null && user.isDropped!) {
+        if (mounted) {
+          openInfoDialog(
+              context,
+              () {},
+              'Аккаунт удален',
+              'К сожалению, нельзя войти, воспользуйтесь регистрацией',
+              'Хорошо');
+          return;
+        }
+      }
+    }
+    /* Задача на проверку авторизации в фоне
+       после выполнения успешной,
+       остальные запросы на авторизацию должны быть удалены
+    */
+    await BGTasksModel.createRegisterTask(userData);
+    // Ожидаем результат в authorization.dart
+  }
 
   Future<void> checkUser() async {
     UserSettingsModel? user = await UserSettingsModel().getUser();
@@ -88,6 +138,115 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: const AppBarButtonCustom(asset: AssetLib.closeButton),
+      ),
+      body: Form(
+        key: formKey,
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: UIs.signupPagePadding),
+          child: ListView(
+            children: [
+              const SizedBox(height: 32),
+              SizedBox(
+                width: 64,
+                height: 64,
+                child: Image.asset(AssetLib.logo),
+              ),
+              SIZED_BOX_H24,
+              Center(
+                child: Text(
+                  'Войти через',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: w500,
+                    color: black,
+                  ),
+                ),
+              ),
+              SIZED_BOX_H12,
+              const Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    YandexOauthButton(),
+                  ]),
+              SIZED_BOX_H24,
+              Center(
+                child: Text(
+                  'Войти по паролю',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: w500,
+                    color: black,
+                  ),
+                ),
+              ),
+              SIZED_BOX_H12,
+              SizedBox(
+                child: Text(
+                  'Войдите или зарегистрируйтесь, чтобы начать звонить и общаться',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: w400,
+                    color: gray100,
+                  ),
+                ),
+              ),
+              SIZED_BOX_H24,
+              TextFieldCustom(
+                labelText: 'Номер телефона',
+                controller: phone,
+                keyboardType: TextInputType.phone,
+                validator: (value) => validatePhone(cleanUpPhone(value)),
+              ),
+              ...[
+                SIZED_BOX_H16,
+                TextFieldCustom(
+                  labelText: 'Пароль',
+                  controller: password,
+                  keyboardType: TextInputType.text,
+                  obscureText: hidePassword,
+                  suffix: PasswordEyeWidget(
+                    hidePassword,
+                    onPressed: () =>
+                        setState(() => hidePassword = !hidePassword),
+                  ),
+                  validator: validatePassword,
+                ),
+              ],
+              SIZED_BOX_H24,
+              SizedBox(
+                child: PrimaryButton(
+                  loading: loading,
+                  onPressed: () async {
+                    await loginFormSubmit();
+                  },
+                  color: blue,
+                  child: Text(
+                    'Войти',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: w500,
+                      color: white,
+                    ),
+                  ),
+                ),
+              ),
+              SIZED_BOX_H16,
+              RegLinksWidget(sipHelper, xmppHelper),
+              SIZED_BOX_H45,
+            ],
+          ),
+        ),
+      ),
+    );
+
+    /* Старый вариант
     final titleStyle = Theme.of(context).textTheme.headline5;
     return Scaffold(
       body: SafeArea(
@@ -153,5 +312,6 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
         ),
       ),
     );
+    */
   }
 }

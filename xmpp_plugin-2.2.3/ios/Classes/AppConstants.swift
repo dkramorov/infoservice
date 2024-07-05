@@ -19,7 +19,7 @@ public var xmpp_UserPass: String = ""
 public var xmpp_Resource: String = ""
 public var xmpp_RequireSSLConnection: Bool = false
 public var xmpp_AutoDeliveryReceipt: Bool = false
-public var xmpp_AutoReConnection: Bool = true
+public var xmpp_AutoReConnection: Bool = false
 public var xmpp_UseStream: Bool = true
 
 let default_isPersistent : Bool = false

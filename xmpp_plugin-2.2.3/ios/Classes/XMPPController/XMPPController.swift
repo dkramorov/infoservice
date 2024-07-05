@@ -16,7 +16,8 @@ class XMPPController : NSObject {
     var xmppRoom : XMPPRoom?
     var xmppStreamManagement : XMPPStreamManagement = XMPPStreamManagement(storage: XMPPStreamManagementMemoryStorage.init(), dispatchQueue: DispatchQueue.main)
     var xmppRoster : XMPPRoster?
-    var xmppRosterStorage: XMPPRosterCoreDataStorage?
+    var xmppRosterStorage: XMPPRosterCoreDataStorage? // Возникают ошибки при блокировке экрана
+    //var xmppRosterStorage: XMPPRosterMemoryStorage?
     var xmppLastActivity = XMPPLastActivity()
     var xmppMAM: XMPPMessageArchiveManagement? // = XMPPMessageArchiveManagement.init()
     var xmppFileUpload: XMPPHTTPFileUpload?
@@ -72,10 +73,12 @@ class XMPPController : NSObject {
         }
        
         /// xmppRoster Configuration
-        self.xmppRosterStorage = XMPPRosterCoreDataStorage.init()
+        self.xmppRosterStorage = XMPPRosterCoreDataStorage.init() // XMPPRosterMemoryStorage
+        //self.xmppRosterStorage = XMPPRosterMemoryStorage.init() // Private protocol method: MUST run on parentQueue
         if let objRosSto = self.xmppRosterStorage {
             self.xmppRoster = XMPPRoster.init(rosterStorage: objRosSto)
-            self.xmppRoster?.autoFetchRoster = true
+            //self.xmppRoster?.autoFetchRoster = true
+            self.xmppRoster?.autoFetchRoster = false
             self.xmppRoster?.autoAcceptKnownPresenceSubscriptionRequests = true
             self.xmppRoster?.activate(self.xmppStream)
             self.xmppRoster?.addDelegate(self, delegateQueue: DispatchQueue.main)

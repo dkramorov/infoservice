@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:infoservice/models/chat_message_model.dart';
@@ -135,6 +136,7 @@ class JabberManager implements DataChangeEvents {
       startMainTimer();
     }
 
+    Log.d(tag, 'appState is $appState');
     if (appState == AppLifecycleState.paused ||
         appState == AppLifecycleState.detached) {
       Log.d(tag, 'ignore register trigger, because appState is $appState');
@@ -188,7 +190,8 @@ class JabberManager implements DataChangeEvents {
           '$counter, XMPP: is registered: $registered'
           ', stopFlag $stopFlag'
           ', connectionStatus $connectionStatus'
-          ', connectedTime $connectedTime');
+          ', connectedTime $connectedTime'
+          ', appState ${JabberManager.appState}');
       if (!hasInternet) {
         if (registered) {
           // На йосе здесь await не вернет результат (видимо слушателя надо проверить)
@@ -673,21 +676,38 @@ class JabberManager implements DataChangeEvents {
   }
 
   Future<dynamic> getMyVCard() async {
-    if (!registered) {
-      return;
-    }
     if (myVCard.isNotEmpty) {
       Log.d(tag, 'VCARD already received ${myVCard.toString()}');
       return myVCard;
     }
     UserSettingsModel? user = await UserSettingsModel().getUser();
     if (user != null) {
+      if (!registered) {
+        return;
+      }
       myVCard = await flutterXmpp?.getVCard(user.jid ?? '') ?? {};
       if (myVCard['DESC'] == null) {
         myVCard['DESC'] = {};
       }
+      Map<String, dynamic> params = {};
+      Map<String, dynamic> desc = descAsDictHelper(myVCard['DESC']);
+      for (String key in desc.keys) {
+        if (key == 'BDAY' && user.birthday != desc[key]) {
+          params['birthday'] = desc[key];
+        } else if (key == 'EMAIL' && user.email != desc[key]) {
+          params['email'] = desc[key];
+        } else if (key == 'FN' && user.name != desc[key]) {
+          params['name'] = desc[key];
+        } else if (key == 'PHOTO' && (user.photo == null || user.photo == '')) {
+          params['photo'] = desc[key];
+        }
+      }
+      if (params.isNotEmpty) {
+        await user.updatePartial(user.id, params);
+      }
     } else {
       Log.e(tag, 'getMyVCard user absent');
+      return;
     }
     return myVCard;
   }
@@ -705,9 +725,12 @@ class JabberManager implements DataChangeEvents {
     return await flutterXmpp?.saveVCard(vCard);
   }
 
-  Map<String, dynamic> destAsDictHelper(Object? desc) {
+  Map<String, dynamic> descAsDictHelper(Object? desc) {
     /* Получаем словарь (например, из DESC VCard) */
     Map<String, dynamic> descObj = {};
+    if (desc == null) {
+      return descObj;
+    }
     try {
       descObj = jsonDecode(desc.toString());
     } catch (ex, stacktrace) {
@@ -725,7 +748,7 @@ class JabberManager implements DataChangeEvents {
     } else {
       vcard = await getVCard(jid) ?? {};
     }
-    return destAsDictHelper(vcard['DESC']);
+    return descAsDictHelper(vcard['DESC']);
   }
 
   Future<void> addGroup2VCard(String mucName) async {
@@ -744,7 +767,7 @@ class JabberManager implements DataChangeEvents {
       };
     }
     // Сохраняем VCard
-    JabberManager.myVCard['DESC'] = jsonEncode(descObj);
+    myVCard['DESC'] = jsonEncode(descObj);
     await saveMyVCard();
   }
 
@@ -806,10 +829,32 @@ class JabberManager implements DataChangeEvents {
       for (int i = 0; i < roster.length; i++) {
         String curJid = roster[i].toString().split(':')[0];
         if (curJid != '' && rosterMap[curJid] == null) {
-          await RosterModel(jid: curJid, ownerJid: user.jid).insert2Db();
-          user.incRosterVersion();
+          RosterModel newRosterModel = RosterModel(jid: curJid, ownerJid: user.jid);
+          await newRosterModel.insert2Db();
+          rosterMap[curJid] = newRosterModel;
           isNew = true;
         }
+        // Получаем VCard
+        if (rosterMap[curJid] != null) {
+          RosterModel curRosterModel = rosterMap[curJid]!;
+          if (curRosterModel.avatar == null || curRosterModel.avatar == '') {
+            final vCard = await getVCardDescAsDict(jid: curJid ?? '');
+            if (vCard['PHOTO'] != null) {
+              String ext = vCard['PHOTO'].toString().split('.').last;
+              File photo = await getLocalFilePath('${curRosterModel.id}.${ext}');
+              File avatar = await downloadFile(vCard['PHOTO'], photo);
+              curRosterModel.avatar = avatar.path;
+              await curRosterModel.updatePartial(curRosterModel.id, {
+                'avatar': avatar.path,
+              });
+              isNew = true;
+            }
+          }
+        }
+        await getVCard(curJid);
+      }
+      if (isNew) {
+        user.incRosterVersion();
       }
 
       // Заносим в ростер группы
@@ -864,6 +909,21 @@ class JabberManager implements DataChangeEvents {
         'name': company.name,
       });
       rosterModel.name = company.name;
+    }
+    if (rosterModel.avatar == null || rosterModel.avatar == '') {
+      String logo = company.getLogoPath() ?? '';
+      if (logo != '') {
+        String ext = logo
+            .toString()
+            .split('.')
+            .last;
+        File photo = await getLocalFilePath('company_${company.id}.$ext');
+        File avatar = await downloadFile(logo, photo);
+        rosterModel.avatar = avatar.path;
+        await rosterModel.updatePartial(rosterModel.id, {
+          'avatar': avatar.path,
+        });
+      }
     }
     Log.i('checkMucCompany', 'rosterModel is ${rosterModel.toString()}');
   }
