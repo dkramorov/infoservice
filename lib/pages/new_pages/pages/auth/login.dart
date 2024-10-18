@@ -12,7 +12,7 @@ import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
 import '../../../../helpers/network.dart';
 import '../../../app_asset_lib.dart';
 import '../../../static_values.dart';
-import '../../../back_button_custom.dart';
+import '../../../../navigation/custom_app_bar_button.dart';
 import '../../../../widgets/password_eye_widget.dart';
 import '../../../../widgets/text_field_custom.dart';
 import '../../../gl.dart';
@@ -57,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: const AppBarButtonCustom(asset: AssetLib.closeButton),
+        leading: const CustomAppBarButton(asset: AssetLib.closeButton),
       ),
       body: Form(
         key: formKey,

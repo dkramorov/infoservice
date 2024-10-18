@@ -28,12 +28,13 @@ class SearchModel {
     _query = query;
     if (query.isEmpty) {
       searchResult.clear();
-      setStateCallback(
-          {'searchResult': searchResult, 'searchProcessing': false});
+      setStateCallback({
+        'searchResult': searchResult,
+        'searchProcessing': false,
+      });
       return;
     } else {
       setStateCallback({'searchProcessing': true});
-
       searchResult.clear();
       // Поиск по рубрикам
       final searchCatalogue = await Catalogue().searchCatalogue(query);
@@ -71,6 +72,9 @@ class SearchModel {
         }
       });
     }
-    setStateCallback({'searchResult': searchResult, 'searchProcessing': false});
+    setStateCallback({
+      'searchResult': searchResult,
+      'searchProcessing': false,
+    });
   }
 }

@@ -1,0 +1,7 @@
+// Отступ снизу на клавиатуру
+Column(
+  children: [
+    Expanded(child: Drawer()),
+    SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+  ],
+)

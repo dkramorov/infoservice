@@ -11,6 +11,7 @@ class MessageChat {
   String? bubbleType;
   String? mediaURL;
   int? isReadSent;
+  int? answered;
 
   MessageChat({
     this.id,
@@ -25,6 +26,7 @@ class MessageChat {
     this.bubbleType,
     this.mediaURL,
     this.isReadSent,
+    this.answered,
   });
 
   Map<String, dynamic> toEventData() {
@@ -41,15 +43,17 @@ class MessageChat {
       'bubbleType': bubbleType,
       'mediaURL': mediaURL,
       'isReadSent': isReadSent,
+      'answered': answered,
     };
   }
 
   @override
   String toString() {
-    return '{id: $id, customText: $customText, from: $from, to: $to, '
-        'senderJid: $senderJid, time: $time, type: $type, body: $body, '
-        'msgtype: $msgtype, bubbleType: $bubbleType, mediaURL: $mediaURL, '
-        'isReadSent: $isReadSent}';
+    String result = '';
+    toEventData().forEach((final String key, final value) {
+      result += '$key=$value; ';
+    });
+    return result;
   }
 
   factory MessageChat.fromJson(dynamic eventData) {
@@ -66,6 +70,7 @@ class MessageChat {
       msgtype: eventData['msgtype'] ?? '',
       bubbleType: eventData['bubbleType'] ?? '',
       mediaURL: eventData['mediaURL'] ?? '',
+      answered: eventData['answered'] ?? 0,
     );
   }
 }

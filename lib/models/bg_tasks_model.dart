@@ -109,6 +109,10 @@ class BGTasksModel extends AbstractModel {
 
   Future<BGTasksModel?> getTask() async {
     final db = await openDB();
+    if (!db.isOpen) {
+      print('--- DB CLOSED ---');
+      return null;
+    }
     final List<Map<String, dynamic>> maps = await db.query(
       tableName,
       //where: 'state=?',

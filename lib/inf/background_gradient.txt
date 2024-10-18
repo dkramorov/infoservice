@@ -1,0 +1,57 @@
+С прозрачностью
+Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [
+                  0.2,
+                  0.5,
+                  0.7,
+                  0.6,
+                ],
+                colors: [
+                  Colors.transparent,
+                  Colors.white10,
+                  Colors.white54,
+                  Color.fromARGB(190, 255, 255, 255),
+                ],
+              ),
+            ),
+          )
+
+Непрозрачный
+class MyHomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Flutter Gradient Example'),
+      ),
+      body: Center(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                Colors.blue,
+                Colors.red,
+              ],
+            )
+          ),
+          child: Center(
+            child: Text(
+              'Hello Gradient!',
+              style: TextStyle(
+                fontSize: 48.0,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

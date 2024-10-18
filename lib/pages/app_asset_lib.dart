@@ -1,5 +1,7 @@
 class AssetLib {
   static const yandexIcon = 'assets/icons/yandex.svg';
+  // https://icons8.ru/icons/set/google
+  static const googleIcon = 'assets/icons/google.svg';
 
   /// can be used by [AppBarButtonCustom]
   static const backButton = 'assets/icons/arrow-b.svg';
@@ -14,7 +16,7 @@ class AssetLib {
   static const phoneButton = "assets/icons/phone-btn2.svg";
 
   /// Phone call buttons [CallPage]
-  static const phoneCallButton = 'assets/icons/phone-call.svg';
+  static const phoneCall = 'assets/icons/phone-call.svg';
   static const micro = 'assets/icons/micro.svg';
   static const number = 'assets/icons/number.svg';
   static const volumeFull = 'assets/icons/volume full.svg';
@@ -70,6 +72,8 @@ class AssetLib {
   static const remove = "assets/icons/remove.svg";
   static const location = "assets/icons/location.svg";
   static const phone = "assets/icons/phone.svg";
+  static const phoneCallIcon = "assets/icons/phone-call-icon.svg";
+  static const profileIcon = "assets/icons/profile-icon.svg";
   static const trash = "assets/icons/trash.svg";
   static const addPeople = "assets/icons/add_peopl.svg";
   static const addGroup = "assets/icons/add_group.svg";

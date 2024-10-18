@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../app_asset_lib.dart';
-import '../../../back_button_custom.dart';
-import '../../../generic_appbar.dart';
+import '../../../../navigation/custom_app_bar_button.dart';
+import '../../../../navigation/generic_appbar.dart';
 import '../../../gl.dart';
 import '../../../themes.dart';
 
@@ -22,7 +22,7 @@ class _HistoryPageState extends State<HistoryPage> {
       appBar: GenericAppBar(
         title: 'История',
         controls: [
-          AppBarButtonCustom(
+          CustomAppBarButton(
             padding: 8,
             asset: AssetLib.searchBigButton,
             onPressed: () {},

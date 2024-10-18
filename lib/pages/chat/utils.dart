@@ -5,4 +5,6 @@ final List<String> CHAT_MEDIA_TYPES = [
   MediaType.image.toString(),
   MediaType.video.toString(),
   MediaType.audio.toString(),
+  MediaType.question.toString(),
+  MediaType.answer.toString(),
 ];

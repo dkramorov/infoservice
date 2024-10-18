@@ -13,8 +13,8 @@ import '../a_notifications/notifications.dart';
 import '../helpers/network.dart';
 import '../models/user_settings_model.dart';
 import '../pages/app_asset_lib.dart';
-import '../pages/authorization.dart';
-import '../pages/back_button_custom.dart';
+import '../pages/auth/authorization.dart';
+import '../navigation/custom_app_bar_button.dart';
 import '../pages/themes.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';
@@ -139,7 +139,7 @@ class _MyDialPadWidget extends State<DialPadWidget>
       mediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     }
     // Втыкаем в историю исходящий
-    String name = await getRosterNameByPhone(xmppHelper, dest);
+    String name = await getRosterNameByPhone(dest);
     sipHelper?.listener.call2History(dest,
         name: name, companyId: dialpadModel?.company?.id, isSip: isSip);
 
@@ -309,7 +309,7 @@ class _MyDialPadWidget extends State<DialPadWidget>
       ),
       const SizedBox(height: 24),
       PhoneCallButton(
-        asset: AssetLib.phoneCallButton,
+        asset: AssetLib.phoneCall,
         backgroundColor: (_dest.length == 11) ? blue : white,
         assetColor: (_dest.length == 11)
             ? white

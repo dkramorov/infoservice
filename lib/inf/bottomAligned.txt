@@ -1,0 +1,8 @@
+return new Column(
+  crossAxisAlignment: CrossAxisAlignment.center,
+  mainAxisSize: MainAxisSize.max,
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: <Widget>[
+      // Your elements here
+  ],
+);

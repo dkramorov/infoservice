@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_masked_text2/flutter_masked_text2.dart';
 
 import '../../../../../static_values.dart';
-import '../../../../../generic_appbar.dart';
+import '../../../../../../navigation/generic_appbar.dart';
 import '../../../../../../widgets/text_field_custom.dart';
 import '../../../../../themes.dart';
 import '../../../../../../widgets/button.dart';

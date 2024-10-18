@@ -231,7 +231,7 @@ class AbstractCompaniesModel {
 
 /* SQL запросы для базы по фирмам
 */
-String orgsIndexChat = 'CREATE INDEX IF NOT EXISTS fk_orgs_chat ON orgs (chat)';
+const String orgsIndexChat = 'CREATE INDEX IF NOT EXISTS fk_orgs_chat ON orgs (chat)';
 List<String> companiesSQLHelper() {
   List<String> queries = [];
   String catalogueQuery = 'create table if not exists catalogue('

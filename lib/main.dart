@@ -15,18 +15,19 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:infoservice/models/user_settings_model.dart';
-import 'package:infoservice/pages/authorization.dart';
+import 'package:infoservice/pages/auth/reg_wizard_screen.dart';
+import 'package:infoservice/pages/auth/authorization.dart';
 import 'package:infoservice/pages/chat/add2roster.dart';
 import 'package:infoservice/pages/chat/chat_page.dart';
 import 'package:infoservice/pages/chat/group_chat_page.dart';
+import 'package:infoservice/pages/chat/roster_profile_page.dart';
 import 'package:infoservice/pages/companies/cats_listing_screen.dart';
 import 'package:infoservice/pages/companies/companies_listing_screen.dart';
 import 'package:infoservice/pages/companies/company_wizard_screen.dart';
 import 'package:infoservice/pages/default_page.dart';
-import 'package:infoservice/pages/new_pages/pages/index.dart';
 import 'package:infoservice/pages/profile/about_page.dart';
 import 'package:infoservice/pages/profile/settings_page.dart';
-import 'package:infoservice/pages/register/reg_wizard_screen.dart';
+import 'package:infoservice/pages/chat/shared_contacts_page.dart';
 import 'package:infoservice/services/bg_manager.dart';
 import 'package:infoservice/services/jabber_manager.dart';
 import 'package:infoservice/services/navigation_manager.dart';
@@ -179,7 +180,7 @@ typedef PageContentBuilder = Widget Function(
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  //Sqflite.devSetDebugModeOn(true);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   AwesomeNotifications().initialize(
@@ -255,7 +256,7 @@ void main() async {
       if (message.data['action'] == 'chat') {
         String sender = message.data['sender'] ?? '';
         String phone = cleanPhone(sender);
-        String jid = JabberManager().toJid(sender);
+        String jid = JabberManager.toJid(sender);
         String name = phoneMaskHelper(sender);
         String screenId = ChatScreen.id;
         String group = message.data['group'] ?? '';
@@ -369,6 +370,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         AboutPage(sipHelper, xmppHelper, arguments),
     SettingsPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
         SettingsPage(sipHelper, xmppHelper),
+    SharedContactsPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        SharedContactsPage(sipHelper, xmppHelper, arguments),
+    RosterProfilePage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
+        RosterProfilePage(sipHelper, xmppHelper, arguments),
     // Новые странички
     /*
     NewMainPage.id: ([SIPUAManager? sipHelper, JabberManager? xmppHelper, Object? arguments]) =>
@@ -456,7 +461,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           fontFamily: 'GolosText',
           scaffoldBackgroundColor: Colors.white,
         ),
-        initialRoute: DefaultPage.id,
+        initialRoute: DefaultPage.id, // DefaultPage
         onGenerateRoute: _onGenerateRoute,
         builder: EasyLoading.init(),
       ),

@@ -5,4 +5,6 @@ const String tableContactsModel = 'contacts_model';
 const String tableRosterModel = 'roster_model';
 const String tableChatMessageModel = 'chat_message_model';
 const String tableUserSettingsModel = 'user_settings_model';
+const String tableSharedContactsModel = 'shared_contacts_model';
+const String tableSharedContactsRequestModel = 'shared_contacts_request_model';
 const String tableBGTasksModel = 'bg_tasks_model';

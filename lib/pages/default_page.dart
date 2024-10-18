@@ -1,28 +1,21 @@
 import 'dart:async';
-import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
 
 import 'package:awesome_notifications/awesome_notifications.dart';
-import 'package:infoservice/pages/search_bar_main_page.dart';
 import 'package:infoservice/pages/tabs/tab_call_history_view.dart';
 import 'package:infoservice/pages/tabs/tab_call_screen_view.dart';
 import 'package:infoservice/pages/tabs/tab_companies_view.dart';
 import 'package:infoservice/pages/tabs/tab_home_view.dart';
 import 'package:infoservice/pages/tabs/tab_profile_view.dart';
 import 'package:infoservice/pages/tabs/tab_roster_view.dart';
-import 'package:infoservice/pages/themes.dart';
 import 'package:infoservice/sip_ua/callscreen.dart';
 import 'package:sip_ua/sip_ua.dart';
 
-import '../helpers/phone_mask.dart';
 import '../notification_services/awesome_notification_controller.dart';
 import '../services/jabber_manager.dart';
 import '../services/permissions_manager.dart';
 import '../services/sip_ua_manager.dart';
-import '../settings.dart';
-import 'bottom_navigation_bar_custom.dart';
-import 'chat/chat_page.dart';
-import 'chat/group_chat_page.dart';
+import '../navigation/custom_bottom_navigation_bar.dart';
 
 class DefaultPage extends StatefulWidget {
   final SIPUAManager? _sipHelper;
@@ -264,7 +257,7 @@ class _DefaultPageWidget extends State<DefaultPage>
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBarCustom(
+      bottomNavigationBar: CustomBottomNavigationBar(
         size: MediaQuery.of(context).size,
         chatMessageCount: 0,
         onPressed: (index, unavailable) {

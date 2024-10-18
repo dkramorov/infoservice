@@ -1,5 +1,8 @@
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:infoservice/helpers/date_time.dart';
+import 'package:infoservice/helpers/dialogs.dart';
+import 'package:infoservice/helpers/network.dart';
+import 'package:infoservice/pages/chat/shared_contacts_page.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 
@@ -67,14 +70,15 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
 
   String getMsgTime() {
     String msgTime = '-- --';
-    if (rosterModel.lastMessageTime != null && rosterModel.lastMessageTime != 0) {
+    if (rosterModel.lastMessageTime != null &&
+        rosterModel.lastMessageTime != 0) {
       DateTime now = DateTime.now();
       DateTime dt = timestamp2Datetime(rosterModel.lastMessageTime!);
       if (dt.month == now.month && dt.year == now.year) {
         if (dt.day == now.day) {
           msgTime = formatterHHmm.format(dt);
         } else {
-          DateTime yesterday = now.subtract(const Duration(days:1));
+          DateTime yesterday = now.subtract(const Duration(days: 1));
           if (yesterday.day == dt.day) {
             msgTime = 'Вчера';
           } else {
@@ -93,6 +97,35 @@ class _ChatUserWidgetState extends State<ChatUserWidget> {
     final containerMsgTextWidth = MediaQuery.of(context).size.width * 0.45;
 
     return GestureDetector(
+      /*
+      onLongPress: () {
+        Log.d(tag, '--- prepare check shared contacts ---');
+      },
+      onLongPressEnd: (count) async {
+        // Сверка общих контактов через сервер
+        List<dynamic> shared =
+            await getSharedContacts(cleanPhone(rosterModel.jid ?? ''));
+        if (shared.isNotEmpty) {
+          Future.delayed(Duration.zero, () {
+            Navigator.pushNamed(context, SharedContactsPage.id, arguments: {
+              sipHelper,
+              xmppHelper,
+              shared,
+            });
+          });
+        } else {
+          Future.delayed(Duration.zero, () {
+            openInfoDialog(
+              context,
+              null,
+              'Ничего не нашлось',
+              'Общих контактов не найдено',
+              'Понятно',
+            );
+          });
+        }
+      },
+      */
       onTap: () {
         String login = rosterModel.jid ?? '';
         final String phone = cleanPhone(login);

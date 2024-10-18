@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app_asset_lib.dart';
 import '../../common/widgets/big_picture_widget.dart';
 import '../../common/widgets/control_button.dart';
-import '../../../generic_appbar.dart';
+import '../../../../navigation/generic_appbar.dart';
 import '../../../gl.dart';
 import '../../../../widgets/modal.dart';
 import 'chat_appbar.dart';

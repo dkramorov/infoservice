@@ -201,17 +201,29 @@ class UpdateManager {
     File updateFile = await getUpdatePath();
     if (await updateFile.exists()) {
       Log.d(TAG, 'dropping ${updateFile.path}');
-      await updateFile.delete();
+      try {
+        await updateFile.delete();
+      } catch (e) {
+        Log.d(TAG, 'drop ${updateFile.path} failed');
+      }
     }
     File archiveFile = await getArchivePath();
     if (await archiveFile.exists()) {
       Log.d(TAG, 'dropping ${archiveFile.path}');
-      await archiveFile.delete();
+      try {
+        await archiveFile.delete();
+      } catch (e) {
+        Log.d(TAG, 'drop ${archiveFile.path} failed');
+      }
     }
     File tarFile = await getTarPath();
     if (await tarFile.exists()) {
       Log.d(TAG, 'dropping ${tarFile.path}');
-      await tarFile.delete();
+      try {
+        await tarFile.delete();
+      } catch (e) {
+        Log.d(TAG, 'drop ${tarFile.path} failed');
+      }
     }
   }
 
@@ -250,7 +262,6 @@ class UpdateManager {
   }
 
   void extractUpdateArchive(List<String> args) async {
-    // UNTAR
     String folder = args[0];
     String archiveFile = args[1];
     //await extractFileToDisk(archiveFile.path, folder, asyncWrite: true);
@@ -276,7 +287,6 @@ class UpdateManager {
   Future<CompaniesUpdate?> parseUpdateFile() async {
     //File updateFile = await downloadUpdateFile();
     File archiveFile = await downloadUpdateArchiveFile();
-    // UNTAR
     String folder = await makeAppFolder();
     //await extractFileToDisk(archiveFile.path, folder, asyncWrite: true);
     await compute(extractUpdateArchive, [folder, archiveFile.path]);
@@ -329,6 +339,7 @@ class UpdateManager {
             await loadCatalogue(force: true);
             preferences?.setInt(
                 CompaniesUpdateVersion.CAT_VERSION_KEY, serverVersion);
+            await dropUpdate();
           }
         }
       }
@@ -565,8 +576,8 @@ class UpdateManager {
     now = DateTime.now().millisecondsSinceEpoch;
     int elapsed = now - veryStarted;
     print('total elapsed $elapsed');
-    await JabberManager.updateChatsWithCompanyNames();
 
+    await JabberManager.updateChatsWithCompanyNames();
     await AppMetrica.reportEvent('db updated for ${JabberManager.user?.phone}'
         ' for $elapsed seconds');
   }

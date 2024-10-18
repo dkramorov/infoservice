@@ -56,6 +56,15 @@ class ChatMedia {
       'customProperties': customProperties,
     };
   }
+
+  @override
+  String toString() {
+    String result = '';
+    toJson().forEach((final String key, final dynamic value) {
+      result += '$key=$value; ';
+    });
+    return result;
+  }
 }
 
 class MediaType {
@@ -73,6 +82,10 @@ class MediaType {
         return MediaType.video;
       case 'file':
         return MediaType.file;
+      case 'question':
+        return MediaType.question;
+      case 'answer':
+        return MediaType.answer;
       case 'audio':
         return MediaType.audio;
       case 'custom':
@@ -86,5 +99,7 @@ class MediaType {
   static const MediaType video = MediaType._internal('video');
   static const MediaType file = MediaType._internal('file');
   static const MediaType audio = MediaType._internal('audio');
+  static const MediaType question = MediaType._internal('question');
+  static const MediaType answer = MediaType._internal('answer');
   static const MediaType custom = MediaType._internal('custom');
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../app_asset_lib.dart';
-import '../../../back_button_custom.dart';
+import '../../../../navigation/custom_app_bar_button.dart';
 import '../../../themes.dart';
 import '../../../../widgets/modal.dart';
 import 'item/modal_items.dart';
@@ -54,7 +54,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                   Material(
-                    child: AppBarButtonCustom(
+                    child: CustomAppBarButton(
                       padding: 0,
                       asset: AssetLib.plusButton,
                       onPressed: () => showModal(

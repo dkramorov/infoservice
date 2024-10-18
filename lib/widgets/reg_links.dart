@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../helpers/dialogs.dart';
-import '../pages/register/reg_wizard_screen.dart';
+import '../pages/auth/reg_wizard_screen.dart';
 import '../pages/themes.dart';
 import '../services/jabber_manager.dart';
 import '../services/sip_ua_manager.dart';

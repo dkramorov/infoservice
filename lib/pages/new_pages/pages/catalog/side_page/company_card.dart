@@ -6,7 +6,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 import '../../../../../services/sip_ua_manager.dart';
 import '../../../../app_asset_lib.dart';
 import '../../../../static_values.dart';
-import '../../../../back_button_custom.dart';
+import '../../../../../navigation/custom_app_bar_button.dart';
 import '../../../../themes.dart';
 import '../../../../../widgets/button.dart';
 import '../../../../../widgets/switcher.dart';
@@ -53,7 +53,7 @@ class _CompanyCardPageState extends State<CompanyCardPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   if (vis)
-                    AppBarButtonCustom(
+                    CustomAppBarButton(
                       asset: AssetLib.searchBigButton,
                       onPressed: () {},
                     )

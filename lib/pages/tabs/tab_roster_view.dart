@@ -17,7 +17,7 @@ import '../../settings.dart';
 import '../../widgets/chat/my_user.dart';
 import '../../widgets/dialog_md.dart';
 import '../../widgets/user_widget.dart';
-import '../authorization.dart';
+import '../auth/authorization.dart';
 import '../chat/add2roster.dart';
 
 class TabRosterView extends StatefulWidget {
@@ -45,6 +45,7 @@ class _TabRosterViewState extends State<TabRosterView> {
   SIPUAManager? get sipHelper => widget.sipHelper;
   JabberManager? get xmppHelper => widget.xmppHelper;
 
+  TextEditingController controller = TextEditingController();
   UserSettingsModel? user;
   List<RosterModel> myRoster = [];
   bool isRegistered = false;
@@ -66,6 +67,7 @@ class _TabRosterViewState extends State<TabRosterView> {
     if (updateTimer != null) {
       updateTimer!.cancel();
     }
+    controller.dispose();
     super.dispose();
   }
 
@@ -86,6 +88,38 @@ class _TabRosterViewState extends State<TabRosterView> {
           await checkStoragePermissions();
         });
       });
+    });
+
+    /* Вылетает без разрешений на контакты */
+    /*
+    for (int i=0; i<20000; i++) {
+      String phone = (89000000001 + i).toString();
+      ContactsManager.createContact(name: 'test_$i', phone: phone).then((result) {
+        print("+++++++++++ $i");
+      });
+    }
+    ContactsService.getContacts(withThumbnails: false).then((result) {
+      List<Contact> all = result;
+      print("+++++++++++ ${all.length}");
+    });
+    */
+
+    controller.addListener(() {
+      final text = controller.text.toLowerCase();
+      print('Search in roster: $text, len ${text.characters.length}');
+      for (int i=0; i<myRoster.length; i++) {
+        RosterModel r = myRoster[i];
+        if (text.isEmpty) {
+          r.visible = true;
+        } else {
+          if ((r.name ?? '').toLowerCase().contains(text) || (r.jid ?? '').contains(text)) {
+            r.visible = true;
+          } else {
+            r.visible = false;
+          }
+        }
+      }
+      setState(() {});
     });
   }
 
@@ -201,13 +235,9 @@ class _TabRosterViewState extends State<TabRosterView> {
   }
 
   Widget buildRosterSearch() {
-    final inputTextStyle = Theme.of(context).textTheme.subtitle2;
     return Container(
       margin: PAD_SYM_H20,
-      padding: PAD_SYM_H20,
-      alignment: Alignment.centerLeft,
-      width: double.infinity,
-      height: 50,
+      //height: 60.0,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -220,24 +250,37 @@ class _TabRosterViewState extends State<TabRosterView> {
         ],
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            SEARCH_ICON,
-            height: 16,
+          Padding(
+            padding: const EdgeInsets.only(left: 15, top: 12),
+            child: SvgPicture.asset(
+              SEARCH_ICON,
+              height: 20,
+            ),
           ),
-          SIZED_BOX_W20,
+          //SIZED_BOX_W20,
           Expanded(
             child: FocusScope(
               child: TextField(
-                autofocus: false,
-                textAlignVertical: TextAlignVertical.center,
-                keyboardType: TextInputType.name,
-                style: inputTextStyle,
-                expands: true,
-                maxLines: null,
-                decoration: const InputDecoration(
+                controller: controller,
+                keyboardType: TextInputType.text,
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                ),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.only(
+                      left: 15, top: 5, bottom: 5, right: 10),
                   border: InputBorder.none,
                   hintText: 'Поиск...',
+                  suffix: IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      controller.clear();
+                    },
+                  ),
                 ),
               ),
             ),
@@ -318,6 +361,7 @@ class _TabRosterViewState extends State<TabRosterView> {
       ),
       itemBuilder: (context, index) {
         RosterModel rosterModel = myRoster[index];
+        bool visible = rosterModel.visible;
         String login = rosterModel.jid ?? '';
         String phone = cleanPhone(login);
         String prettyPhone = phoneMaskHelper(phone);
@@ -372,20 +416,23 @@ class _TabRosterViewState extends State<TabRosterView> {
         if (rosterModel.lastMessage == null || rosterModel.lastMessage == '') {
           rosterModel.lastMessage = prettyPhone;
         }
-        return Dismissible(
-          key: UniqueKey(),
-          background: Container(color: Colors.red),
-          onDismissed: (direction) async {
-            RosterModel curItem = myRoster[index];
-            await BGTasksModel.dropRosterTask({'id': curItem.id});
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('${item.getName()} удален из контактов')));
-            }
-          },
-          child: ChatUserWidget(
-            xmppHelper: xmppHelper,
-            rosterModel: rosterModel,
+        return Visibility(
+          visible: visible,
+          child: Dismissible(
+            key: UniqueKey(),
+            background: Container(color: Colors.red),
+            onDismissed: (direction) async {
+              RosterModel curItem = myRoster[index];
+              await BGTasksModel.dropRosterTask({'id': curItem.id});
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('${item.getName()} удален из контактов')));
+              }
+            },
+            child: ChatUserWidget(
+              xmppHelper: xmppHelper,
+              rosterModel: rosterModel,
+            ),
           ),
         );
       },
@@ -397,4 +444,3 @@ class _TabRosterViewState extends State<TabRosterView> {
     return Center(child: buildView());
   }
 }
-

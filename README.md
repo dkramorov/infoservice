@@ -187,3 +187,18 @@ await db.execute('PRAGMA journal_mode=WAL')
 
 https://www.figma.com/design/4nG5pUQ1wCaAkjJSRVLlD0/8800?node-id=411-3252&t=zAqMlIvfkNP7RvKQ-0
 TODO: удалять при миграции на priority все задачи
+
+https://developers.google.com/android/guides/client-auth
+sha256 fingerprint oauth
+$ cd android
+$ ./gradlew signingReport
+
+Variant: debugAndroidTest
+Config: release
+Store: /Users/jocker/archive/Certificates/masterme_ru/upload-keystore.jks
+Alias: upload
+MD5: B7:B7:46:B8:8E:9E:2D:4F:4C:93:AE:DC:82:FF:DB:40
+SHA1: C0:D2:45:3C:4C:34:D3:A8:B2:FE:EE:D5:0B:2E:C8:DA:A8:67:8B:B1
+SHA-256: B8:E6:E7:CE:94:70:B9:89:F4:27:7A:BF:E9:01:CE:BB:5B:3D:CD:85:11:19:49:58:5B:1B:93:B6:5E:8C:FA:A8
+Valid until: вторник, 1 декабря 2048 г.
+https://yx0269fd8522e74f3e8e9ff428f4f5cc87.oauth.yandex.ru/.well-known/assetlinks.json

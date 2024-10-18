@@ -32,6 +32,9 @@ class RosterModel extends AbstractModel {
   String? ownerJid;
   int? isGroup;
 
+  // Для вывода в виджетах
+  bool visible = true;
+
   String getTableName() {
     return tableRosterModel;
   }
@@ -85,15 +88,6 @@ class RosterModel extends AbstractModel {
       ownerJid: dbItem['ownerJid'],
       isGroup: dbItem['isGroup'],
     );
-  }
-
-  @override
-  String toString() {
-    final String table = getTableName();
-    return '$table{id: $id, name: $name, jid: $jid, avatar: $avatar, '
-        'lastMessageId: $lastMessageId, lastMessage: $lastMessage, '
-        'lastMessageTime: $lastMessageTime, lastReadMessageTime: $lastReadMessageTime, '
-        'newMessagesCount: $newMessagesCount, ownerJid: $ownerJid, isGroup: $isGroup}';
   }
 
   void storeFetched(List<RosterModel> fetchedModels) {

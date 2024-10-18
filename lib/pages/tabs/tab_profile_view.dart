@@ -28,7 +28,7 @@ import '../../widgets/my_elevated_button_widget.dart';
 import '../../widgets/rounded_button_widget.dart';
 import '../../widgets/user_support_button.dart';
 import '../app_asset_lib.dart';
-import '../authorization.dart';
+import '../auth/authorization.dart';
 import '../profile/settings_page.dart';
 import '../themes.dart';
 

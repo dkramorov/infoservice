@@ -136,7 +136,7 @@ class AwesomeNotificationController {
       if (action.payload!['action'] == 'chat') {
         String sender = action.payload!['sender'] ?? '';
         String phone = cleanPhone(sender);
-        String jid = JabberManager().toJid(sender);
+        String jid = JabberManager.toJid(sender);
         String name = phoneMaskHelper(sender);
 
         String screenId = ChatScreen.id;

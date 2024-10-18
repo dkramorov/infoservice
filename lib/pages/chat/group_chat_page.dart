@@ -662,6 +662,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Future<void> sendTextMessage(String? text) async {
+    /* Отправка текстового сообщения */
     if (text == null) {
       return;
     }
@@ -680,6 +681,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     setState(() {
       messages.insert(0, m);
     });
+    // Ставим задачу
     Map<String, dynamic> data = {
       'from': userSettings!.jid,
       'text': m.text,
@@ -688,6 +690,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'pk': m.customProperties!['id'],
     };
     await BGTasksModel.sendTextGroupMessageTask(data);
+    // Пишем в базу
+    ChatMessageModel msg = JabberManager.createChatMessageModel(
+      data['from'],
+      data['to'],
+      data['text'],
+      now: data['now'],
+      pk: data['pk'],
+      msgType: 'groupchat',
+    );
+    await JabberManager.sendMessage2Db(msg);
   }
 
   Widget alternativeInput() {

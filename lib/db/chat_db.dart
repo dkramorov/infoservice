@@ -9,7 +9,7 @@ class DBChatInstance {
 }
 
 Future<Database> openChatDB() async {
-  const int dbVersion = 28; // Версия базы данных
+  const int dbVersion = 31; // Версия базы данных
   const String dbName = 'chatDB.db';
   if (DBChatInstance.instance != null) {
     return DBChatInstance.instance!;
@@ -186,6 +186,7 @@ Future<Database> openChatDB() async {
   const String chatMessageBubbleType = 'bubbleType text';
   const String chatMessageMediaURL = 'mediaURL text';
   const String chatMessageIsReadSent = 'isReadSent int';
+  const String chatMessageAnswered = 'answered int';
 
   const String createTableChatMessageModel = 'CREATE TABLE IF NOT EXISTS'
       ' $tableChatMessageModel('
@@ -202,6 +203,7 @@ Future<Database> openChatDB() async {
       ', $chatMessageBubbleType'
       ', $chatMessageMediaURL'
       ', $chatMessageIsReadSent'
+      ', $chatMessageAnswered'
       ')';
 
   const String createIndexChatMessageFromAndTo = 'CREATE INDEX IF NOT EXISTS idx_chat_message_on_from_and_to'
@@ -216,6 +218,8 @@ Future<Database> openChatDB() async {
       ' ON $tableChatMessageModel (mid)';
   const String createIndexChatMessageIsReadSent = 'CREATE INDEX IF NOT EXISTS idx_chat_message_on_is_read_sent'
       ' ON $tableChatMessageModel (isReadSent)';
+  const String createIndexChatMsgType = 'CREATE INDEX IF NOT EXISTS idx_chat_message_on_msgtype'
+      ' ON $tableChatMessageModel (msgtype)';
 
   const String dropTableChatMessageModel = 'DROP TABLE IF EXISTS $tableChatMessageModel';
 
@@ -234,10 +238,14 @@ Future<Database> openChatDB() async {
     await db.execute(createIndexChatMessageMid);
     await db.execute(createIndexChatMessageIsReadSent);
     await db.execute(createIndexPendingMessageTime);
+    await db.execute(createIndexChatMsgType);
   }
 
   const String alterTableChatMessageRenameMyJid2ToJid =
       'ALTER TABLE $tableChatMessageModel RENAME COLUMN myJid TO toJid';
+
+  const String alterTableChatMessageAddAnswered =
+      'ALTER TABLE $tableChatMessageModel ADD $chatMessageAnswered';
 
   final Future<Database> database = openDatabase(
     join(await getDatabasesPath(), dbName),
@@ -289,6 +297,12 @@ Future<Database> openChatDB() async {
       }
       if (oldVersion < 26) {
         await db.execute(alterTablePendingMessageAddUid);
+      }
+      if (oldVersion < 29) {
+        await db.execute(createIndexChatMsgType);
+      }
+      if (oldVersion < 30) {
+        await db.execute(alterTableChatMessageAddAnswered);
       }
     },
     // Set the version. This executes the onCreate function and provides a

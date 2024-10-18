@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "1007682182703-7v9dimtmvheeqsf7v92imcen0l8j2dii.apps.googleusercontent.com",
+          "client_id": "1007682182703-prp1pgmq41cdf8046b8fh6b59b4gr7ac.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ru.masterme.chat.masterme_chat",
+            "certificate_hash": "c0d2453c4c34d3a8b2feeed50b2ec8daa8678bb1"
+          }
+        },
+        {
+          "client_id": "1007682182703-4h8fdup8aoddfm129526vo0pqukpk6us.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1007682182703-7v9dimtmvheeqsf7v92imcen0l8j2dii.apps.googleusercontent.com",
+              "client_id": "1007682182703-4h8fdup8aoddfm129526vo0pqukpk6us.apps.googleusercontent.com",
               "client_type": 3
             },
             {

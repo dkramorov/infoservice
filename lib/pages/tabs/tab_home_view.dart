@@ -1,15 +1,18 @@
 import 'dart:async';
 
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:infoservice/helpers/context_extensions.dart';
+import 'package:infoservice/models/user_settings_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/companies/catalogue.dart';
 import '../../fonts/funtya.dart';
 import '../../helpers/log.dart';
 import '../../services/jabber_manager.dart';
+import '../../services/navigation_manager.dart';
 import '../../services/shared_preferences_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../services/update_manager.dart';
@@ -18,6 +21,7 @@ import '../../widgets/companies/cat_row.dart';
 import '../../widgets/companies/catalogue_in_update.dart';
 import '../../widgets/companies/floating_search_widget.dart';
 import '../../widgets/top_bar_item.dart';
+import '../auth/authorization.dart';
 import '../companies/cats_listing_screen.dart';
 import '../companies/companies_listing_screen.dart';
 
@@ -68,6 +72,17 @@ class _TabHomeViewState extends State<TabHomeView> {
   void initState() {
     super.initState();
     _pageController.addListener(_handlePageChange);
+
+    // Неавторизованного кидаем на авторизацию
+    SharedPreferencesManager.getSharedPreferences().then((prefs){
+      bool? registered = prefs.getBool('registered');
+      if (registered ?? false) {
+        // ok, registered
+      } else {
+        Navigator.pushNamed(context, AuthScreenWidget.id);
+      }
+    });
+
     loadRubrics();
     // Из фона не приезджает stream?
     updateSubscription =
@@ -83,6 +98,17 @@ class _TabHomeViewState extends State<TabHomeView> {
           await SharedPreferencesManager.getSharedPreferences();
       bool catalogueLoadedAction =
           preferences.getBool(UpdateManager.catalogueLoadedAction) ?? false;
+
+      // Неавторизованного кидаем на авторизацию
+      bool? registered = preferences.getBool('registered');
+      if (registered ?? false) {
+        // ok, registered
+      } else {
+        if (!Navigator.canPop(context) && mounted) {
+          Navigator.pushNamed(context, AuthScreenWidget.id);
+        }
+      }
+
       if (catalogueLoadedAction) {
         print('UpdateManager.updateStream.updateSection section'
             ' ${UpdateManager.catalogueLoadedAction}');
@@ -91,6 +117,15 @@ class _TabHomeViewState extends State<TabHomeView> {
         updateTimer.cancel();
       }
     });
+
+    /*
+    Future.delayed(Duration.zero, () async {
+      UserSettingsModel? user = await UserSettingsModel().getUser();
+      if (user == null) {
+        Navigator.pushNamed(context, AuthScreenWidget.id);
+      }
+    });
+    */
   }
 
   @override

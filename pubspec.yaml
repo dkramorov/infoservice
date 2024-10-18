@@ -4,7 +4,7 @@ description: Social service
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.1.142+142
+version: 1.1.155+155
 
 environment:
   # sdk: '>=2.18.0 <3.0.5' # flutter 3.3.0
@@ -90,6 +90,8 @@ dependencies:
   # flutter_login_yandex: ^0.0.4
   flutter_login_yandex_updated: # https://github.com/missionnowin/flutter_login_yandex/
     path: flutter_login_yandex-0.0.8 # custom version
+  google_sign_in: ^6.1.6
+  flutter_isolate: ^2.0.4
 
 dev_dependencies:
   flutter_test:

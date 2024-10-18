@@ -15,8 +15,8 @@ import '../../widgets/companies/catalogue_in_update.dart';
 import '../../widgets/companies/company_row.dart';
 import '../../widgets/companies/floating_search_widget.dart';
 import '../app_asset_lib.dart';
-import '../back_button_custom.dart';
-import '../generic_appbar.dart';
+import '../../navigation/custom_app_bar_button.dart';
+import '../../navigation/generic_appbar.dart';
 
 class CompaniesListingScreen extends StatefulWidget {
   static const String id = '/companies_listing_screen/';
@@ -166,18 +166,20 @@ class _CompaniesListingScreenState extends State<CompaniesListingScreen> {
       appBar: GenericAppBar(
         hasBackButton: true,
         title: title,
+        /*
         controls: [
-          AppBarButtonCustom(
+          CustomAppBarButton(
             padding: 8,
             asset: AssetLib.searchBigButton,
             onPressed: () {},
           ),
         ],
+        */
       ),
       body: Stack(
         children: [
           buildCatalogue(),
-          //buildFloatingSearch(),
+          buildFloatingSearch(),
         ],
       ),
     );

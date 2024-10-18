@@ -29,11 +29,10 @@ import '../../widgets/companies/star_rating_widget.dart';
 import '../../widgets/rounded_button_widget.dart';
 import '../../widgets/switcher.dart';
 import '../app_asset_lib.dart';
-import '../back_button_custom.dart';
+import '../../navigation/custom_app_bar_button.dart';
 import '../chat/chat_page.dart';
 import '../chat/group_chat_page.dart';
 import '../../widgets/button.dart';
-import '../static_values.dart';
 import '../themes.dart';
 
 class TabCompanyView extends StatefulWidget {
@@ -63,7 +62,8 @@ class _TabCompanyViewState extends State<TabCompanyView> {
 
   static const addressIconColor = Color(0xFF961616);
 
-  bool vis = true;
+  //bool vis = true; // Показывать название компании и иконки только после прокрутки
+  bool vis = false;
   bool shad = false;
   bool isSubscribedOnNews = false;
 
@@ -705,7 +705,7 @@ class _TabCompanyViewState extends State<TabCompanyView> {
 
   Widget buildCompanyView() {
     Size size = MediaQuery.sizeOf(context);
-    // TODO: убрать appBar из company_wizard_view.dart
+    // TODO: убрать appBar из company_wizard_screen.dart
     /* /// Старый вариант
     return SingleChildScrollView(
       child: buildCompanyCard(),
@@ -736,7 +736,7 @@ class _TabCompanyViewState extends State<TabCompanyView> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   if (vis)
-                    AppBarButtonCustom(
+                    CustomAppBarButton(
                       asset: AssetLib.searchBigButton,
                       onPressed: () {},
                     )
@@ -877,6 +877,10 @@ class _TabCompanyViewState extends State<TabCompanyView> {
                     ),
                   ),
                   onVisibilityChanged: (visibilityInfo) {
+
+                    /* Пока отключил
+                       сразу показываем иконки в шапке и название компании
+                       без прокрутки
                     var visiblePercentage =
                         visibilityInfo.visibleFraction * 100;
                     if (visiblePercentage == 0) {
@@ -886,6 +890,8 @@ class _TabCompanyViewState extends State<TabCompanyView> {
                       vis = true;
                       if (mounted) setState(() {});
                     }
+                    */
+
                   },
                 ),
                 const SizedBox(height: 24),

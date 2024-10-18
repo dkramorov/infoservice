@@ -1,14 +1,18 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:material_floating_search_bar/material_floating_search_bar.dart';
 
 import '../../models/companies/search.dart';
+import '../../pages/app_asset_lib.dart';
 import '../../pages/themes.dart';
 import '../../services/jabber_manager.dart';
-import '../../settings.dart';
 
 class CompaniesFloatingSearchWidget extends StatefulWidget {
   final JabberManager? _helper;
-  const CompaniesFloatingSearchWidget(this._helper, {Key? key}) : super(key: key);
+  const CompaniesFloatingSearchWidget(this._helper, {Key? key})
+      : super(key: key);
 
   @override
   _CompaniesFloatingSearchWidgetState createState() =>
@@ -27,7 +31,8 @@ class _CompaniesFloatingSearchWidgetState
 
   @override
   void initState() {
-    searchModel = SearchModel(setStateCallback: setStateCallback, xmppHelper: helper);
+    searchModel =
+        SearchModel(setStateCallback: setStateCallback, xmppHelper: helper);
     super.initState();
   }
 
@@ -50,6 +55,17 @@ class _CompaniesFloatingSearchWidgetState
     });
   }
 
+  List<Widget> buildEmptyResult() {
+    return [
+      const Padding(
+        padding: EdgeInsets.all(10.0),
+        child: Center(
+          child: Text('Ничего не найдено'),
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return FloatingSearchBar(
@@ -58,11 +74,11 @@ class _CompaniesFloatingSearchWidgetState
         horizontal: 20.0,
       ),
       padding: const EdgeInsets.only(
-        left: 10.0,
-        right: 5,
+        left: 15.0,
+        right: 10.0,
       ),
       hint: 'Поиск...',
-
+      backgroundColor: white,
       clearQueryOnClose: true,
       automaticallyImplyBackButton: false,
       iconColor: Colors.grey,
@@ -76,15 +92,13 @@ class _CompaniesFloatingSearchWidgetState
           searchProcessing = false;
         });
       },
-      //onQueryChanged: (query) {},
-
       //controller: controller,
       scrollPadding: const EdgeInsets.only(top: 16, bottom: 36),
       //transitionDuration: const Duration(milliseconds: 800),
       //transitionCurve: Curves.easeInOut,
       //transition: CircularFloatingSearchBarTransition(),
       isScrollControlled: true,
-      backdropColor: Colors.black38,
+      backdropColor: Colors.black12,
 
       //physics: const BouncingScrollPhysics(),
       //axisAlignment: isPortrait ? 0.0 : -1.0,
@@ -96,16 +110,24 @@ class _CompaniesFloatingSearchWidgetState
       actions: [
         FloatingSearchBarAction(
           showIfOpened: false,
+          showIfClosed: true,
           child: CircularButton(
-            icon: const Icon(Icons.search),
+            icon: SvgPicture.asset(AssetLib.searchButton),
             onPressed: () {},
           ),
         ),
+        /*
         FloatingSearchBarAction.searchToClear(
           showIfClosed: false,
         ),
+        */
+        FloatingSearchBarAction.closeAction(
+          showIfClosed: false,
+          icon: SvgPicture.asset(AssetLib.close2),
+        ),
       ],
       builder: (context, transition) {
+        int searchResultCount = searchResult.length;
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Material(
@@ -124,7 +146,8 @@ class _CompaniesFloatingSearchWidgetState
                 );
               }).toList(),
               */
-              children: searchResult,
+              children:
+                  searchResultCount > 0 ? searchResult : buildEmptyResult(),
             ),
           ),
         );

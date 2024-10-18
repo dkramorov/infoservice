@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'themes.dart';
+import '../pages/themes.dart';
 
 class GenericAppBar extends StatelessWidget implements PreferredSizeWidget {
   const GenericAppBar({

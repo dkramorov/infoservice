@@ -7,14 +7,14 @@ import '../../helpers/phone_mask.dart';
 import '../../helpers/string_parser.dart';
 import '../../models/registration_model.dart';
 import '../../settings.dart';
-import '../../widgets/auth/yandex_oauth_button.dart';
+import '../../widgets/auth/oauth_buttons.dart';
 import '../../widgets/button.dart';
 import '../../widgets/password_eye_widget.dart';
 import '../../widgets/switcher.dart';
 import '../../widgets/terms_widget.dart';
 import '../../widgets/text_field_custom.dart';
 import '../app_asset_lib.dart';
-import '../back_button_custom.dart';
+import '../../navigation/custom_app_bar_button.dart';
 import '../static_values.dart';
 import '../themes.dart';
 
@@ -146,7 +146,7 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const AppBarButtonCustom(asset: AssetLib.closeButton),
+        leading: const CustomAppBarButton(asset: AssetLib.closeButton),
       ),
       body: Form(
         key: formKey,
@@ -178,6 +178,8 @@ class _StepRegisterPhoneViewState extends State<StepRegisterPhoneView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     YandexOauthButton(),
+                    SIZED_BOX_W04,
+                    GoogleOauthButton(),
                   ]),
               SIZED_BOX_H24,
               const SizedBox(height: 24),

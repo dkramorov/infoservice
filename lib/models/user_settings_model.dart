@@ -21,7 +21,6 @@ class UserSettingsModel extends AbstractModel {
 
   @override
   Future<Database> openDB() async {
-    //print('___openSettingsDB___');
     return await openSettingsDB();
   }
 

@@ -41,7 +41,11 @@ class AbstractModel {
 
   @override
   String toString() {
-    return 'Setting{id: $id}';
+    String result = '';
+    toMap().forEach((final String key, final value) {
+      result += '$key=$value; ';
+    });
+    return '$tableName: $result';
   }
 
   Future<int> insert2Db() async {
@@ -198,12 +202,12 @@ class AbstractModel {
           Log.d('transaction $tableName', 'empty params');
           return;
         }
-        await txn.rawInsert(query, params);
+        int inserted = await txn.rawInsert(query, params);
       }
     });
     elapser.stop();
-    Log.d('transaction ${db.path.split("/").last}.$tableName',
-        'elapsed ${elapser.elapsed.inMilliseconds}');
+    Log.d('transaction ${db.path.split('/').last}.$tableName',
+        'elapsed ${elapser.elapsed.inMilliseconds} ms');
   }
 
   /* Для сохранения всего говнища в базу,

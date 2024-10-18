@@ -10,7 +10,7 @@ import '../../widgets/button.dart';
 import '../../widgets/pin_code.dart';
 import '../../widgets/progress_bar.dart';
 import '../../widgets/submit_button.dart';
-import '../back_button_custom.dart';
+import '../../navigation/custom_app_bar_button.dart';
 import '../themes.dart';
 
 class StepConfirmPhoneView extends StatefulWidget {
@@ -205,7 +205,7 @@ class _StepConfirmPhoneViewState extends State<StepConfirmPhoneView> {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    AppBarButtonCustom(),
+                    CustomAppBarButton(),
                   ],
                 ),
               ),

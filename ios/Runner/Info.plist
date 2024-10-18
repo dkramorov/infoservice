@@ -101,6 +101,8 @@
 	</array>
 	<key>YAClientId</key>
 	<string>0269fd8522e74f3e8e9ff428f4f5cc87</string>
+	<key>GIDClientID</key>
+	<string>1007682182703-niuuhijoch44jlccstnccs609mpuc0qf.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -109,6 +111,14 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>yx0269fd8522e74f3e8e9ff428f4f5cc87</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1007682182703-niuuhijoch44jlccstnccs609mpuc0qf</string>
 			</array>
 		</dict>
 	</array>

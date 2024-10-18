@@ -6,7 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:infoservice/widgets/phone_call_button.dart';
 import '../../../../services/sip_ua_manager.dart';
 import '../../../app_asset_lib.dart';
-import '../../../back_button_custom.dart';
+import '../../../../navigation/custom_app_bar_button.dart';
 import '../../../themes.dart';
 
 import 'package:flutter_callkit_incoming/entities/entities.dart';
@@ -185,7 +185,7 @@ class _NewCallState extends State<NewCall> {
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              AppBarButtonCustom(),
+              CustomAppBarButton(),
             ],
           ),
         ),
@@ -226,7 +226,7 @@ class _NewCallState extends State<NewCall> {
           ),
           const SizedBox(height: 24),
           PhoneCallButton(
-            asset: AssetLib.phoneCallButton,
+            asset: AssetLib.phoneCall,
             backgroundColor: (phone.length == 11) ? blue : white,
             assetColor: (phone.length == 11)
                 ? white

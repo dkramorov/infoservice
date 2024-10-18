@@ -103,7 +103,16 @@ class MediaContainer extends StatelessWidget {
             if (media.isUploading) loading
           ],
         );
-
+      case MediaType.answer:
+      case MediaType.question:
+        return Stack(
+          alignment: AlignmentDirectional.bottomEnd,
+          children: <Widget>[
+            if (customProperties != null && customProperties['widget'] != null)
+              customProperties['widget'] as Widget,
+            if (media.isUploading) loading
+          ],
+        );
       default:
         return TextContainer(
           isOwnMessage: isOwnMessage,
@@ -158,16 +167,23 @@ class MediaContainer extends StatelessWidget {
             double height = MediaQuery.of(context).size.height * 0.5;
             if (m.type == MediaType.audio) {
               height = 70;
+            } else if (m.type == MediaType.question || m.type == MediaType.answer) {
+              // Автовысота для вопроса/ответа
+              height = 0;
+            }
+            BoxConstraints? constraints = BoxConstraints(
+              maxHeight: height,
+              maxWidth: MediaQuery.of(context).size.width * 0.7,
+            );
+            if (height <= 0) {
+              constraints = null;
             }
             return Container(
               color: Colors.transparent,
               margin: const EdgeInsets.only(top: 5, right: 5),
               width: media.length > 1 && isImage ? gallerySize : null,
               height: media.length > 1 && isImage ? gallerySize : null,
-              constraints: BoxConstraints(
-                maxHeight: height,
-                maxWidth: MediaQuery.of(context).size.width * 0.7,
-              ),
+              constraints: constraints,
               child: GestureDetector(
                 onTap: messageOptions.onTapMedia != null
                     ? () => messageOptions.onTapMedia!(m)

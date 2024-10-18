@@ -102,6 +102,42 @@ class FloatingSearchBarAction extends StatelessWidget {
     );
   }
 
+  /// Своя реализация закрытия окна поиска
+  factory FloatingSearchBarAction.closeAction({
+    double size = 24,
+    required dynamic icon,
+    bool showIfClosed = true,
+  }) {
+    return FloatingSearchBarAction(
+      showIfOpened: true,
+      showIfClosed: showIfClosed,
+      builder: (context, animation) {
+        final bar = FloatingSearchAppBar.of(context)!;
+
+        return ValueListenableBuilder<String>(
+          valueListenable: bar.queryNotifer,
+          builder: (context, query, _) {
+            final isEmpty = query.isEmpty;
+
+            return CircularButton(
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              size: size,
+              icon: icon is IconData ? Icon(icon) : icon,
+              onPressed: () {
+                if (!isEmpty) {
+                  bar.clear();
+                } else {
+                  bar.isOpen =
+                      !bar.isOpen || (!bar.hasFocus && bar.isAlwaysOpened);
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   /// A search icon that transitions into a clear icon
   /// when the query of the [FloatingSearchBar] is not empty.
   factory FloatingSearchBarAction.searchToClear({

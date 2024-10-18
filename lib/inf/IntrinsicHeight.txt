@@ -1,0 +1,17 @@
+Делает по высоте вложенные Column максимального размера
+что позволяет в последней колонке делать spaceBetween и получать сверху и снизу вложенные элементы
+IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  buildImage(productWithImage ?? ProductModel()),
+                ],
+              ),
+              Column(
+
+              Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,

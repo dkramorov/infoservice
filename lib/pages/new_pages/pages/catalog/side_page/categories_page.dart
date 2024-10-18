@@ -4,8 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../app_asset_lib.dart';
 import '../../../../static_values.dart';
-import '../../../../back_button_custom.dart';
-import '../../../../generic_appbar.dart';
+import '../../../../../navigation/custom_app_bar_button.dart';
+import '../../../../../navigation/generic_appbar.dart';
 import '../../../../themes.dart';
 import '../../../../format_ends.dart';
 import 'company_card.dart';
@@ -19,7 +19,7 @@ class CategoriesPage extends StatelessWidget {
           hasBackButton: true,
           title: 'Банки',
           controls: [
-            AppBarButtonCustom(
+            CustomAppBarButton(
               padding: 8,
               asset: AssetLib.searchBigButton,
               onPressed: () {},

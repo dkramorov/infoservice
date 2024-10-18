@@ -6,6 +6,7 @@ import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/sip_ua/dialpadscreen.dart';
 import 'package:intl/intl.dart';
 import '../../helpers/log.dart';
+import '../../helpers/model_utils.dart';
 import '../../helpers/phone_mask.dart';
 import '../../models/call_history_model.dart';
 import '../../models/companies/orgs.dart';
@@ -41,7 +42,6 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
   JabberManager? get xmppHelper => widget.xmppHelper;
 
   final DateFormat formatter = DateFormat('dd MMMM, HH:mm');
-
   List<CallHistoryModel> history = [];
 
   @override
@@ -75,6 +75,8 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
     }
     List<CallHistoryModel> result =
         await CallHistoryModel().getAllHistory(user.phone ?? '');
+    // Нужно подтянуть имена к звонкам
+    await getNamesByPhones();
 
     setState(() {
       if (mounted) {
@@ -110,6 +112,11 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
       itemBuilder: (context, index) {
         final item = history[history.length - index - 1];
         final duration = sipHelper?.calcCallTime(item.duration ?? 0);
+        String phone = phoneMaskHelper(item.dest ?? '');
+        String name = item.company != null ? item.company!.name ?? '' : phone;
+        if (JabberManager.cacheRosterNames[item.dest] != null) {
+          name = JabberManager.cacheRosterNames[item.dest] ?? phone;
+        }
         return Dismissible(
           key: UniqueKey(),
           background: Container(color: Colors.red),
@@ -165,7 +172,7 @@ class _TabCallHistoryViewState extends State<TabCallHistoryView> {
                       SizedBox(
                         width: containerMsgTextWidth,
                         child: Text(
-                          item.company != null ? item.company!.name ?? '' : phoneMaskHelper(item.dest ?? ''),
+                          name,
                           //maxLines: 4,
                           //overflow: TextOverflow.fade,
                           //softWrap: false,

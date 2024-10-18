@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:infoservice/pages/register/step_confirm_phone_view.dart';
-import 'package:infoservice/pages/register/step_register_phone_view.dart';
+import 'package:infoservice/pages/auth/step_confirm_phone_view.dart';
+import 'package:infoservice/pages/auth/step_register_phone_view.dart';
 
 import '../../models/bg_tasks_model.dart';
 import '../../services/jabber_manager.dart';

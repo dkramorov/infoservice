@@ -20,11 +20,13 @@ import 'package:uuid/uuid.dart';
 
 import 'package:xmpp_plugin/xmpp_plugin.dart';
 
+import '../helpers/date_time.dart';
 import '../helpers/log.dart';
 import '../helpers/native_log_helper.dart';
 import '../helpers/network.dart';
 import '../helpers/phone_mask.dart';
 import '../models/contact_model.dart';
+import '../models/shared_contacts_model.dart';
 import '../models/user_settings_model.dart';
 import '../settings.dart';
 
@@ -88,7 +90,7 @@ class JabberManager implements DataChangeEvents {
     return prefs.getString('password') ?? '';
   }
 
-  String toJid(String login) {
+  static String toJid(String login) {
     if (!login.endsWith('@$JABBER_SERVER')) {
       return '${cleanPhone(login)}@$JABBER_SERVER';
     }
@@ -124,7 +126,8 @@ class JabberManager implements DataChangeEvents {
   /* Регистрация на xmpp сервере */
   Future<void> doRegister() async {
     if (stopMainTimer) {
-      Log.d(tag, 'ignore register trigger, because stopMainTimer is $stopMainTimer');
+      Log.d(tag,
+          'ignore register trigger, because stopMainTimer is $stopMainTimer');
       return;
     }
     bool hasInternet = await checkInternetConnection();
@@ -185,6 +188,7 @@ class JabberManager implements DataChangeEvents {
       SharedPreferences prefs =
           await SharedPreferencesManager.getSharedPreferences();
       await prefs.setBool('checkInternetConnection', hasInternet);
+      /*
       Log.d(
           tag,
           '$counter, XMPP: is registered: $registered'
@@ -192,6 +196,7 @@ class JabberManager implements DataChangeEvents {
           ', connectionStatus $connectionStatus'
           ', connectedTime $connectedTime'
           ', appState ${JabberManager.appState}');
+      */
       if (!hasInternet) {
         if (registered) {
           // На йосе здесь await не вернет результат (видимо слушателя надо проверить)
@@ -272,7 +277,9 @@ class JabberManager implements DataChangeEvents {
         XmppConnectionState? status = await showConnectionStatus();
         await Future.delayed(const Duration(seconds: 2));
         Log.i(tag, 'XmppConnectionState=$status');
-        if (status == null || status == XmppConnectionState.disconnected || status == XmppConnectionState.failed) {
+        if (status == null ||
+            status == XmppConnectionState.disconnected ||
+            status == XmppConnectionState.failed) {
           if (await UserSettingsModel().getUser() != null) {
             await doRegister();
             await Future.delayed(const Duration(seconds: 5));
@@ -383,7 +390,8 @@ class JabberManager implements DataChangeEvents {
 
   void checkReceivedMessage(MessageChat messageChat,
       {bool isGroup = false}) async {
-    /* Получено сообщение, подпихивать имя пользователя в поток
+    /* Получено сообщение,
+       подпихивать имя пользователя в поток
     */
     ChatMessageModel receivedMessage =
         ChatMessageModel.convert2ChatMessageModel(messageChat);
@@ -393,17 +401,6 @@ class JabberManager implements DataChangeEvents {
       return;
     }
 
-    if (messageChat.type == 'Ack') {
-      int deleted =
-          await PendingMessageModel().deleteByUid(messageChat.id ?? '');
-      print("DELETED deleteByUid: $deleted");
-    }
-
-    bool isExists = await receivedMessage.isExists();
-    if (!isExists) {
-      await receivedMessage.insert2Db();
-    }
-
     String from = receivedMessage.from ?? '';
     String to = receivedMessage.to ?? '';
     String rosterItem = from;
@@ -411,6 +408,26 @@ class JabberManager implements DataChangeEvents {
     String myJid = user?.jid ?? '';
     if (from == myJid) {
       rosterItem = to;
+    }
+
+    if (messageChat.type == 'Ack') {
+      if (!isGroup) {
+        if (messageChat.body == 'question' || messageChat.body == 'answer') {
+          await UserSettingsModel().updateRosterVersion();
+        }
+      }
+      int deleted =
+          await PendingMessageModel().deleteByUid(messageChat.id ?? '');
+      print('DELETED deleteByUid: $deleted');
+    }
+
+    bool isExists = await receivedMessage.isExists();
+    if (!isExists) {
+      // Проверка на вопрос-ответ запросы
+      await SharedContactsRequestModel()
+          .checkNewAnswer(receivedMessage, myJid, from);
+      // Вставка в бд
+      await receivedMessage.insert2Db();
     }
 
     List<RosterModel> rosterModels =
@@ -451,14 +468,15 @@ class JabberManager implements DataChangeEvents {
     if (lastMessageTime < receivedMessageTime) {
       rosterModel.lastMessageTime = receivedMessageTime;
       rosterModel.lastMessageId = receivedMessage.mid;
-      rosterModel.lastMessage = receivedMessage.body;
+      rosterModel.lastMessage =
+          ChatMessageModel.messageForRoster(receivedMessage);
       rosterModel.newMessagesCount = newMessagesCount;
       // Обновляем в базе ростер
       await rosterModel.updatePartial(rosterModel.id, {
-        'lastMessageTime': receivedMessageTime,
-        'lastMessageId': receivedMessage.mid,
-        'lastMessage': receivedMessage.body,
-        'newMessagesCount': newMessagesCount,
+        'lastMessageTime': rosterModel.lastMessageTime,
+        'lastMessageId': rosterModel.lastMessageId,
+        'lastMessage': rosterModel.lastMessage,
+        'newMessagesCount': rosterModel.newMessagesCount,
       });
       await UserSettingsModel().updateRosterVersion();
       Log.d(
@@ -470,7 +488,8 @@ class JabberManager implements DataChangeEvents {
   }
 
   Future<void> onDeliveryAck(MessageChat messageChat) async {
-    /* Получение рецепта доставки сообщения */
+    /* Получение рецепта доставки сообщения
+    */
     Log.d(tag, 'onDeliveryReceipt: ${messageChat.toEventData()}');
     String myJid = user?.jid ?? '';
 
@@ -528,7 +547,8 @@ class JabberManager implements DataChangeEvents {
   void onConnectionEvents(ConnectionEvent connectionEvent) {
     connectionStatus = connectionEvent.type!.toString();
     Log.d(tag, 'onConnectionEvents ~~>>${connectionEvent.toJson()}');
-    Log.d(tag, 'new connectionStatus=$connectionStatus, registered=$registered');
+    Log.d(
+        tag, 'new connectionStatus=$connectionStatus, registered=$registered');
 
     UserSettingsModel().getUser().then((userSettings) async {
       if (userSettings != null) {
@@ -536,6 +556,10 @@ class JabberManager implements DataChangeEvents {
         await userSettings.updatePartial(
             userSettings.id, {'isXmppRegistered': registered ? 1 : 0});
         if (registered) {
+          SharedPreferences prefs =
+          await SharedPreferencesManager.getSharedPreferences();
+          prefs.setBool('registered', true);
+
           await getRoster();
           await initData();
         }
@@ -829,29 +853,35 @@ class JabberManager implements DataChangeEvents {
       for (int i = 0; i < roster.length; i++) {
         String curJid = roster[i].toString().split(':')[0];
         if (curJid != '' && rosterMap[curJid] == null) {
-          RosterModel newRosterModel = RosterModel(jid: curJid, ownerJid: user.jid);
+          RosterModel newRosterModel =
+              RosterModel(jid: curJid, ownerJid: user.jid);
           await newRosterModel.insert2Db();
           rosterMap[curJid] = newRosterModel;
           isNew = true;
         }
+
         // Получаем VCard
         if (rosterMap[curJid] != null) {
           RosterModel curRosterModel = rosterMap[curJid]!;
           if (curRosterModel.avatar == null || curRosterModel.avatar == '') {
-            final vCard = await getVCardDescAsDict(jid: curJid ?? '');
+            final vCard = await getVCardDescAsDict(jid: curJid);
+            Map<String, dynamic> updateData = {};
+            if (vCard['FN'] != null) {
+              updateData['name'] = vCard['FN'];
+            }
             if (vCard['PHOTO'] != null) {
               String ext = vCard['PHOTO'].toString().split('.').last;
-              File photo = await getLocalFilePath('${curRosterModel.id}.${ext}');
+              File photo = await getLocalFilePath('${curRosterModel.id}.$ext');
               File avatar = await downloadFile(vCard['PHOTO'], photo);
               curRosterModel.avatar = avatar.path;
-              await curRosterModel.updatePartial(curRosterModel.id, {
-                'avatar': avatar.path,
-              });
+              updateData['avatar'] = avatar.path;
+            }
+            if (updateData.isNotEmpty) {
+              await curRosterModel.updatePartial(curRosterModel.id, updateData);
               isNew = true;
             }
           }
         }
-        await getVCard(curJid);
       }
       if (isNew) {
         user.incRosterVersion();
@@ -913,10 +943,7 @@ class JabberManager implements DataChangeEvents {
     if (rosterModel.avatar == null || rosterModel.avatar == '') {
       String logo = company.getLogoPath() ?? '';
       if (logo != '') {
-        String ext = logo
-            .toString()
-            .split('.')
-            .last;
+        String ext = logo.toString().split('.').last;
         File photo = await getLocalFilePath('company_${company.id}.$ext');
         File avatar = await downloadFile(logo, photo);
         rosterModel.avatar = avatar.path;
@@ -989,8 +1016,7 @@ class JabberManager implements DataChangeEvents {
     if (rosterModels.isEmpty) {
       RosterModel rosterModel = RosterModel(jid: jid, ownerJid: myJid);
       phone = cleanPhone(phone);
-      ContactModel? contact =
-          await ContactModel().getByPhone(phone);
+      ContactModel? contact = await ContactModel().getByPhone(phone);
       if (contact != null) {
         rosterModel.name = contact.displayName;
       } else {
@@ -1035,22 +1061,6 @@ class JabberManager implements DataChangeEvents {
     await dropGroup2VCard(groupId);
   }
 
-  Future<void> afterSendMessage(ChatMessageModel msg) async {
-    /* Действие после отправки сообщения:
-       1) обновляем в ростере информацию о последем сообщении
-    */
-    List<RosterModel> toRosterModels =
-        await RosterModel().getBy(msg.from!, jid: msg.to!);
-    if (toRosterModels.isNotEmpty) {
-      RosterModel toRosterModel = toRosterModels[0];
-      toRosterModel.updatePartial(toRosterModel.id, {
-        'lastMessageTime': msg.time!,
-        'lastMessageId': msg.mid!,
-        'lastMessage': msg.body!,
-      });
-    }
-  }
-
   Future<ChatMessageModel> sendCustomMessage(
       String from, String to, String body, String customText,
       {String pk = '', int now = 0}) async {
@@ -1060,15 +1070,54 @@ class JabberManager implements DataChangeEvents {
         pk: pk, now: now, customText: customText);
   }
 
-  Future<ChatMessageModel> sendMessage(String from, String to, String body,
-      {String pk = '',
-      int now = 0,
-      String customText = '',
-      bool isResend = false}) async {
+  Future<ChatMessageModel> sendMessage(
+    String from,
+    String to,
+    String body, {
+    String pk = '',
+    int now = 0,
+    String customText = '',
+  }) async {
+    /* Отправка сообщения через xmpp
+       вставка в базу выполняется в момент отправки из чата,
+       то есть, сообщение уже в базе
+    */
     if (JabberManager.isConference(to)) {
       Log.d(tag, 'sendMessage ERROR: $to IS conference');
       return ChatMessageModel();
     }
+    ChatMessageModel msg = createChatMessageModel(
+      from = from,
+      to = to,
+      body = body,
+      pk: pk,
+      now: now,
+      customText: customText,
+    );
+    if (msg.customText != null && msg.customText!.isNotEmpty) {
+      // Media cообщение
+      msg.customText = customText;
+      await flutterXmpp?.sendCustomMessage(
+          msg.to!, msg.body!, msg.mid!, msg.customText!, msg.time!);
+    } else {
+      await flutterXmpp?.sendMessage(msg.to!, msg.body!, msg.mid!, msg.time!);
+    }
+    return msg;
+  }
+
+  static ChatMessageModel createChatMessageModel(
+    String from,
+    String to,
+    String body, {
+    String pk = '',
+    int now = 0,
+    String customText = '',
+    String msgType = 'chat',
+  }) {
+    /* Создаем модельку сообщения из данных для фоновой задачи
+       TODO: на данный момент создается только для текстового сообщения
+             т/к пока для медиа-сообщения нет ссылки на файл
+    */
     if (now == 0) {
       now = DateTime.now().millisecondsSinceEpoch;
     }
@@ -1085,33 +1134,46 @@ class JabberManager implements DataChangeEvents {
       time: now,
       type: 'Message',
       body: body,
-      msgtype: 'chat',
+      msgtype: msgType,
       isReadSent: ChatMessageIsReadSent.isNew.index,
     );
     if (customText.isNotEmpty) {
-      // Media cообщение
+      // Media
       msg.customText = customText;
-      await sendMessage2Db(msg, isResend: isResend);
-      await flutterXmpp?.sendCustomMessage(
-          msg.to!, msg.body!, msg.mid!, msg.customText!, msg.time!);
-    } else {
-      await sendMessage2Db(msg, isResend: isResend);
-      await flutterXmpp?.sendMessage(msg.to!, msg.body!, msg.mid!, msg.time!);
     }
     return msg;
   }
 
-  Future<void> sendMessage2Db(ChatMessageModel msg,
+  static Future<void> sendMessage2Db(ChatMessageModel msg,
       {bool isResend = false}) async {
     if (isResend) {
-      print('it is resend ${msg.toString()}');
+      Log.d(tag, 'it is resend ${msg.toString()}');
       return;
     }
     int pk = await msg.insert2Db();
+    Log.d(tag, 'inserted message pk $pk');
+    /*
     await PendingMessageModel(
             id: pk, time: DateTime.now().millisecondsSinceEpoch, uid: msg.mid)
         .insert2Db();
+    */
     await afterSendMessage(msg); // Обновляем ростер
+  }
+
+  static Future<void> afterSendMessage(ChatMessageModel msg) async {
+    /* Действие после отправки сообщения:
+       обновляем в ростере информацию о последнем сообщении
+    */
+    List<RosterModel> toRosterModels =
+        await RosterModel().getBy(msg.from!, jid: msg.to!);
+    if (toRosterModels.isNotEmpty) {
+      RosterModel toRosterModel = toRosterModels[0];
+      toRosterModel.updatePartial(toRosterModel.id, {
+        'lastMessageTime': msg.time!,
+        'lastMessageId': msg.mid!,
+        'lastMessage': ChatMessageModel.messageForRoster(msg),
+      });
+    }
   }
 
   Future<ChatMessageModel> sendCustomGroupMessage(
@@ -1121,43 +1183,35 @@ class JabberManager implements DataChangeEvents {
         pk: pk, now: now, customText: customText);
   }
 
-  Future<ChatMessageModel> sendGroupMessage(String from, String to, String body,
-      {String pk = '',
-      int now = 0,
-      String customText = '',
-      bool isResend = false}) async {
+  Future<ChatMessageModel> sendGroupMessage(
+    String from,
+    String to,
+    String body, {
+    String pk = '',
+    int now = 0,
+    String customText = '',
+    bool isResend = false,
+  }) async {
+    /* Отправка группового сообщения */
     if (!JabberManager.isConference(to)) {
       Log.d(tag, 'sendGroupMessage ERROR: $to is NOT conference');
       return ChatMessageModel();
     }
-    if (now == 0) {
-      now = DateTime.now().millisecondsSinceEpoch;
-    }
-    if (pk.isEmpty) {
-      pk = const Uuid().v4();
-    }
-
-    String myJid = toJid(from);
-    String friendJid = to;
-    ChatMessageModel msg = ChatMessageModel(
-      mid: pk,
-      from: myJid,
-      to: friendJid,
-      senderJid: myJid,
-      time: now,
-      type: 'Message',
-      body: body,
-      msgtype: 'groupchat',
-      isReadSent: ChatMessageIsReadSent.isNew.index,
+    ChatMessageModel msg = createChatMessageModel(
+      from = from,
+      to = to,
+      body = body,
+      pk: pk,
+      now: now,
+      customText: customText,
+      msgType: 'groupchat',
     );
     if (customText.isNotEmpty) {
-      // Media cообщение
+      // Media
       msg.customText = customText;
-      await sendMessage2Db(msg, isResend: isResend);
       await flutterXmpp?.sendCustomGroupMessage(
           msg.to!, msg.body!, msg.mid!, msg.customText!, msg.time!);
     } else {
-      await sendMessage2Db(msg, isResend: isResend);
       await flutterXmpp?.sendGroupMessage(
           msg.to!, msg.body!, msg.mid!, msg.time!);
     }
@@ -1301,5 +1355,4 @@ class JabberManager implements DataChangeEvents {
       }
     }
   }
-
 }

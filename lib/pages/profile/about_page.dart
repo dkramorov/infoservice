@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
-import '../back_button_custom.dart';
+import '../../navigation/custom_app_bar_button.dart';
 import '../themes.dart';
 
 class AboutPage extends StatefulWidget {
@@ -30,7 +30,7 @@ class _AboutPageState extends State<AboutPage> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const AppBarButtonCustom(),
+            const CustomAppBarButton(),
             Text(
               "О приложении",
               style: TextStyle(

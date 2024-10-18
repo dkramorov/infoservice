@@ -9,6 +9,7 @@ import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:infoservice/models/bg_tasks_model.dart';
 import 'package:infoservice/models/dialpad_model.dart';
+import 'package:infoservice/pages/chat/roster_profile_page.dart';
 import 'package:infoservice/pages/chat/utils.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:uuid/uuid.dart';
@@ -20,12 +21,15 @@ import '../../helpers/phone_mask.dart';
 import '../../models/chat_message_model.dart';
 import '../../models/roster_model.dart';
 import '../../models/user_settings_model.dart';
+import '../../navigation/custom_app_bar_button.dart';
+import '../../navigation/generic_appbar.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/permissions_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../settings.dart';
 import '../../sip_ua/dialpadscreen.dart';
 import '../../widgets/chat/messages_widgets.dart';
+import '../app_asset_lib.dart';
 
 class ChatScreen extends StatefulWidget {
   static const String id = '/chat_screen/';
@@ -60,6 +64,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? updateTimer;
   int rosterVersion = 0;
   bool inUpdateTimer = false;
+  bool testMessageAdded = false;
+  bool? sharedContactsAnswer;
 
   TextEditingController chatComposerController = TextEditingController();
 
@@ -82,6 +88,7 @@ class _ChatScreenState extends State<ChatScreen> {
         break;
       }
     }
+
     Future.delayed(Duration.zero, () async {
       await initMe();
       if (friend.jid == null) {
@@ -132,6 +139,77 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
     inUpdateTimer = false;
+
+    /*
+    // Тест нового сообщения с вопросом
+    if (testMessageAdded) {
+      return;
+    }
+    testMessageAdded = true;
+    setState(() {
+      messages.insert(
+        0,
+        ChatMessage(
+          user: me,
+          createdAt: DateTime.now(),
+          medias: [
+            ChatMedia(
+              url: '',
+              type: MediaType.question,
+              fileName: '',
+              customProperties: {
+                'widget': Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'У вас запросили проверку общих контактов.\n'
+                      'Согласны ли вы предоставить доступ к своим контактам'
+                      ' и получить информацию по контактам пользователя?',
+                      style: TextStyle(
+                        fontSize: 15,
+                      ),
+                    ),
+                    SIZED_BOX_H16,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        PrimaryButton(
+                          color: Colors.green,
+                          onPressed: () async {},
+                          child: Text(
+                            'Да',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: w500,
+                              color: white,
+                            ),
+                          ),
+                        ),
+                        PrimaryButton(
+                          color: red,
+                          onPressed: () async {},
+                          child: Text(
+                            'Нет',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: w500,
+                              color: white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              },
+            ),
+          ],
+        ),
+      );
+    });
+    */
   }
 
   Future<void> updateReadMessages() async {
@@ -181,7 +259,6 @@ class _ChatScreenState extends State<ChatScreen> {
         print('${message.customProperties!['id']}, ${messageModel.mid}');
         if (message.customProperties!['id'] == messageModel.mid) {
           needUpdate = true;
-
           Map<String, dynamic> customJson = {};
 
           //message.status = MessageStatus.received;
@@ -232,6 +309,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (customJson['url'] != null) {
                   launchInWebViewOrVC(customJson['url'], context);
                 }
+              },
+            };
+          } else if (mediaType == MediaType.question) {
+            message.medias![0].customProperties = {
+              'onTap': () {
+                Log.d(tag, 'question clicked: ${messageModel.toString()}');
               },
             };
           }
@@ -326,11 +409,9 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatMessageModel.convert2MessageChat(dbMessage);
       //Log.d(tag, 'chatMessageModel ${chatMessageModel.toString()}');
       ChatMessage chatMessage = ChatMessageModel.convert2ChatMessage(
-          chatMessageModel,
-          me,
-          context: context
-      );
-      Log.d(tag, 'chatMessage ${chatMessage.toString()}, me ${me.toString()}');
+          chatMessageModel, me,
+          disableAnswer: sharedContactsAnswer != null, context: context);
+      Log.d(tag, 'chatMessage ${chatMessage.toString()}');
       messages.add(chatMessage);
     }
     times = getMinMaxMessageTime();
@@ -356,7 +437,8 @@ class _ChatScreenState extends State<ChatScreen> {
     DateTime lastTimeMessage = DateTime(1970, 1, 1);
     String lastMessageId = '';
     for (ChatMessage message in messages) {
-      if (message.createdAt.isAfter(lastTimeMessage)) {
+      if (message.createdAt.isAfter(lastTimeMessage) &&
+          message.customProperties?['id'] != null) {
         lastTimeMessage = message.createdAt;
         lastMessageId = message.customProperties!['id'];
       }
@@ -479,6 +561,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> sendTextMessage(String? text) async {
+    /* Отправка текстового сообщения */
     if (text == null) {
       return;
     }
@@ -497,6 +580,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       messages.insert(0, m);
     });
+    // Ставим задачу
     Map<String, dynamic> data = {
       'from': userSettings!.jid,
       'text': m.text,
@@ -505,9 +589,19 @@ class _ChatScreenState extends State<ChatScreen> {
       'pk': m.customProperties!['id'],
     };
     await BGTasksModel.sendTextMessageTask(data);
+    // Пишем в базу
+    ChatMessageModel msg = JabberManager.createChatMessageModel(
+      data['from'],
+      data['to'],
+      data['text'],
+      now: data['now'],
+      pk: data['pk'],
+    );
+    await JabberManager.sendMessage2Db(msg);
   }
 
   Future<void> sendChatFile(String? path, MediaType mediaType) async {
+    /* Отправка сообщения с файлом (media) */
     if (path == null || path == '') {
       Log.d(tag, 'NULL picked file');
       return;
@@ -580,11 +674,10 @@ class _ChatScreenState extends State<ChatScreen> {
         )
       };
     }
-
     setState(() {
       messages.insert(0, m);
     });
-
+    // Ставим задачу
     Map<String, dynamic> data = {
       'from': userSettings!.jid,
       'filesize': filesize,
@@ -596,6 +689,21 @@ class _ChatScreenState extends State<ChatScreen> {
       'msgType': msgType,
     };
     await BGTasksModel.sendFileMessageTask(data);
+
+    // Пишем в базу
+    ChatMessageModel msg = JabberManager.createChatMessageModel(
+      data['from'],
+      data['to'],
+      data['mediaType'],
+      now: data['now'],
+      pk: data['pk'],
+      customText: jsonEncode({
+        'type': data['mediaType'],
+        'url': '',
+        'path': data['path'],
+      }),
+    );
+    await JabberManager.sendMessage2Db(msg);
   }
 
   InputDecoration buildInputDecoration() {
@@ -624,8 +732,45 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: GenericAppBar(
+        hasBackButton: true,
+        title: friend.getName(),
+        controls: [
+          CustomAppBarButton(
+            padding: 10,
+            width: 24,
+            height: 24,
+            asset: AssetLib.phoneCallIcon,
+            onPressed: () {
+              Navigator.pushNamed(context, DialpadScreen.id, arguments: {
+                sipHelper,
+                xmppHelper,
+                // в DialPadModel нужно передавать телефон без домена
+                DialpadModel(
+                    phone: cleanPhone(friend.id.split('@')[0]),
+                    isSip: true,
+                    startCall: true),
+              });
+            },
+          ),
+          CustomAppBarButton(
+            padding: 10,
+            width: 24,
+            height: 24,
+            asset: AssetLib.profileIcon,
+            onPressed: () {
+              Navigator.pushNamed(context, RosterProfilePage.id, arguments: {
+                sipHelper,
+                xmppHelper,
+                friend,
+              });
+            },
+          ),
+        ],
+      ),
+      /* Старый вариант
       appBar: AppBar(
-        title: Text('Чат ${friend.getName()}'),
+        title: Text(friend.getName()),
         backgroundColor: tealColor,
         actions: [
           IconButton(
@@ -644,6 +789,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+      */
       body: DashChat(
         /* При flutter_background_service плагин регистрируется дважды
 

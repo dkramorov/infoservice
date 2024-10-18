@@ -121,12 +121,14 @@ class _CompanyWizardScreenState extends State<CompanyWizardScreen> {
     }
 
     return Scaffold(
+      /*
       appBar: AppBar(
         title: Text(
           title,
         ),
         backgroundColor: tealColor,
       ),
+      */
       body: SafeArea(
         child: PageView(
           controller: _pageController,

@@ -11,9 +11,9 @@ import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../widgets/text_field_custom.dart';
 import '../app_asset_lib.dart';
-import '../authorization.dart';
+import '../auth/authorization.dart';
 import '../static_values.dart';
-import '../generic_appbar.dart';
+import '../../navigation/generic_appbar.dart';
 import '../themes.dart';
 import '../../widgets/button.dart';
 import '../../widgets/modal.dart';
@@ -398,6 +398,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
+            SIZED_BOX_H24,
           ],
         ),
       ),

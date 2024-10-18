@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:flutter/material.dart';
+import 'package:infoservice/helpers/date_time.dart';
 import 'package:infoservice/models/roster_model.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:sqflite/sqflite.dart';
@@ -50,6 +51,7 @@ class ChatMessageModel extends AbstractModel {
   String? bubbleType;
   String? mediaURL;
   int? isReadSent;
+  int? answered;
 
   String getTableName() {
     return tableChatMessageModel;
@@ -72,6 +74,7 @@ class ChatMessageModel extends AbstractModel {
     this.bubbleType,
     this.mediaURL,
     this.isReadSent,
+    this.answered,
   });
 
   @override
@@ -90,6 +93,7 @@ class ChatMessageModel extends AbstractModel {
       'bubbleType': bubbleType,
       'mediaURL': mediaURL,
       'isReadSent': isReadSent,
+      'answered': answered,
     };
   }
 
@@ -109,6 +113,7 @@ class ChatMessageModel extends AbstractModel {
       bubbleType: dbItem['bubbleType'] ?? '',
       mediaURL: dbItem['mediaURL'] ?? '',
       isReadSent: dbItem['isReadSent'] ?? 0,
+      answered: dbItem['answered'] ?? 0,
     );
   }
 
@@ -128,6 +133,7 @@ class ChatMessageModel extends AbstractModel {
       bubbleType: messageChat.bubbleType ?? '',
       mediaURL: messageChat.mediaURL ?? '',
       isReadSent: messageChat.isReadSent ?? 0,
+      answered: messageChat.answered ?? 0,
     );
     return chatMessageModel;
   }
@@ -147,14 +153,37 @@ class ChatMessageModel extends AbstractModel {
       bubbleType: chatMessageModel.bubbleType,
       mediaURL: chatMessageModel.mediaURL,
       isReadSent: chatMessageModel.isReadSent,
+      answered: chatMessageModel.answered,
     );
     return messageChat;
+  }
+
+  static String messageForRoster(ChatMessageModel model) {
+    /* Сообщение для ростера (текст последнего сообщения) */
+    if (model.body == MediaType.answer.toString() ||
+        model.body == MediaType.question.toString()) {
+      try {
+        Map<String, dynamic> customText = jsonDecode(model.customText ?? '{}');
+        if (customText['type'] == MediaType.question.toString()) {
+          return 'Запрос разрешения для сравнения общих контактов';
+        } else if (customText['type'] == MediaType.answer.toString()) {
+          if (customText['answer'] != null && customText['answer']) {
+            return 'Разрешено сравнение общих контактов ';
+          }
+          return 'Отклонено сравнение общих контактов ';
+        }
+      } catch (ex) {
+        Log.d(tag, '[ERROR]: ${ex.toString()}');
+      }
+    }
+    return model.body ?? '---';
   }
 
   static ChatMessage convert2ChatMessage(
     MessageChat messageChat,
     ChatUser me, {
     String setFromName = '',
+    bool disableAnswer = false,
     BuildContext? context,
   }) {
     /* MessageChat (сообщение xmpp) => ChatMessage (виджет)
@@ -196,8 +225,7 @@ class ChatMessageModel extends AbstractModel {
         status: messageChat.isReadSent == 2
             ? MessageStatus.received
             : MessageStatus.pending,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-            int.parse(messageChat.time.toString())));
+        createdAt: timestamp2Datetime(int.parse(messageChat.time.toString())));
 
     if (messageChat.customText != null &&
         CHAT_MEDIA_TYPES.contains(chatMessage.text)) {
@@ -236,6 +264,21 @@ class ChatMessageModel extends AbstractModel {
               launchInWebViewOrVC(url, context);
             }
           };
+        } else if (mediaType == MediaType.question) {
+          customProperties['widget'] = QuestionMessage(
+            me: phone == me.id,
+            senderJid: senderJid,
+            createdAt: chatMessage.createdAt,
+            disabled: messageChat.answered == 1 ? true : disableAnswer,
+            mid: messageChat.id ?? '',
+          );
+        } else if (mediaType == MediaType.answer) {
+          customProperties['widget'] = AnswerMessage(
+            me: phone == me.id,
+            answer: customText['answer'],
+            createdAt: chatMessage.createdAt,
+            readStatus: chatMessage.status,
+          );
         }
         chatMessage.medias!.add(ChatMedia(
           url: url,
@@ -268,14 +311,6 @@ class ChatMessageModel extends AbstractModel {
         'setReadFlag me: $myJid, friend $friendJid, time: $beforeTime; '
         'count $result');
     return result;
-  }
-
-  @override
-  String toString() {
-    final String table = getTableName();
-    return '$table{id: $id, mid: $mid, customText: $customText, from: $from, to: $to, '
-        'senderJid: $senderJid, time: $time, type: $type, body: $body, msgtype: $msgtype, '
-        'bubbleType: $bubbleType, mediaURL: $mediaURL, isReadSent: $isReadSent}';
   }
 
   Future<bool> isExists() async {
@@ -336,8 +371,7 @@ class ChatMessageModel extends AbstractModel {
     });
   }
 
-  Future<List<ChatMessageModel>> getByReadFlag(
-      List<String> idsMessages) async {
+  Future<List<ChatMessageModel>> getByReadFlag(List<String> idsMessages) async {
     final db = await openDB();
     String params = '0';
     for (String msgId in idsMessages) {
@@ -393,5 +427,21 @@ class ChatMessageModel extends AbstractModel {
     return List.generate(maps.length, (i) {
       return toModel(maps[i]);
     });
+  }
+
+  Future<ChatMessageModel?> getAnswers(
+      String myJid, String friendJid, String msgType) async {
+    final db = await openDB();
+    final List<Map<String, dynamic>> maps = await db.query(
+      tableChatMessageModel,
+      where: 'msgtype=? AND toJid IN (?,?) AND fromJid IN (?,?)',
+      whereArgs: [msgType, myJid, friendJid, myJid, friendJid],
+      orderBy: 'time DESC',
+      limit: 1,
+    );
+    for (int i = 0; i < maps.length; i++) {
+      return toModel(maps[i]);
+    }
+    return null;
   }
 }

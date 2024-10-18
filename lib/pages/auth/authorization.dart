@@ -7,20 +7,20 @@ import 'package:infoservice/pages/static_values.dart';
 import 'package:infoservice/pages/themes.dart';
 import 'package:infoservice/settings.dart';
 
-import '../helpers/dialogs.dart';
-import '../helpers/log.dart';
-import '../helpers/phone_mask.dart';
-import '../helpers/string_parser.dart';
-import '../models/bg_tasks_model.dart';
-import '../services/jabber_manager.dart';
-import '../services/sip_ua_manager.dart';
-import '../widgets/auth/yandex_oauth_button.dart';
-import '../widgets/password_eye_widget.dart';
-import '../widgets/reg_links.dart';
-import '../widgets/text_field_custom.dart';
-import 'app_asset_lib.dart';
-import 'back_button_custom.dart';
-import '../widgets/button.dart';
+import '../../helpers/dialogs.dart';
+import '../../helpers/log.dart';
+import '../../helpers/phone_mask.dart';
+import '../../helpers/string_parser.dart';
+import '../../models/bg_tasks_model.dart';
+import '../../services/jabber_manager.dart';
+import '../../services/sip_ua_manager.dart';
+import '../../widgets/auth/oauth_buttons.dart';
+import '../../widgets/password_eye_widget.dart';
+import '../../widgets/reg_links.dart';
+import '../../widgets/text_field_custom.dart';
+import '../app_asset_lib.dart';
+import '../../navigation/custom_app_bar_button.dart';
+import '../../widgets/button.dart';
 
 class AuthScreenWidget extends StatefulWidget {
   final SIPUAManager? _sipHelper;
@@ -141,7 +141,7 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: const AppBarButtonCustom(asset: AssetLib.closeButton),
+        leading: const CustomAppBarButton(asset: AssetLib.closeButton),
       ),
       body: Form(
         key: formKey,
@@ -173,6 +173,8 @@ class _AuthScreenWidgetState extends State<AuthScreenWidget> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     YandexOauthButton(),
+                    SIZED_BOX_W04,
+                    GoogleOauthButton(),
                   ]),
               SIZED_BOX_H24,
               Center(

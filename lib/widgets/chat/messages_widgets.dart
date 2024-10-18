@@ -1,17 +1,28 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:io';
 import 'package:dash_chat_2/dash_chat_2.dart';
+import 'package:infoservice/models/chat_message_model.dart';
+import 'package:infoservice/models/shared_contacts_model.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:infoservice/settings.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_file/open_file.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../helpers/date_time.dart';
 import '../../helpers/network.dart';
 import '../../helpers/string_parser.dart';
+import '../../models/bg_tasks_model.dart';
+import '../../models/user_settings_model.dart';
+import '../../pages/themes.dart';
+import '../../services/shared_preferences_manager.dart';
+import '../button.dart';
 
 final MediaQueryData media =
     MediaQueryData.fromWindow(WidgetsBinding.instance.window);
@@ -633,8 +644,8 @@ class _FileMessageState extends State<FileMessage> {
                             fontSize: 12,
                           ),
                         ),
-                        DashChat.buildReadMessageStatus(chatMessageOptions,
-                            widget.me, widget.readStatus),
+                        DashChat.buildReadMessageStatus(
+                            chatMessageOptions, widget.me, widget.readStatus),
                       ],
                     ),
                   ),
@@ -645,6 +656,210 @@ class _FileMessageState extends State<FileMessage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class QuestionMessage extends StatefulWidget {
+  final bool me;
+  final String senderJid;
+  final DateTime? createdAt;
+  final String mid; // ид сообщения (надо промаркировать отвеченным)
+  bool disabled;
+
+  QuestionMessage({
+    Key? key,
+    required this.me,
+    required this.senderJid,
+    this.createdAt,
+    required this.mid,
+    this.disabled = true,
+  }) : super(key: key);
+
+  @override
+  _QuestionMessageState createState() => _QuestionMessageState();
+}
+
+class _QuestionMessageState extends State<QuestionMessage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Widget buildButtons() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        PrimaryButton(
+          color: widget.disabled ? Colors.grey : Colors.green,
+          onPressed: () async {
+            if (widget.disabled) {
+              print('--- disabled ---');
+              setState(() {});
+              return;
+            }
+            setState(() {
+              widget.disabled = true;
+            });
+            await grantAccessSharedContacts(widget.senderJid, widget.mid);
+          },
+          child: Text(
+            'Да',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: w500,
+              color: white,
+            ),
+          ),
+        ),
+        PrimaryButton(
+          color: widget.disabled ? Colors.grey : red,
+          onPressed: () async {
+            if (widget.disabled) {
+              print('--- disabled ---');
+              setState(() {});
+              return;
+            }
+            setState(() {
+              widget.disabled = true;
+            });
+            await denyAccessSharedContacts(widget.senderJid, widget.mid);
+          },
+          child: Text(
+            'Нет',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: w500,
+              color: white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        widget.me
+            ? const Text(
+                'Вы запросили проверку общих контактов',
+                style: TextStyle(
+                  fontSize: 15,
+                ),
+              )
+            : const Text(
+                'У вас запросили проверку общих контактов.\n'
+                'Согласны ли вы предоставить доступ к своим контактам'
+                ' и получить информацию по контактам пользователя?',
+                style: TextStyle(
+                  fontSize: 15,
+                ),
+              ),
+        SIZED_BOX_H16,
+        widget.me ? Container() : buildButtons()
+      ],
+    );
+  }
+}
+
+Future<void> setAccessSharedContacts(
+    bool answer, String text, String friendJid, String mid) async {
+  UserSettingsModel? userSettings = await UserSettingsModel().getUser();
+  if (userSettings != null) {
+    /* Если ответ утвердительный,
+       тогда надо создать запрос на сверку контактов
+    */
+
+    if (answer) {
+      SharedContactsRequestModel newRequest =
+      SharedContactsRequestModel(
+        date: datetime2String(DateTime.now()),
+        ownerJid: userSettings.jid,
+        friendJid: friendJid,
+      );
+      newRequest.insert2Db();
+    }
+
+    // Маркируем сообщение отвеченным
+    ChatMessageModel msg = await ChatMessageModel().getByMid(mid);
+    msg.updatePartial(msg.id, {
+      'answered': 1,
+    });
+
+    Map<String, dynamic> data = {
+      'from': userSettings.jid,
+      'text': text,
+      'to': friendJid,
+      'now': DateTime.now().millisecondsSinceEpoch,
+      'pk': const Uuid().v4(),
+      'mediaType': MediaType.answer.toString(),
+      'answer': answer,
+    };
+    await BGTasksModel.sendTextMessageTask(data);
+  } else {
+    print('setAccessSharedContacts failed, user is null');
+  }
+}
+
+Future<void> grantAccessSharedContacts(String friendJid, String mid) async {
+  String text = 'Разрешение на проверку общих контактов дано';
+  await setAccessSharedContacts(true, text, friendJid, mid);
+}
+
+Future<void> denyAccessSharedContacts(String friendJid, String mid) async {
+  String text = 'Разрешение на проверку общих контактов отклонено';
+  await setAccessSharedContacts(false, text, friendJid, mid);
+}
+
+class AnswerMessage extends StatefulWidget {
+  final bool me;
+  final bool answer;
+  final DateTime? createdAt;
+  MessageStatus readStatus;
+
+  AnswerMessage({
+    Key? key,
+    required this.me,
+    required this.answer,
+    this.createdAt,
+    this.readStatus = MessageStatus.none,
+  }) : super(key: key);
+
+  @override
+  _AnswerMessageState createState() => _AnswerMessageState();
+}
+
+class _AnswerMessageState extends State<AnswerMessage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Color color = Colors.green;
+    String text = 'Запрос общих контактов разрешен';
+    if (!widget.answer) {
+      color = red;
+      text = 'Запрос общих контактов отклонен';
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 15,
+          ),
+        ),
+      ],
     );
   }
 }

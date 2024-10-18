@@ -39,7 +39,7 @@ class _TabAddContactState extends State<TabAddContact> {
   JabberManager? get xmppHelper => widget.xmppHelper;
   late Timer updateTimer;
 
-  String newUser = '8';
+  String newUser = '';
 
   @override
   void dispose() {
@@ -155,16 +155,19 @@ class _TabAddContactState extends State<TabAddContact> {
                             }
                           },
                     */
-                    formatters: [PhoneFormatter()],
+                    // ФОРМАТИРОВАНИЕ ПОКА УБИРАЕМ
+                    //formatters: [PhoneFormatter()],
                     validator: (String? value) {
                       String v = value ?? '';
+                      /* ВАЛИДАТОР ПОКА УБИРАЕМ
                       bool match = phoneMaskValidator().hasMatch(v);
                       if (v.isEmpty || !match) {
                         return 'Телефон нового контакта';
                       }
+                      */
                       return null;
                     },
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.text,
                     defaultValue: newUser,
                   ),
                   const SizedBox(

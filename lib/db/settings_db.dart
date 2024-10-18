@@ -9,23 +9,51 @@ class DBSettingsInstance {
 }
 
 Future<Database> openSettingsDB() async {
-  const int dbVersion = 7; // Версия базы данных
+  const int dbVersion = 10; // Версия базы данных
   const String dbName = 'settingsDB.db';
 
   if (DBSettingsInstance.instance != null) {
-    /*
-    try {
-      int version = await DBSettingsInstance.instance!.getVersion();
-      print('-----> version $version');
-      return DBSettingsInstance.instance!;
-    } catch (e) {
-      print('_________ $e');
-      DBSettingsInstance.instance = null;
-    }
-
-    */
     return DBSettingsInstance.instance!;
   }
+
+  /* SharedContacts */
+  const String date = 'date text';
+  const String ownerJid = 'owner_jid text';
+  const String friendJid = 'friend_jid text';
+  const String answer = 'answer text';
+
+  const String createTableSharedContactsRequest = 'CREATE TABLE IF NOT EXISTS'
+      ' $tableSharedContactsRequestModel('
+      'id INTEGER PRIMARY KEY'
+      ', $date'
+      ', $ownerJid'
+      ', $friendJid'
+      ', $answer'
+      ')';
+
+  const String requestId = 'requestId int';
+  const String login = 'login text';
+  const String name = 'name text';
+
+  const String alterTableSharedContactsRequestAddAnswer =
+      'ALTER TABLE $tableSharedContactsRequestModel add $answer';
+
+  const String createTableSharedContacts = 'CREATE TABLE IF NOT EXISTS'
+      ' $tableSharedContactsModel('
+      'id INTEGER PRIMARY KEY'
+      ', $requestId'
+      ', $login'
+      ', $name'
+      ')';
+
+  const String alterTableSharedContactsAddRequestId =
+      'ALTER TABLE $tableSharedContactsModel add $requestId';
+  const String alterTableSharedContactsDropOwnerJid =
+      'ALTER TABLE $tableSharedContactsModel drop ownerJid';
+  const String alterTableSharedContactsDropFriendJid =
+      'ALTER TABLE $tableSharedContactsModel drop friendJid';
+  const String alterTableSharedContactsDropDate =
+      'ALTER TABLE $tableSharedContactsModel drop date';
 
   /* UserSettings */
   const String userName = 'name text';
@@ -66,7 +94,7 @@ Future<Database> openSettingsDB() async {
   const String alterTableUserSettingsModelAddRosterVersion =
       'ALTER TABLE $tableUserSettingsModel add $userRosterVersion';
 
-  /* UserSettings */
+  /* BGTasks */
   const String taskName = 'name text';
   const String taskState = 'state text';
   const String taskData = 'data text';
@@ -87,6 +115,8 @@ Future<Database> openSettingsDB() async {
   Future<void> createTables(Database db) async {
     await db.execute(createTableUserSettings);
     await db.execute(createTableBGTasks);
+    await db.execute(createTableSharedContactsRequest);
+    await db.execute(createTableSharedContacts);
   }
 
   final Future<Database> database = openDatabase(
@@ -96,6 +126,7 @@ Future<Database> openSettingsDB() async {
       await createTables(db);
     },
     onUpgrade: (db, oldVersion, newVersion) async {
+      const String errDbUpgrade = '[ERROR DB UPGRADE]';
       Log.i('--- DB UPGRADE ---', '$oldVersion=>$newVersion');
       await createTables(db);
       if (oldVersion < 2) {
@@ -106,6 +137,40 @@ Future<Database> openSettingsDB() async {
       }
       if (oldVersion < 4) {
         await db.execute(alterTableBGTasksModelAddPriority);
+      }
+      if (oldVersion <= 8) {
+        try {
+          await db.execute(alterTableSharedContactsAddRequestId);
+        } catch (ex) {
+          Log.d(errDbUpgrade,
+              'alterTableSharedContactsAddRequestId, ${ex.toString()}');
+        }
+        try {
+          await db.execute(alterTableSharedContactsDropOwnerJid);
+        } catch (ex) {
+          Log.d(errDbUpgrade,
+              'alterTableSharedContactsDropOwnerJid, ${ex.toString()}');
+        }
+        try {
+          await db.execute(alterTableSharedContactsDropFriendJid);
+        } catch (ex) {
+          Log.d(errDbUpgrade,
+              'alterTableSharedContactsDropFriendJid, ${ex.toString()}');
+        }
+        try {
+          await db.execute(alterTableSharedContactsDropDate);
+        } catch (ex) {
+          Log.d(errDbUpgrade,
+              'alterTableSharedContactsDropDate, ${ex.toString()}');
+        }
+      }
+      if (oldVersion <= 9) {
+        try {
+          await db.execute(alterTableSharedContactsRequestAddAnswer);
+        } catch (ex) {
+          Log.d(errDbUpgrade,
+              'alterTableSharedContactsRequestAddAnswer, ${ex.toString()}');
+        }
       }
     },
     // Set the version. This executes the onCreate function and provides a

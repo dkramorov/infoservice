@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'gl.dart';
-import 'themes.dart';
+import '../pages/gl.dart';
+import '../pages/themes.dart';
 
 class BNBCustomPainter extends CustomPainter {
   @override
@@ -86,8 +86,8 @@ class BottomBarButton extends StatelessWidget {
   }
 }
 
-class BottomNavigationBarCustom extends StatefulWidget {
-  const BottomNavigationBarCustom({
+class CustomBottomNavigationBar extends StatefulWidget {
+  const CustomBottomNavigationBar({
     required this.size,
     required this.onPressed,
     required this.activeIndex,
@@ -102,11 +102,11 @@ class BottomNavigationBarCustom extends StatefulWidget {
   final int chatMessageCount;
 
   @override
-  State<BottomNavigationBarCustom> createState() =>
-      _BottomNavigationBarCustomState();
+  State<CustomBottomNavigationBar> createState() =>
+      _CustomBottomNavigationBarState();
 }
 
-class _BottomNavigationBarCustomState extends State<BottomNavigationBarCustom> {
+class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
   static const _barSize = 72.0;
 
   static const _listOfUnavailable = [1, 2, 3];

@@ -10,7 +10,7 @@ import 'package:xmpp_plugin/models/message_model.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app_asset_lib.dart';
-import '../../../../back_button_custom.dart';
+import '../../../../../navigation/custom_app_bar_button.dart';
 import '../../../../themes.dart';
 import '../../../../format_ends.dart';
 import '../chats_page.dart';
@@ -112,7 +112,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Row(
               children: [
-                const AppBarButtonCustom(),
+                const CustomAppBarButton(),
                 const SizedBox(width: 16),
                 Container(
                   width: 32,
@@ -161,7 +161,7 @@ class _ChatPageState extends State<ChatPage> {
                 GestureDetector(
                   onTap: () {},
                   child: SvgPicture.asset(
-                    AssetLib.phoneCallButton,
+                    AssetLib.phoneCall,
                     // ignore: deprecated_member_use
                     color: black,
                   ),

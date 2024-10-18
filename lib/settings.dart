@@ -33,7 +33,7 @@ const DB_UPDATE_ARCHIVE_ENDPOINT = '/media/companies.tar.gz';
 const DB_LOGO_PATH = '/media/'; // Полный путь передаем, начиная с /media/
 // Маршут, который говорит какая версия для обновления доступна
 const DB_UPDATE_VERSION = '/media/app_json/version.json';
-
+const DEBUG_ON = 'DEBUG_ON';
 const int PHONE_MASK = 1;
 
 // SIZE

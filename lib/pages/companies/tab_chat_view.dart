@@ -9,7 +9,7 @@ import '../../models/companies/orgs.dart';
 import '../../services/jabber_manager.dart';
 import '../../services/sip_ua_manager.dart';
 import '../../widgets/rounded_button_widget.dart';
-import '../authorization.dart';
+import '../auth/authorization.dart';
 import '../chat/group_chat_page.dart';
 
 class TabChatView extends StatefulWidget {

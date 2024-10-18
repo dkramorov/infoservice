@@ -4,7 +4,7 @@ import 'package:infoservice/widgets/pin_code.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
-import '../../../back_button_custom.dart';
+import '../../../../navigation/custom_app_bar_button.dart';
 import '../../../gl.dart';
 import '../../../themes.dart';
 import '../../widgets/alert.dart';
@@ -76,7 +76,7 @@ class _CodePageState extends State<CodePage> {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    AppBarButtonCustom(),
+                    CustomAppBarButton(),
                   ],
                 ),
               ),

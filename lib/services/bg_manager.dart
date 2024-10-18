@@ -7,6 +7,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:infoservice/db/settings_db.dart';
 import 'package:infoservice/models/bg_tasks_model.dart';
 import 'package:infoservice/models/user_settings_model.dart';
 import 'package:infoservice/services/shared_preferences_manager.dart';
@@ -165,14 +166,12 @@ void onStart(ServiceInstance service) async {
         BGTasksModel.bgTimerTaskRunning = false;
       }
     } else {
-      Future.delayed(Duration.zero, () async {
-        try {
-          await backgroundJob();
-        } catch (ex, stacktrace) {
-          Log.d(tag, '[EXCEPTION]: ${ex.toString()}');
-          Log.d(tag, stacktrace.toString());
-        }
-      });
+      try {
+        await backgroundJob();
+      } catch (ex, stacktrace) {
+        Log.d(tag, '[EXCEPTION]: ${ex.toString()}');
+        Log.d(tag, stacktrace.toString());
+      }
     }
   });
 }
@@ -182,7 +181,7 @@ Future<void> backgroundJob() async {
 
   // Без интернет-соединения смысла выполнять задачу нет
   SharedPreferences prefs =
-  await SharedPreferencesManager.getSharedPreferences();
+      await SharedPreferencesManager.getSharedPreferences();
   bool? hasInternet = prefs.getBool('checkInternetConnection');
   if (hasInternet == null || !hasInternet) {
     Log.d(tag, 'do nothing, because internet absent');
@@ -194,7 +193,6 @@ Future<void> backgroundJob() async {
   //Log.d(tag, 'counter ${BGTasksModel.counter}');
   BGTasksModel? newTask = await BGTasksModel().getTask();
   if (newTask != null) {
-
     if (newTask.priority != BGTasksModel.authPriority) {
       // Без пользователя смысла выполнять такую задачу нет
       UserSettingsModel? user = await UserSettingsModel().getUser();
@@ -259,6 +257,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
       Log.d(tag, '--- JabberManager stopped');
       await BGTasksModel.createCheckRegTask();
       Log.d(tag, '--- Reg task created');
+      Log.d(tag, '--- Reg task created');
       break;
 
     case BGTasksModel.checkRegUserTaskKey:
@@ -309,13 +308,17 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
         List<String> result = [];
         bool founded = false;
         for (String user in users) {
-          String curUser = cleanPhone(user);
+          // С ростера может приходить [yandex_zergo01@chat.masterme.ru]
+          String curUser = cleanPhone(user).split('@')[0].replaceAll('[', '');
           result.add(curUser);
           if (curUser == login) {
             founded = true;
+            break;
+          } else {
+            Log.d(tag, 'search for add2roster, not equal $curUser=$login');
           }
         }
-        Log.d(tag, 'founded=$founded, by $login: $result');
+        Log.d(tag, 'founded=$founded, by login: $login, with result: $result');
         if (founded) {
           await JabberManager().addMyRoster(login);
           await prefs.setBool(BGTasksModel.addRosterPrefKey, true);
@@ -355,11 +358,41 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
         Log.e(tag, 'sendTextMessageTask bad data: ${data.toString}');
         break;
       }
-      await JabberManager().sendMessage(fromJid, toJid, text, now: now, pk: pk);
+
+      String mediaType = data['mediaType'] ?? '';
+      if (mediaType == 'question' || mediaType == 'answer') {
+        Map<String, dynamic> customText = {
+          'type': mediaType,
+        };
+        if (data['answer'] != null) {
+          customText['answer'] = data['answer'];
+        }
+        await JabberManager().sendCustomMessage(
+          fromJid,
+          toJid,
+          mediaType,
+          jsonEncode(customText),
+          now: now,
+          pk: pk,
+        );
+      } else {
+        await JabberManager().sendMessage(
+          fromJid,
+          toJid,
+          text,
+          now: now,
+          pk: pk,
+        );
+      }
       if (JabberManager.user != null &&
           JabberManager.user!.credentialsHash != null) {
-        await sendPush(JabberManager.user!.credentialsHash!, fromJid, toJid,
-            onlyData: false, text: text);
+        await sendPush(
+          JabberManager.user!.credentialsHash!,
+          fromJid,
+          toJid,
+          onlyData: false,
+          text: text,
+        );
       }
       break;
 
@@ -384,7 +417,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
       int filesize = data['filesize'];
       String path = data['path'];
       String msgType = data['msgType'];
-      String mediaType = data['mediaType'];
+      String mediaType = data['mediaType'] ?? '';
       if (mediaType == '' ||
           filesize == 0 ||
           path == '' ||
@@ -400,12 +433,14 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
       String? putUrl =
           await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
       Log.i(tag, 'putUrl is "$putUrl"');
+      /* TODO: повторный запрос слота или маркировка сообщения битым
+      */
       if (putUrl != null && putUrl != '') {
         Map<String, dynamic> response = await requestPutFile(putUrl, file);
         if (response['statusCode'] == 201) {
           Log.i(tag, 'upload success $putUrl');
           Map<String, String> customText = {
-            'type': mediaType.toString(),
+            'type': mediaType,
             'url': putUrl,
             'path': file.path,
           };
@@ -418,26 +453,6 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
                 onlyData: false, text: msgType);
           }
         }
-      } else {
-        // Пишем сообщение в базу
-        ChatMessageModel msg = ChatMessageModel(
-          mid: pk,
-          from: fromJid,
-          to: toJid,
-          senderJid: fromJid,
-          time: now,
-          type: 'Message',
-          body: mediaType,
-          msgtype: 'chat',
-          isReadSent: ChatMessageIsReadSent.isNew.index,
-        );
-        Map<String, String> customText = {
-          'type': mediaType.toString(),
-          'url': '',
-          'path': file.path,
-        };
-        msg.customText = jsonEncode(customText);
-        await JabberManager().sendMessage2Db(msg, isResend: false);
       }
       break;
 
@@ -474,7 +489,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
       int filesize = data['filesize'];
       String path = data['path'];
       String msgType = data['msgType'];
-      String mediaType = data['mediaType'];
+      String mediaType = data['mediaType'] ?? '';
       if (mediaType == '' ||
           filesize == 0 ||
           path == '' ||
@@ -495,7 +510,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
         if (response['statusCode'] == 201) {
           Log.i(tag, 'upload success $putUrl');
           Map<String, String> customText = {
-            'type': mediaType.toString(),
+            'type': mediaType,
             'url': putUrl,
           };
           await JabberManager().sendCustomGroupMessage(
@@ -522,12 +537,12 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
           isReadSent: ChatMessageIsReadSent.isNew.index,
         );
         Map<String, String> customText = {
-          'type': mediaType.toString(),
+          'type': mediaType,
           'url': '',
           'path': file.path,
         };
         msg.customText = jsonEncode(customText);
-        await JabberManager().sendMessage2Db(msg, isResend: false);
+        await JabberManager.sendMessage2Db(msg, isResend: false);
       }
       break;
 
@@ -555,8 +570,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
       /* Обновление VCard
       */
       Map<String, dynamic> data = newTask.getJsonData();
-      Map<String, dynamic> descObj =
-      await JabberManager().getVCardDescAsDict();
+      Map<String, dynamic> descObj = await JabberManager().getVCardDescAsDict();
       if (data['FN'] != null && data['FN'] != '') {
         descObj['FN'] = data['FN'];
       }
@@ -577,7 +591,7 @@ Future<void> runTaskHelper(BGTasksModel newTask) async {
         String fname = file.path.split('/').last;
         int filesize = await file.length();
         String? putUrl =
-        await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
+            await JabberManager.flutterXmpp?.requestSlot(fname, filesize);
         Log.i(tag, 'putUrl is "$putUrl"');
         if (putUrl != null && putUrl != '') {
           Map<String, dynamic> response = await requestPutFile(putUrl, file);

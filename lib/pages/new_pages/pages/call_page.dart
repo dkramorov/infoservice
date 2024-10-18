@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sip_ua/sip_ua.dart';
 import '../../../services/sip_ua_manager.dart';
 import '../../app_asset_lib.dart';
-import '../../back_button_custom.dart';
+import '../../../navigation/custom_app_bar_button.dart';
 import '../../themes.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 
@@ -76,7 +76,7 @@ class _CallPageState extends State<CallPage> {
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              AppBarButtonCustom(),
+              CustomAppBarButton(),
             ],
           ),
         ),

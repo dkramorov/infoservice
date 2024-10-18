@@ -216,7 +216,7 @@ class _CallScreenWidget extends State<CallScreenWidget>
       case CallStateEnum.STREAM:
         if (direction == 'OUTGOING' && call.id != ringOnCallIdStarted) {
           print('______________${call.remote_identity}');
-          getRosterNameByPhone(xmppHelper, call.remote_identity ?? '')
+          getRosterNameByPhone(call.remote_identity ?? '')
               .then((name) {
             setState(() {
               if (mounted) {
@@ -355,7 +355,7 @@ class _CallScreenWidget extends State<CallScreenWidget>
     // Втыкаем в историю входящий
     // все входящие только сипом пока
     String name =
-        await getRosterNameByPhone(xmppHelper, call?.remote_identity ?? '');
+        await getRosterNameByPhone(call?.remote_identity ?? '');
     await sipHelper?.listener.call2History(call?.remote_identity ?? '',
         name: name, direction: 'incoming', isSip: true);
   }
@@ -560,7 +560,7 @@ class _CallScreenWidget extends State<CallScreenWidget>
                 _handleHangup();
               } else {
                 String phone = call?.remote_identity ?? '';
-                String name = await getRosterNameByPhone(xmppHelper, phone);
+                String name = await getRosterNameByPhone(phone);
                 setState(() {
                   if (mounted) {
                     callerName = name;

@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:infoservice/pages/new_pages/pages/catalog/item/search/src/search_choices.dart';
 
 import 'app_asset_lib.dart';
-import 'back_button_custom.dart';
+import '../navigation/custom_app_bar_button.dart';
 import 'gl.dart';
 import 'themes.dart';
 
@@ -41,21 +41,21 @@ class SearchBarMainPageWidget extends StatelessWidget {
                 dropDownDialogPadding: EdgeInsets.zero,
                 padding: EdgeInsets.zero,
                 items: dropdownItems,
-                value: "",
+                value: '',
                 hint: inp,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: w400,
                   color: Colors.black,
-                  fontFamily: "GolosText",
+                  fontFamily: 'GolosText',
                   overflow: TextOverflow.ellipsis,
                 ),
-                searchHint: "Поиск компании",
+                searchHint: 'Поиск компании',
                 onChanged: onChanged,
                 isExpanded: true,
               ),
             ),
-            AppBarButtonCustom(
+            CustomAppBarButton(
               asset: AssetLib.microphoneButton,
               onPressed: onMicrophone,
             ),

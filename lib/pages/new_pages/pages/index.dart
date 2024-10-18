@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../services/jabber_manager.dart';
 import '../../../services/sip_ua_manager.dart';
 import '../../gl.dart';
-import '../../bottom_navigation_bar_custom.dart';
+import '../../../navigation/custom_bottom_navigation_bar.dart';
 import 'new_call/new_call.dart';
 
 class Index extends StatefulWidget {
@@ -25,7 +25,7 @@ class _IndexState extends State<Index> {
     return Scaffold(
       extendBody: true,
       body: _buildContent(pages),
-      bottomNavigationBar: BottomNavigationBarCustom(
+      bottomNavigationBar: CustomBottomNavigationBar(
         size: MediaQuery.of(context).size,
         chatMessageCount:
             myPhone == null ? 0 : 2, // TODO implement user message count
@@ -33,7 +33,6 @@ class _IndexState extends State<Index> {
           setState(() {
 
             unavailable = false;
-
 
             /// Page 2 must be called separately
             if (i == 2 && !unavailable) {

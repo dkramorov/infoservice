@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1007682182703",
+    "project_id": "mastermechat",
+    "storage_bucket": "mastermechat.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1007682182703:android:e3bfc60d10d3cd4b8270da",
+        "android_client_info": {
+          "package_name": "ru.masterme.chat.masterme_chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1007682182703-7v9dimtmvheeqsf7v92imcen0l8j2dii.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlNJe8TBRihnRhGmnar1lMVZlq6zGFm_s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1007682182703-7v9dimtmvheeqsf7v92imcen0l8j2dii.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1007682182703-niuuhijoch44jlccstnccs609mpuc0qf.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "ru.masterme.chat.mastermeChat"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

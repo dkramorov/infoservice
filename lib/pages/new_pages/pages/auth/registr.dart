@@ -7,7 +7,7 @@ import 'package:infoservice/pages/new_pages/pages/auth/utils/auth_validators.dar
 
 import '../../../app_asset_lib.dart';
 import '../../../static_values.dart';
-import '../../../back_button_custom.dart';
+import '../../../../navigation/custom_app_bar_button.dart';
 import '../../../../widgets/password_eye_widget.dart';
 import '../../../../widgets/text_field_custom.dart';
 import '../../../gl.dart';
@@ -46,7 +46,7 @@ class _RegistrPageState extends State<RegistrPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const AppBarButtonCustom(asset: AssetLib.closeButton),
+        leading: const CustomAppBarButton(asset: AssetLib.closeButton),
       ),
       body: Form(
         key: formKey,

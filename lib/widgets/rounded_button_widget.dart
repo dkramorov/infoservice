@@ -63,7 +63,8 @@ class RoundedButtonWithIconWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       //icon: Icon(Icons.thumb_up_alt_outlined),
-      icon: SvgPicture.asset(AssetLib.yandexIcon),
+      //icon: SvgPicture.asset(AssetLib.yandexIcon),
+      icon: icon ?? const Icon(Icons.thumb_up_alt_outlined),
       //icon: icon ?? const Icon(null),
       label: text ?? const Text(''),
       onPressed: onPressed,
